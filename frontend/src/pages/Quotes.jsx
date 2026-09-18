@@ -744,15 +744,24 @@ export const Quotes = () => {
 
   // Buscar precio en el catálogo de servicios según modelo seleccionado
   const findServicePrice = (productName) => {
-    const normalize = (str) => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+    const normalize = (str) => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
     const nameNorm = normalize(productName);
     
-    const service = serviceCatalog.find(s => {
-      const sNorm = normalize(s.name);
-      return sNorm === nameNorm ||
-        sNorm.includes(nameNorm) ||
-        nameNorm.includes(sNorm);
-    });
+    // 1) Coincidencia EXACTA normalizada (evita que "CASHEA Recurrente" le gane a "Cashea")
+    let service = serviceCatalog.find(s => normalize(s.name) === nameNorm);
+    
+    // 2) Coincidencia difusa: excluir servicios recurrentes (tienen setup = 0 por diseño)
+    if (!service) {
+      const candidates = serviceCatalog.filter(s => {
+        const sNorm = normalize(s.name);
+        return sNorm.includes(nameNorm) || nameNorm.includes(sNorm);
+      });
+      const setupCandidates = candidates.filter(s => (s.application_type || 'both') !== 'recurring');
+      const pool = setupCandidates.length > 0 ? setupCandidates : candidates;
+      // Preferir el nombre más corto (coincidencia más cercana al producto)
+      pool.sort((a, b) => a.name.length - b.name.length);
+      service = pool[0] || null;
+    }
     
     if (service) {
       const isOutsourcing = quoteData.pricing_model === 'outsourcing';
@@ -972,10 +981,14 @@ export const Quotes = () => {
     
     // Si no hay coincidencia exacta, buscar por inclusión pero priorizando el nombre más largo
     if (!service) {
-      const candidates = serviceCatalog.filter(s => 
+      let candidates = serviceCatalog.filter(s => 
         s.name.toLowerCase().includes(productName.toLowerCase()) ||
         productName.toLowerCase().includes(s.name.toLowerCase())
       );
+      // Excluir servicios recurrentes del fallback (tienen setup = 0 por diseño,
+      // ej. "CASHEA Recurrente" no debe resolver el precio de setup de "Cashea")
+      const setupCandidates = candidates.filter(s => (s.application_type || 'both') !== 'recurring');
+      if (setupCandidates.length > 0) candidates = setupCandidates;
       
       // Ordenar por longitud de nombre descendente para evitar que nombres cortos coincidan antes
       if (candidates.length > 0) {
