@@ -1815,3 +1815,10 @@ Antes, usuarios con permisos limitados no cargaban catálogos en el frontend →
 - FIX: (1) findServicePrice → match exacto normalizado primero; fallback difuso excluye application_type='recurring' y prefiere el nombre más corto (match más cercano). (2) findServicePriceWithModel → mismo filtro anti-recurrentes en el fallback difuso.
 - Verificado (simulación con catálogo real): Cashea→"Credito Cashea" (2.3 conv / 2.0 outs), Debito Inmediato exacto (8/1.6) sin cambios, Pago Móvil sin cambios. Para "Verificación P2C", en producción el servicio exacto con precio definido en Medios de Pago ahora gana por match exacto.
 - NOTA: la colección "Medios de Pago" = `services` (módulo payment-methods). Requiere DEPLOY para producción.
+
+**FIX CRÍTICO · Certificados de Integrador salen con PDF "default" en docker · 2026-09:**
+- Síntoma (docker): al emitir certificado de integrador se usa el certificado corporativo autónomo ("default") aunque el implementador tenga plantilla PDF cargada.
+- RCA: routes/integrators.py:468 hacía `from pypdf import PdfReader, PdfWriter`, pero `pypdf` NO estaba en requirements.txt (en preview estaba instalado out-of-band, Required-by vacío). La imagen docker se construye solo con requirements.txt → ImportError → el except amplio (~L647) cae al fallback `_build_standalone_certificate_pdf` (certificado default). Silencioso: solo log warning "[cert] fallo estampando sobre depósito".
+- FIX doble: (1) import resiliente try pypdf / except ImportError → PyPDF2 (PyPDF2==3.0.1 ya está en requirements y expone la misma API: PdfReader/PdfWriter/add_page/merge_page/write); (2) agregado `pypdf==6.13.2` a requirements.txt.
+- Verificado: fallback PyPDF2 funciona (API idéntica); import del módulo OK; backend reinicia limpio.
+- Para docker: con solo redesplegar el código ya funciona (fallback PyPDF2); al reconstruir la imagen con requirements.txt actualizado usará pypdf pinneado.

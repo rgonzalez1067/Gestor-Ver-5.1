@@ -465,7 +465,12 @@ async def _generate_integration_certificate_pdf(intg: dict, componente: str, ver
             # Sin PDF base válido → certificado autónomo corporativo.
             return _build_standalone_certificate_pdf(intg, componente, version, productos_str)
 
-        from pypdf import PdfReader, PdfWriter
+        try:
+            from pypdf import PdfReader, PdfWriter
+        except ImportError:
+            # pypdf puede no estar en la imagen (no estaba pinneado en requirements).
+            # PyPDF2 3.x (sí pinneado) expone exactamente la misma API.
+            from PyPDF2 import PdfReader, PdfWriter
         from reportlab.pdfgen import canvas as rl_canvas
         from reportlab.pdfbase.pdfmetrics import stringWidth
         base = PdfReader(str(base_path))
