@@ -431,6 +431,10 @@ export const Quotes = () => {
     'tarjeta de credito/debito',
     'tarjetas de crédito y débito',
     'tarjetas de credito y debito',
+    // Nombres reales del catálogo de bancos (Nacional = liquidación en Bs,
+    // Internacional = liquidación en Divisas; cubre variantes "(PG)" por prefijo)
+    'tarjetas de crédito/débito',
+    'tarjetas de credito/debito',
     // Liquidación en divisas — orden TDC/TDD
     'tdc/tdd liquidación en divisas',
     'tdc/tdd liquidacion en divisas',
@@ -537,7 +541,7 @@ export const Quotes = () => {
     });
 
     const updatedOther = (quoteData.recurring_other_items || []).map(item => {
-      if (!item.autoTariff) return item;
+      if (!item.autoTariff || item.tarifaManual) return item;
       const newT = calculateAutoTariff(additionals, item.autoTariff.ceiling, item.autoTariff.perUnit);
       if (Number(item.tarifa) !== newT) {
         changed = true;
@@ -586,7 +590,7 @@ export const Quotes = () => {
           it.autoTariff && !it.tarifaManual ? { ...it, tarifa: calculateAutoTariff(additionals, it.autoTariff.ceiling, it.autoTariff.perUnit) } : it
         ),
         recurring_other_items: (prev.recurring_other_items || []).map(it =>
-          it.autoTariff ? { ...it, tarifa: calculateAutoTariff(additionals, it.autoTariff.ceiling, it.autoTariff.perUnit) } : it
+          it.autoTariff && !it.tarifaManual ? { ...it, tarifa: calculateAutoTariff(additionals, it.autoTariff.ceiling, it.autoTariff.perUnit) } : it
         ),
       }));
     }
@@ -1417,12 +1421,19 @@ export const Quotes = () => {
   // Actualizar campo en recurring_other_items
   const updateRecurringOtherItem = (index, field, value) => {
     const updatedItems = [...quoteData.recurring_other_items];
-    updatedItems[index] = {
+    const next = {
       ...updatedItems[index],
       [field]: field === 'cantidad_cajas' || field === 'cantidad_bancos' || field === 'tarifa' 
         ? (value === '' ? '' : parseFloat(value)) 
         : value
     };
+    // Edición manual de tarifa en items con autoTariff (p.ej. "Procesamiento"):
+    // se marca tarifaManual para que el motor automático NO lo sobrescriba.
+    // Si el campo se vacía, se revierte al cálculo automático.
+    if (field === 'tarifa' && updatedItems[index]?.autoTariff) {
+      next.tarifaManual = value !== '';
+    }
+    updatedItems[index] = next;
     setQuoteData({ ...quoteData, recurring_other_items: updatedItems });
   };
 
