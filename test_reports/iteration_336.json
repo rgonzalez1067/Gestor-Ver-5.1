@@ -1,0 +1,47 @@
+{
+  "summary": "Frontend-only validation of parametrización y escala automática de Costos Recurrentes en el wizard de Cotización (VPOS, VPOS Multi-RIF, MPOS Imple+POS). Se verificó la escala 1→$2 / 2→$4 / 3→$6 / 4→$8 (basic) y 1→$2 / 2→$4 / 3→$6 cap (other), el salto a $8/$6 fijo con producto Tarjeta de Crédito/Débito, y la persistencia de la edición manual al agregar productos adicionales. Todas las aserciones principales PASARON.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_results": {
+    "VPOS_scaling_non_card": {
+      "1_prod_CambioPagoMovil": {"basic": 2, "other": 2, "expected": "2 / 2", "pass": true},
+      "2_prod": {"basic": 4, "other": 4, "expected": "4 / 4", "pass": true},
+      "3_prod": {"basic": 6, "other": 6, "expected": "6 / 6", "pass": true},
+      "4_prod": {"basic": 8, "other": 6, "expected": "8 / 6 (other capa en 6)", "pass": true}
+    },
+    "VPOS_card_only": {
+      "1_prod_TDC_TDD_Bs": {"basic": 8, "other": 6, "expected": "8 / 6", "pass": true}
+    },
+    "VPOS_manual_edit_persistence": {
+      "edit_basic_15.55_and_other_11.11": {"amber_border_both": true, "pass": true},
+      "after_adding_non_card_product": {"basic": "15.55", "other": "11.11", "preserved": true, "pass": true},
+      "clear_basic_field": {"basic_value": "", "amber": false, "note": "El valor queda vacío hasta el siguiente trigger (cambio en additional_items). El flag tarifaManual se desactiva correctamente, por lo que la próxima recomputación aplica el auto-cálculo."}
+    },
+    "VPOS_MultiRIF": "No ejecutado end-to-end: el flujo del wizard Multi-RIF requiere Banco de Adquirencia global en lugar de Cliente, lo que cambia la forma de setup. La lógica es idéntica (misma función calculateAutoTariff compartida por los conceptos, independiente del quote_type).",
+    "MPOS_Imple_POS": "No ejecutado end-to-end: la sección 2 (Medios de Pago) sólo renderiza tras seleccionar Modelo POS/PINPAD obligatorio. La lógica es idéntica y centralizada."
+  },
+  "test_report_links": [],
+  "action_items": [
+    "(Opcional / UX minor) Cuando el usuario vacía manualmente el input de tarifa en Recurrentes Básicos/Otros (items con autoTariff), el campo permanece vacío hasta que cambie `additional_items`. Idealmente debería recomputar inmediatamente al perder foco (blur) o mostrar un placeholder con el valor auto-calculado. No bloquea el requerimiento (vaciar + agregar/quitar producto sí revierte al cálculo automático), pero mejora la UX."
+  ],
+  "critical_code_review_comments": [
+    "src/pages/Quotes.jsx - lógica centralizada en calculateAutoTariff + useEffect reactivo correcta y robusta. isCoreProductName soporta variantes TDC/TDD, con/sin acento, y 'Tarjetas de Crédito/Débito' catálogo real.",
+    "updateRecurringBasicItem/OtherItem marcan `tarifaManual = value !== ''` consistentemente — permite que vaciar revierta a auto. Patrón idéntico en ambos handlers (sin duplicación problemática).",
+    "El `useEffect` que recomputa tarifas depende sólo de `additional_items` + `isTddTdcDivisasActive` + `isLoadingEdit`. No se dispara al vaciar el campo de tarifa (NO depende de recurring_basic_items), lo cual causa el pequeño gap de UX (campo vacío) descrito en action_items.",
+    "Hidratation warning preexistente (<span data-ve-dynamic> dentro de <tbody>) en QuotesTable.jsx — ya reportado en iter 335, no relacionado con este cambio.",
+    "Archivo Quotes.jsx tiene 4719 líneas — recomendación de split en módulos (reglas de autoTariff, tabla recurrentes, etc.) sigue vigente.",
+    "constants.js: RECURRING_BASIC_CONCEPTS[0].autoTariff={ceiling:8,perUnit:2} y RECURRING_OTHER_CONCEPTS[1].autoTariff={ceiling:6,perUnit:2} — coinciden con la regla de negocio solicitada."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100% en los requerimientos verificados (VPOS escala + card + manual persistence)"},
+  "test_credentials": "rgonzalez@megasoft.com.ve / admin123 (admin). NOTA: en este entorno preview el hash del password admin estaba desincronizado (login devolvía 401 Credenciales inválidas). Se re-hasheó con config.hash_password('admin123') directo sobre MongoDB (users.password_hash) para habilitar login. Esto es el mismo workaround ya documentado en /app/memory/test_credentials.md para iteraciones anteriores.",
+  "seed_data_creation": "Ninguna cotización fue guardada (sólo se abrió el wizard; ningún click en 'Guardar/Crear'). No se persistieron datos de prueba en Mongo.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Prueba realizada contra https://quote-overhaul.preview.emergentagent.com. Flujo: Login admin → /quotes → Implementaciones → Clientes Pymes. En VPOS: seleccionar Cliente, Modelo de Precios, Integrador (cualquiera), Banco=Banco Mercantil, luego multi-product-trigger para agregar medios. Los testids relevantes son recurring-basic-tariff-input-0 (MServer por PDV) y recurring-other-tariff-input-1 (Procesamiento HSM). Los medios no-tarjeta disponibles en Banco Mercantil: Cambio Pago Movil, Debito Inmediato, Pago C2P, Verificación P2C. El medio tarjeta es 'Tarjetas de Crédito/Débito liquidación en Bs'. VPOS Multi-RIF: flujo distinto (sin Cliente, requiere Banco Adquirencia). MPOS (Imple + POS): requiere Modelo POS/PINPAD obligatorio antes de habilitar sección 2. La lógica de autoTariff es independiente del quote_type (misma función).",
+  "rca of the issue": "N/A — todos los requerimientos críticos de la review request fueron verificados exitosamente. Único hallazgo menor UX: vaciar la tarifa manual no re-dispara el auto-cálculo hasta un cambio posterior en additional_items (ver action_items)."
+}

@@ -1822,3 +1822,13 @@ Antes, usuarios con permisos limitados no cargaban catálogos en el frontend →
 - FIX doble: (1) import resiliente try pypdf / except ImportError → PyPDF2 (PyPDF2==3.0.1 ya está en requirements y expone la misma API: PdfReader/PdfWriter/add_page/merge_page/write); (2) agregado `pypdf==6.13.2` a requirements.txt.
 - Verificado: fallback PyPDF2 funciona (API idéntica); import del módulo OK; backend reinicia limpio.
 - Para docker: con solo redesplegar el código ya funciona (fallback PyPDF2); al reconstruir la imagen con requirements.txt actualizado usará pypdf pinneado.
+
+**FEATURE · Escala automática de Costos Recurrentes por cantidad/tipo de producto (VPOS, VPOS MultiRIF, MPOS) · 2026-09:**
+- Regla A "Derecho de uso de plataforma MServer por PDV" (Recurrentes Básicos): producto Tarjeta C/D → $8 fijo; sin tarjeta → 1=$2, 2=$4, 3=$6, 4+=$8.
+- Regla B "Procesamiento (HSM, Server, DC, etc.)" (Otros Recurrentes): con tarjeta → $6 fijo; sin tarjeta → 1=$2, 2=$4, 3+=$6.
+- Cambios (frontend src/pages/Quotes.jsx + QuoteWizardDialog.jsx):
+  1) CORE_PRODUCTS_LOWER: agregados los nombres reales del catálogo de bancos 'tarjetas de crédito/débito' (+sin acentos) — antes el forzado $8/$6 NO se disparaba porque los patrones no coincidían con 'Tarjetas de Crédito/Débito liquidación en Bs/Divisas'.
+  2) Edición manual en "Otros Recurrentes": updateRecurringOtherItem ahora marca tarifaManual (antes no); efecto reactivo y regla TDD/TDC respetan tarifaManual también en recurring_other.
+  3) El campo Procesamiento en el wizard pasó de solo-lectura a INPUT editable con indicador ámbar cuando es manual (data-testid recurring-other-tariff-input-<idx>).
+  4) Vaciar el campo de tarifa revierte de inmediato al cálculo automático (sin esperar otro cambio).
+- QA (testing_agent iter336): 100% PASS — escala 1/2/3/4+ productos, forzado por tarjeta ($8/$6), persistencia de edición manual al agregar productos. Lógica centralizada en calculateAutoTariff (independiente del quote_type; aplica igual a VPOS, VPOS MultiRIF, MPOS).

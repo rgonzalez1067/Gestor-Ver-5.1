@@ -1410,9 +1410,16 @@ export const Quotes = () => {
     // Edición manual de la tarifa en items con cálculo automático (autoTariff,
     // p.ej. "Derecho de uso de plataforma MServer por PDV"): al escribir un
     // valor se marca `tarifaManual` para que el motor automático NO lo
-    // sobrescriba. Si el campo se vacía, se revierte al cálculo automático.
+    // sobrescriba. Si el campo se vacía, se revierte de inmediato al cálculo automático.
     if (field === 'tarifa' && updatedItems[index]?.autoTariff) {
       next.tarifaManual = value !== '';
+      if (value === '') {
+        next.tarifa = calculateAutoTariff(
+          quoteData.additional_items || [],
+          updatedItems[index].autoTariff.ceiling,
+          updatedItems[index].autoTariff.perUnit
+        );
+      }
     }
     updatedItems[index] = next;
     setQuoteData({ ...quoteData, recurring_basic_items: updatedItems });
@@ -1429,9 +1436,16 @@ export const Quotes = () => {
     };
     // Edición manual de tarifa en items con autoTariff (p.ej. "Procesamiento"):
     // se marca tarifaManual para que el motor automático NO lo sobrescriba.
-    // Si el campo se vacía, se revierte al cálculo automático.
+    // Si el campo se vacía, se revierte de inmediato al cálculo automático.
     if (field === 'tarifa' && updatedItems[index]?.autoTariff) {
       next.tarifaManual = value !== '';
+      if (value === '') {
+        next.tarifa = calculateAutoTariff(
+          quoteData.additional_items || [],
+          updatedItems[index].autoTariff.ceiling,
+          updatedItems[index].autoTariff.perUnit
+        );
+      }
     }
     updatedItems[index] = next;
     setQuoteData({ ...quoteData, recurring_other_items: updatedItems });
