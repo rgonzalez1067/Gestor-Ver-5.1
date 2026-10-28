@@ -2843,17 +2843,40 @@ async def repair_delivery_prep(quote_id: str, authorization: Optional[str] = Hea
         raise HTTPException(status_code=400, detail="Esta acción solo aplica a cotizaciones de reparación")
 
     client_id = quote.get("client_id", "")
+    quote_number = quote.get("quote_number", "")
 
-    # Obtener equipos en reparación de ESTA cotización
+    # Obtener equipos en reparación de ESTA cotización.
+    # Se acepta coincidencia por quote_id O por quote_number: tras restauraciones
+    # modulares o vínculos históricos, el registro del taller puede tener el
+    # quote_number correcto pero un quote_id distinto, lo que hacía "invisible"
+    # el equipo al entregar. Además se auto-corrige el quote_id desalineado.
     equipos_cursor = db.taller_equipos.find(
-        {"quote_id": quote_id, "estatus": "En reparación"},
+        {
+            "$or": [{"quote_id": quote_id}, {"quote_number": quote_number}],
+            "estatus": "En reparación",
+        },
         {"_id": 0}
     )
     equipos = await equipos_cursor.to_list(1000)
 
+    # Auto-corrección de registros con quote_number correcto pero quote_id distinto
+    healed = [
+        eq["taller_equipo_id"] for eq in equipos
+        if eq.get("quote_id") != quote_id and eq.get("taller_equipo_id")
+    ]
+    if healed:
+        await db.taller_equipos.update_many(
+            {"taller_equipo_id": {"$in": healed}},
+            {"$set": {"quote_id": quote_id, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        logger.warning(
+            f"[repair-delivery] auto-corregido quote_id de {len(healed)} equipo(s) "
+            f"de la cotización {quote_number} (quote_id anterior no coincidía)"
+        )
+
     # Contar ya entregados de esta cotización (para info de saldo)
     total_entregados = await db.taller_equipos.count_documents(
-        {"quote_id": quote_id, "estatus": "Entregado"}
+        {"$or": [{"quote_id": quote_id}, {"quote_number": quote_number}], "estatus": "Entregado"}
     )
 
     # Agrupar por modelo
@@ -2949,8 +2972,12 @@ async def repair_deliver(quote_id: str, body: dict = {}, authorization: Optional
         raise HTTPException(status_code=400, detail="No se encontraron equipos válidos para entregar")
 
     # Calcular saldo: total en taller "En reparación" para esta cotización vs los que se entregan ahora
+    # (acepta coincidencia por quote_id O quote_number, igual que repair-delivery-prep)
     total_pendientes = await db.taller_equipos.count_documents(
-        {"quote_id": quote_id, "estatus": "En reparación"}
+        {
+            "$or": [{"quote_id": quote_id}, {"quote_number": quote.get("quote_number", "")}],
+            "estatus": "En reparación",
+        }
     )
     cantidad_entregando = len(equipos_to_deliver)
     is_final_delivery = (cantidad_entregando >= total_pendientes)
