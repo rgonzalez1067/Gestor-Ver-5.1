@@ -1832,3 +1832,10 @@ Antes, usuarios con permisos limitados no cargaban catálogos en el frontend →
   3) El campo Procesamiento en el wizard pasó de solo-lectura a INPUT editable con indicador ámbar cuando es manual (data-testid recurring-other-tariff-input-<idx>).
   4) Vaciar el campo de tarifa revierte de inmediato al cálculo automático (sin esperar otro cambio).
 - QA (testing_agent iter336): 100% PASS — escala 1/2/3/4+ productos, forzado por tarjeta ($8/$6), persistencia de edición manual al agregar productos. Lógica centralizada en calculateAutoTariff (independiente del quote_type; aplica igual a VPOS, VPOS MultiRIF, MPOS).
+
+**FIX · "Marcar como entregada" (Reparación) no encontraba el serial en taller · 2026-09:**
+- Síntoma (docker): al entregar una cotización de Reparación, el serial no aparecía aunque existía en taller con el número de cotización correcto.
+- RCA (routes/quote_actions.py): repair-delivery-prep (~L2833) y repair-deliver (~L2912) filtraban taller_equipos SOLO por quote_id (ID interno). Tras restauraciones modulares o vínculos históricos, el registro podía tener el quote_number correcto pero un quote_id distinto → equipo "invisible" al entregar.
+- FIX: ambos endpoints aceptan coincidencia por quote_id O quote_number ($or, mismo estatus 'En reparación'); el prep además AUTO-CORRIGE el quote_id desalineado (update al quote_id real + log warning '[repair-delivery] auto-corregido quote_id...').
+- Verificado: reproducción con registro sintético (serial REPRO-999, quote_number OK + quote_id erróneo → no aparecía; tras fix aparece y queda sanado). Testing agent iter337: 4/4 PASS (regresión incluida: no-repair → 400; registros con quote_id correcto intactos).
+- Requiere DEPLOY para docker. Test de regresión: /app/backend/tests/test_repair_delivery_prep_bugfix.py
