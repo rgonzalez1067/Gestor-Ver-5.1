@@ -1839,3 +1839,15 @@ Antes, usuarios con permisos limitados no cargaban catálogos en el frontend →
 - FIX: ambos endpoints aceptan coincidencia por quote_id O quote_number ($or, mismo estatus 'En reparación'); el prep además AUTO-CORRIGE el quote_id desalineado (update al quote_id real + log warning '[repair-delivery] auto-corregido quote_id...').
 - Verificado: reproducción con registro sintético (serial REPRO-999, quote_number OK + quote_id erróneo → no aparecía; tras fix aparece y queda sanado). Testing agent iter337: 4/4 PASS (regresión incluida: no-repair → 400; registros con quote_id correcto intactos).
 - Requiere DEPLOY para docker. Test de regresión: /app/backend/tests/test_repair_delivery_prep_bugfix.py
+
+**FEATURE · Estatus Reparado/Pagado + control de Nota de Entrega en Reparaciones · 2026-09:**
+- Decisiones del usuario: mantener etiquetas femeninas (Reparada/Pagada); 'Pagado' = solo tras acción 'Validar Pago'; seriales de taller pasan a estatus 'Reparado' al marcar como reparada; se conserva la válvula de excepción irregular con motivo.
+- Backend (routes/quote_actions.py):
+  - repair_complete: al marcar Reparada, los equipos del taller de la cotización pasan 'En reparación'→'Reparado' (match por quote_id/quote_number).
+  - Nuevas constantes/helpers: REPAIR_UNPAID_LEGEND ('Equipos se estan entregando sin haberse recibido y validado el correspondiente pago'), REPAIR_DELIVER_BLOCK_MSG, REPAIR_DELIVERABLE_ESTATUS, _repair_payment_validated (custom_actions_executed pago_validado*), _repair_delivery_mode (normal/warning/blocked).
+  - repair-delivery-prep: lista equipos en estatus En reparación/Reparado/Pagado; devuelve delivery_mode, payment_validated, block_message.
+  - repair-deliver: blocked → 400 con mensaje exacto (o excepción irregular con motivo+auditoría); warning → 428 UNPAID_CONFIRM sin flag, con confirm_unpaid_delivery=true procede e inyecta la leyenda en Observaciones de la Nota de Entrega; normal (Validar Pago) → directo sin leyenda.
+  - routes/quote_taller.py: VALID_TALLER_ESTATUS += 'Reparado'.
+- Frontend: RepairDeliveryDialog.jsx (alerta de bloqueo, aviso ámbar de despacho sin pago, modal de advertencia con texto literal '⚠️ Atención: Se está realizando la entrega de los equipos sin estar pagados. ¿Desea continuar con la generación de la Nota de Entrega?', flag confirm_unpaid_delivery, manejo 428); Quotes.jsx (checkIrregularAndProceed: deliver de reparación es regular si Reparada/Pagada/validado); TallerEquipos.jsx (opción/badge 'Reparado').
+- QA (testing_agent iter338): 6/6 escenarios PASS — modos prep, bloqueo 400, warning 428→200 con leyenda verificada en PDF vía pdfplumber, normal sin leyenda, válvula irregular con leyenda, guard no-repair 400. Fixtures de prueba eliminados tras QA.
+- Nota: el modal/alertas de frontend compilan y consumen campos verificados; validación visual del modal queda pendiente en ambiente del usuario.
