@@ -1377,9 +1377,14 @@ async def delete_quote(quote_id: str, authorization: Optional[str] = Header(None
     if result.deleted_count == 0:
         print("[DELETE QUOTE] ERROR: delete_one retornó 0")
         raise HTTPException(status_code=404, detail="Error al eliminar la cotización")
+
+    released = 0
+    if existing_quote.get("quote_category") == "repair":
+        from routes.quote_taller import release_quote_serials
+        released = await release_quote_serials(existing_quote)
     
     print(f"[DELETE QUOTE] ÉXITO: Cotización {quote_number} eliminada")
-    return {"message": f"Cotización {quote_number} eliminada exitosamente", "quote_id": quote_id}
+    return {"message": f"Cotización {quote_number} eliminada exitosamente", "quote_id": quote_id, "released_serials": released}
 
 @router.post("/quotes/generate-pdf")
 async def generate_quote_pdf_from_data(data: QuotePDFRequest, authorization: Optional[str] = Header(None)):

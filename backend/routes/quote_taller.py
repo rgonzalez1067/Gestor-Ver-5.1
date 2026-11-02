@@ -54,6 +54,18 @@ async def transfer_repair_serials(orig: dict, new_quote_id: str, new_quote_numbe
     return ids
 
 
+async def release_quote_serials(quote: dict) -> int:
+    """Al eliminar una cotización de reparación: sus seriales vuelven a 'Recibido'."""
+    now = datetime.now(timezone.utc).isoformat()
+    res = await db.taller_equipos.update_many(
+        {**_quote_link_filter(quote["quote_id"], quote.get("quote_number", "")),
+         "estatus": {"$in": _RELEASABLE}},
+        {"$set": {"estatus": "Recibido", "quote_id": None, "quote_number": None, "updated_at": now}},
+    )
+    logger.info(f"[repair-serials] {res.modified_count} serial(es) liberados al eliminar {quote.get('quote_number')}")
+    return res.modified_count
+
+
 async def sync_repair_serials(quote: dict, items: List[dict]) -> dict:
     """Sincroniza taller_equipos con los seriales de los ítems (N:N, un serial puede estar
     en varias líneas). Libera a 'Recibido' los que ya no están en ninguna línea y vincula

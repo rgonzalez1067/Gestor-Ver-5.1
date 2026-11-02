@@ -2725,7 +2725,9 @@ export const Quotes = () => {
     
     try {
       const response = await api.delete(`/quotes/${quoteId}`);
-      toast.success(response.data.message || `Cotización ${quoteNumber} eliminada exitosamente`);
+      const released = response.data.released_serials || 0;
+      toast.success((response.data.message || `Cotización ${quoteNumber} eliminada exitosamente`)
+        + (released ? ` · ${released} serial(es) devueltos a "Recibido"` : ''));
       await fetchData();
     } catch (error) {
       console.error('Error deleting quote:', error);
