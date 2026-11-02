@@ -377,6 +377,13 @@ async def create_indexes():
 
     async def _bg_init():
         try:
+            from routes.quote_taller import backfill_repair_paid_serials
+            n = await backfill_repair_paid_serials()
+            if n:
+                logging.getLogger(__name__).info(f"[startup] {n} equipo(s) de taller sincronizados a 'Pagado'")
+        except Exception as e:  # noqa: BLE001
+            logging.getLogger(__name__).warning(f"[startup] backfill 'Pagado' falló: {e}")
+        try:
             await db.clients.create_index([("fantasy_name", 1)])
             await db.clients.create_index([("legal_name", 1)])
             await db.clients.create_index([("rif", 1)])

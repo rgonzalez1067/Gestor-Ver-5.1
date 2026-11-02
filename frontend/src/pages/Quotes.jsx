@@ -42,6 +42,7 @@ import { toast } from 'sonner';
 import { usePermission } from '../hooks/usePermission';
 import { useQuoteFilters } from '../hooks/useQuoteFilters';
 import { useQuoteRbac } from '../hooks/useQuoteRbac';
+import { isPagoValidado } from '../components/quotes/quoteStatus';
 
 
 
@@ -2782,8 +2783,7 @@ export const Quotes = () => {
     // validado ('Pagado') o si está Reparada/Pagada — el warning modal y la leyenda
     // los gestiona el RepairDeliveryDialog. Otros estatus conservan la excepción.
     if (action === 'deliver' && quote?.quote_category === 'repair') {
-      const ex = quote?.custom_actions_executed || {};
-      const paymentValidated = !!(ex.pago_validado || ex.pago_validado_rep || ex.pago_validado_eq);
+      const paymentValidated = isPagoValidado(quote);
       const isRegularRepair = paymentValidated || !!quote?.repaired_at || !!quote?.paid_at || ['Reparada', 'Pagada'].includes(currentStatus);
       if (isRegularRepair) expectedStatus = null;
     }

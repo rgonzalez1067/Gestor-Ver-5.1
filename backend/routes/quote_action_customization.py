@@ -346,6 +346,14 @@ async def dispatch_custom_action(
         {"$set": {f"custom_actions_executed.{action_id}": exec_ts}},
     )
 
+    from routes.quote_taller import is_pago_validado_action, mark_repair_serials_paid
+    if quote.get("quote_category") == "repair" and is_pago_validado_action(action_id, custom.get("label", "")):
+        try:
+            await mark_repair_serials_paid(quote)
+        except Exception as e:  # noqa: BLE001
+            import logging
+            logging.getLogger(__name__).error(f"[repair-paid] fallo al actualizar taller ({quote_id}): {e}")
+
     try:
         dispatched = await try_dispatch(
             action_id, quote, user,

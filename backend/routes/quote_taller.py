@@ -54,6 +54,39 @@ async def transfer_repair_serials(orig: dict, new_quote_id: str, new_quote_numbe
     return ids
 
 
+PAGO_VALIDADO_ACTIONS = ("pago_validado", "pago_validado_rep", "pago_validado_eq", "valid_pago", "validar_pago")
+
+
+def is_pago_validado_action(action_id: str, label: str = "") -> bool:
+    return action_id in PAGO_VALIDADO_ACTIONS or (label or "").strip().lower() == "validar pago"
+
+
+async def mark_repair_serials_paid(quote: dict) -> int:
+    """'Validar Pago' en reparación: equipos de la cotización pasan a 'Pagado'.
+    'En reparación' (legacy) solo si la cotización ya fue marcada como Reparada."""
+    src = ["Reparado"]
+    if quote.get("repaired_at") or quote.get("quote_status") in ("Reparada", "Pagada"):
+        src.append("En reparación")
+    res = await db.taller_equipos.update_many(
+        {**_quote_link_filter(quote["quote_id"], quote.get("quote_number", "")), "estatus": {"$in": src}},
+        {"$set": {"estatus": "Pagado", "paid_at": datetime.now(timezone.utc).isoformat(),
+                  "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if res.modified_count:
+        logger.info(f"[repair-paid] {res.modified_count} equipo(s) de {quote.get('quote_number')} → 'Pagado'")
+    return res.modified_count
+
+
+async def backfill_repair_paid_serials() -> int:
+    """Sincroniza cotizaciones de reparación con pago ya validado (idempotente)."""
+    ors = [{f"custom_actions_executed.{a}": {"$exists": True, "$ne": None}} for a in PAGO_VALIDADO_ACTIONS]
+    total = 0
+    async for q in db.quotes.find({"quote_category": "repair", "$or": ors},
+                                  {"_id": 0, "quote_id": 1, "quote_number": 1, "repaired_at": 1, "quote_status": 1}):
+        total += await mark_repair_serials_paid(q)
+    return total
+
+
 async def release_quote_serials(quote: dict) -> int:
     """Al eliminar una cotización de reparación: sus seriales vuelven a 'Recibido'."""
     now = datetime.now(timezone.utc).isoformat()
@@ -638,7 +671,7 @@ class EstatusUpdateRequest(BaseModel):
     motivo: str = ""
 
 
-VALID_TALLER_ESTATUS = ["Recibido", "Cotizado", "En reparación", "Reparado", "Entregado"]
+VALID_TALLER_ESTATUS = ["Recibido", "Cotizado", "En reparación", "Reparado", "Pagado", "Entregado"]
 
 
 @router.put("/taller-equipos/{taller_equipo_id}/estatus")

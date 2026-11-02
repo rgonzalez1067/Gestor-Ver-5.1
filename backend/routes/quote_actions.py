@@ -2850,8 +2850,9 @@ REPAIR_DELIVERABLE_ESTATUS = ["En reparación", "Reparado", "Pagado"]
 
 def _repair_payment_validated(quote: dict) -> bool:
     """'Pagado' = la cotización pasó por la acción financiera 'Validar Pago'."""
+    from routes.quote_taller import PAGO_VALIDADO_ACTIONS
     ex = quote.get("custom_actions_executed") or {}
-    return bool(ex.get("pago_validado") or ex.get("pago_validado_rep") or ex.get("pago_validado_eq"))
+    return any(ex.get(a) for a in PAGO_VALIDADO_ACTIONS)
 
 
 def _repair_delivery_mode(quote: dict) -> str:

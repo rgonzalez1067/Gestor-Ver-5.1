@@ -10,11 +10,16 @@
 // Los estados FINANCIEROS (Validar Pago / Pagada / Facturada) tienen prioridad
 // sobre 'Reparada': una reparación que avanzó a facturación/cobro refleja su
 // estatus financiero real.
+export const PAGO_VALIDADO_ACTIONS = ['pago_validado', 'pago_validado_rep', 'pago_validado_eq', 'valid_pago', 'validar_pago'];
+export const isPagoValidado = (q) => {
+  const ex = q?.custom_actions_executed || {};
+  return PAGO_VALIDADO_ACTIONS.some(a => !!ex[a]);
+};
+
 export function getEffectiveStatus(q) {
   if (q.delivered_at) return 'Entregada';
   if (q.implementation_completed_at) return 'Implementada';
-  const ex = q.custom_actions_executed || {};
-  if (ex.pago_validado || ex.pago_validado_eq || ex.pago_validado_rep) return 'Validar Pago';
+  if (isPagoValidado(q)) return 'Validar Pago';
   if (q.paid_at) return 'Pagada';
   if (q.invoice_number || q.invoiced_at) return 'Facturada';
   if (q.repaired_at) return 'Reparada';
