@@ -231,6 +231,12 @@ export const SerialsSelectorModal = ({
                       <span className={`font-mono text-xs flex-1 ${checked ? 'text-emerald-700 font-medium' : (disabled ? 'text-slate-400' : 'text-slate-700')}`}>
                         {p.serial}
                       </span>
+                      {p.origin && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${p.origin === 'cotizacion' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}
+                              data-testid={`serial-origin-${p.serial}`}>
+                          {p.origin === 'cotizacion' ? 'En esta cotización' : 'Recibido'}
+                        </span>
+                      )}
                       {disabled && <span className="text-[10px] text-slate-400 italic">límite alcanzado</span>}
                     </li>
                   );

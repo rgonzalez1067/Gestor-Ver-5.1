@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
-import { Plus, Trash2, Save, Package, Wrench, MessageSquare, AlertCircle, ChevronDown, Search } from 'lucide-react';
+import { Plus, Trash2, Save, Package, Wrench, MessageSquare, AlertCircle, ChevronDown, Search, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../utils/api';
+import { SerialsSelectorModal } from './SerialsSelectorModal';
 
 const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num || 0);
 const IVA_RATE = 0.16;
@@ -26,6 +27,39 @@ export const EditEquipRepairDialog = ({ open, onClose, quote, onSaved, editMode 
   const dropdownRef = useRef(null);
 
   const isRepair = quote?.quote_category === 'repair';
+  // Seriales: pool = asignados a la cotización + 'Recibido' del cliente (N:N por línea)
+  const [receivedEquipos, setReceivedEquipos] = useState([]);
+  const [serialsModalIdx, setSerialsModalIdx] = useState(null);
+
+  useEffect(() => {
+    if (!open || !isRepair || !quote?.client_id) { setReceivedEquipos([]); return; }
+    api.get(`/taller/equipos-disponibles?client_id=${quote.client_id}`)
+      .then(res => setReceivedEquipos(res.data?.equipos || []))
+      .catch(() => setReceivedEquipos([]));
+  }, [open, isRepair, quote?.client_id]);
+
+  const serialsPool = useMemo(() => {
+    const map = new Map();
+    for (const m of (quote?.repair_models || [])) {
+      for (const s of (m.serials || [])) map.set(s, { serial: s, model_name: m.model_name, model_id: m.model_id, origin: 'cotizacion' });
+    }
+    for (const it of items) {
+      for (const s of (it.serials || [])) if (!map.has(s)) map.set(s, { serial: s, model_name: 'Asignados', model_id: '', origin: 'cotizacion' });
+    }
+    for (const e of receivedEquipos) {
+      if (e.serial && !map.has(e.serial)) map.set(e.serial, { serial: e.serial, model_name: e.modelo || 'Equipo', model_id: e.modelo_id || '', origin: 'recibido' });
+    }
+    return Array.from(map.values());
+  }, [quote, items, receivedEquipos]);
+
+  const serialsOk = (item) => item.no_serial || (item.serials?.length || 0) === (parseInt(item.quantity) || 0);
+
+  const saveItemSerials = (serials, noSerial = false) => {
+    if (serialsModalIdx === null) return;
+    const updated = [...items];
+    updated[serialsModalIdx] = { ...updated[serialsModalIdx], serials, no_serial: !!noSerial };
+    setItems(updated);
+  };
 
   // Cargar catálogo de hardware
   useEffect(() => {
@@ -104,7 +138,9 @@ export const EditEquipRepairDialog = ({ open, onClose, quote, onSaved, editMode 
       hardware_type: isRepair ? 'Mantenimiento' : 'Equipo',
       quantity: 1,
       unit_price_usd: 0,
-      total_usd: 0
+      total_usd: 0,
+      serials: [],
+      no_serial: false
     }]);
   };
 
@@ -137,6 +173,13 @@ export const EditEquipRepairDialog = ({ open, onClose, quote, onSaved, editMode 
       toast.error('Todos los items deben tener descripción');
       return;
     }
+    if (isRepair && serialsPool.length > 0) {
+      const bad = items.find(i => !serialsOk(i));
+      if (bad) {
+        toast.error(`"${bad.name}": los seriales asociados (${bad.serials?.length || 0}) deben coincidir con la cantidad (${bad.quantity}). Ajuste con el botón de seriales.`);
+        return;
+      }
+    }
     setShowJustifyModal(true);
   };
 
@@ -164,7 +207,8 @@ export const EditEquipRepairDialog = ({ open, onClose, quote, onSaved, editMode 
         hardware_type: item.hardware_type || 'Equipo',
         quantity: parseInt(item.quantity) || 1,
         unit_price_usd: parseFloat(item.unit_price_usd) || 0,
-        total_usd: (parseInt(item.quantity) || 1) * (parseFloat(item.unit_price_usd) || 0)
+        total_usd: (parseInt(item.quantity) || 1) * (parseFloat(item.unit_price_usd) || 0),
+        ...(isRepair ? { serials: item.no_serial ? [] : (item.serials || []), no_serial: !!item.no_serial } : {}),
       }));
 
       const newSubtotal = cleanItems.reduce((sum, i) => sum + i.total_usd, 0);
@@ -220,7 +264,7 @@ export const EditEquipRepairDialog = ({ open, onClose, quote, onSaved, editMode 
 
   return (
     <>
-      <Dialog open={open && !showJustifyModal} onOpenChange={(v) => !v && onClose()}>
+      <Dialog open={open && !showJustifyModal && serialsModalIdx === null} onOpenChange={(v) => !v && onClose()}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="edit-equip-repair-dialog">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
@@ -326,6 +370,7 @@ export const EditEquipRepairDialog = ({ open, onClose, quote, onSaved, editMode 
                         type="number" min={1} value={item.quantity}
                         onChange={(e) => handleUpdateItem(idx, 'quantity', parseInt(e.target.value) || 1)}
                         className="text-sm text-center"
+                        data-testid={`edit-item-qty-${idx}`}
                       />
                     </div>
                     <div className="w-28">
@@ -340,7 +385,19 @@ export const EditEquipRepairDialog = ({ open, onClose, quote, onSaved, editMode 
                       <label className="text-[10px] font-semibold text-slate-400 uppercase">Total</label>
                       <div className="text-sm font-semibold text-emerald-700 py-2">{formatCurrency(item.total_usd)}</div>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => handleRemoveItem(idx)} className="text-slate-300 hover:text-rose-600">
+                    {isRepair && (
+                      <Button
+                        variant="ghost" size="sm"
+                        onClick={() => setSerialsModalIdx(idx)}
+                        className={serialsOk(item) ? 'text-emerald-600 hover:text-emerald-700' : 'text-orange-500 hover:text-orange-700'}
+                        title={item.no_serial ? 'Concepto sin serial' : `${item.serials?.length || 0}/${item.quantity} seriales asociados`}
+                        data-testid={`edit-item-serials-btn-${idx}`}
+                      >
+                        <ListChecks className="w-4 h-4" />
+                        <span className="ml-1 text-[11px]">{item.no_serial ? 'Sin serial' : `${item.serials?.length || 0}/${item.quantity}`}</span>
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={() => handleRemoveItem(idx)} className="text-slate-300 hover:text-rose-600" data-testid={`edit-item-remove-btn-${idx}`}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -383,6 +440,17 @@ export const EditEquipRepairDialog = ({ open, onClose, quote, onSaved, editMode 
           </div>
         </DialogContent>
       </Dialog>
+
+      <SerialsSelectorModal
+        open={serialsModalIdx !== null}
+        onClose={() => setSerialsModalIdx(null)}
+        pool={serialsPool}
+        initialSelected={serialsModalIdx !== null ? (items[serialsModalIdx]?.serials || []) : []}
+        initialNoSerial={serialsModalIdx !== null ? !!items[serialsModalIdx]?.no_serial : false}
+        requiredQty={serialsModalIdx !== null ? (parseInt(items[serialsModalIdx]?.quantity) || 0) : 0}
+        itemName={serialsModalIdx !== null ? (items[serialsModalIdx]?.name || '') : ''}
+        onSave={saveItemSerials}
+      />
 
       {/* Modal de Justificación */}
       <Dialog open={showJustifyModal} onOpenChange={(v) => !v && setShowJustifyModal(false)}>

@@ -20,6 +20,117 @@ from services.other_actions_engine import dispatch_other_action
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# Estatus desde los cuales un serial puede liberarse a 'Recibido' al modificar la cotización.
+_RELEASABLE = ["Recibido", "Cotizado", "En reparación"]
+
+
+def _quote_link_filter(quote_id: str, quote_number: str) -> dict:
+    ors = [{"quote_id": quote_id}]
+    if quote_number:
+        ors.append({"quote_number": quote_number})
+    return {"$or": ors}
+
+
+async def transfer_repair_serials(orig: dict, new_quote_id: str, new_quote_number: str) -> List[str]:
+    """Nueva versión: libera los seriales de la cotización original (vuelven a 'Recibido')
+    y los precarga en la nueva versión (quedan 'Cotizado' vinculados a ella)."""
+    now = datetime.now(timezone.utc).isoformat()
+    flt = {**_quote_link_filter(orig["quote_id"], orig.get("quote_number", "")),
+           "estatus": {"$in": _RELEASABLE}}
+    docs = await db.taller_equipos.find(flt, {"_id": 0, "taller_equipo_id": 1}).to_list(5000)
+    ids = [d["taller_equipo_id"] for d in docs]
+    if ids:
+        await db.taller_equipos.update_many(
+            {"taller_equipo_id": {"$in": ids}},
+            {"$set": {"estatus": "Cotizado", "quote_id": new_quote_id,
+                      "quote_number": new_quote_number, "updated_at": now}},
+        )
+    await db.quotes.update_one(
+        {"quote_id": orig["quote_id"]},
+        {"$set": {"linked_taller_equipo_ids": [], "released_taller_equipo_ids": ids,
+                  "serials_released_to": new_quote_number, "updated_at": now}},
+    )
+    logger.info(f"[repair-serials] {len(ids)} serial(es) liberados de {orig.get('quote_number')} → {new_quote_number}")
+    return ids
+
+
+async def sync_repair_serials(quote: dict, items: List[dict]) -> dict:
+    """Sincroniza taller_equipos con los seriales de los ítems (N:N, un serial puede estar
+    en varias líneas). Libera a 'Recibido' los que ya no están en ninguna línea y vincula
+    ('Cotizado') los nuevos tomados del pool 'Recibido' del cliente."""
+    now = datetime.now(timezone.utc).isoformat()
+    qid, qnum, cid = quote["quote_id"], quote.get("quote_number", ""), quote.get("client_id", "")
+    wanted: List[str] = []
+    for it in items or []:
+        if it.get("no_serial"):
+            continue
+        for s in it.get("serials") or []:
+            s = str(s).strip()
+            if s and s not in wanted:
+                wanted.append(s)
+
+    linked = await db.taller_equipos.find(
+        {**_quote_link_filter(qid, qnum), "estatus": {"$in": _RELEASABLE}}, {"_id": 0},
+    ).to_list(5000)
+    to_release = [d["taller_equipo_id"] for d in linked if d.get("serial") not in wanted]
+    if to_release:
+        await db.taller_equipos.update_many(
+            {"taller_equipo_id": {"$in": to_release}},
+            {"$set": {"estatus": "Recibido", "quote_id": None, "quote_number": None, "updated_at": now}},
+        )
+    kept = [d for d in linked if d.get("serial") in wanted]
+    kept_serials = {d.get("serial") for d in kept}
+    missing = [s for s in wanted if s not in kept_serials]
+    new_docs = []
+    if missing and cid:
+        cand = await db.taller_equipos.find(
+            {"client_id": cid, "serial": {"$in": missing}, "estatus": "Recibido"}, {"_id": 0},
+        ).to_list(5000)
+        seen = set()
+        for d in cand:
+            if d.get("serial") not in seen:
+                seen.add(d.get("serial")); new_docs.append(d)
+        if new_docs:
+            await db.taller_equipos.update_many(
+                {"taller_equipo_id": {"$in": [d["taller_equipo_id"] for d in new_docs]}},
+                {"$set": {"estatus": "Cotizado", "quote_id": qid, "quote_number": qnum, "updated_at": now}},
+            )
+    # Auto-sanear quote_id de los conservados (desalineación tras restores).
+    stale = [d["taller_equipo_id"] for d in kept if d.get("quote_id") != qid]
+    if stale:
+        await db.taller_equipos.update_many(
+            {"taller_equipo_id": {"$in": stale}}, {"$set": {"quote_id": qid, "updated_at": now}},
+        )
+
+    final_docs = kept + new_docs
+    result = {"released": len(to_release), "linked_new": len(new_docs)}
+    had_links = bool(linked) or bool(quote.get("linked_taller_equipo_ids"))
+    if not final_docs and not had_links:
+        return result  # Cotización legacy (seriales manuales sin registros de taller)
+
+    # Reconstruir el pool (repair_models) desde taller + seriales legacy aún usados.
+    legacy_model = {}
+    for m in quote.get("repair_models") or []:
+        for s in m.get("serials") or []:
+            legacy_model[s] = (m.get("model_name", ""), m.get("model_id", ""))
+    groups = {}
+    for d in final_docs:
+        key = (d.get("modelo") or "Equipo", d.get("modelo_id") or "")
+        groups.setdefault(key, []).append(d.get("serial"))
+    taller_serials = {d.get("serial") for d in final_docs}
+    for s in wanted:
+        if s not in taller_serials and s in legacy_model:
+            groups.setdefault(legacy_model[s], []).append(s)
+    repair_models = [{"model_name": k[0], "model_id": k[1], "quantity": len(v), "serials": v}
+                     for k, v in groups.items()]
+    await db.quotes.update_one(
+        {"quote_id": qid},
+        {"$set": {"linked_taller_equipo_ids": [d["taller_equipo_id"] for d in final_docs],
+                  "repair_models": repair_models}},
+    )
+    logger.info(f"[repair-serials] {qnum}: liberados={len(to_release)} nuevos={len(new_docs)} total={len(final_docs)}")
+    return result
+
 
 class RecepcionModelo(BaseModel):
     model_id: str = ""
@@ -134,7 +245,17 @@ def _generate_reception_pdf(client_name, client_rif, equipos, fecha_str, user_em
     c = rl_canvas.Canvas(buf, pagesize=letter)
     w, h = letter
 
+    from config import UPLOADS_DIR
+    logo_file = next(iter(sorted(UPLOADS_DIR.glob("logo.*"))), None)
+
     def header(y0):
+        if logo_file:
+            try:
+                c.drawImage(str(logo_file), w - 2.5 * cm - 4.5 * cm, y0 - 0.7 * cm,
+                            width=4.5 * cm, height=1.6 * cm, preserveAspectRatio=True,
+                            anchor="e", mask="auto")
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"[taller-recepcion] logo no disponible: {e}")
         c.setFillColorRGB(0.08, 0.16, 0.28)
         c.setFont("Helvetica-Bold", 16)
         c.drawString(2.5 * cm, y0, "Comprobante de Recepción de Equipos")

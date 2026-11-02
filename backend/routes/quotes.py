@@ -1163,6 +1163,10 @@ async def update_quote(quote_id: str, quote_update: QuoteUpdate, authorization: 
         
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Cotización no encontrada")
+
+    if existing_quote.get("quote_category") == "repair" and "equipment_items" in update_data:
+        from routes.quote_taller import sync_repair_serials
+        await sync_repair_serials(existing_quote, update_data["equipment_items"])
     
     # Retornar cotización actualizada
     updated_quote = await db.quotes.find_one({"quote_id": quote_id}, {"_id": 0})

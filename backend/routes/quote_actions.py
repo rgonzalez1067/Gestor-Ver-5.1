@@ -3428,6 +3428,10 @@ async def duplicate_quote(
 
     await db.quotes.insert_one(new_quote)
 
+    if original_quote.get("quote_category") == "repair":
+        from routes.quote_taller import transfer_repair_serials
+        await transfer_repair_serials(original_quote, new_quote["quote_id"], new_quote_number)
+
     await db.bitacora.insert_one({
         "action": "quote_modified_new_version",
         "original_quote_id": quote_id,
