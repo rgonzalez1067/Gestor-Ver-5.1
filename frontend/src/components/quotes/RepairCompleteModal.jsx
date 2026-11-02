@@ -111,7 +111,7 @@ export function RepairCompleteModal({ open, onClose, onSuccess, quoteId, quotes,
       for (const file of paymentFiles) {
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('category', 'Soporte de Aprobación');
+        formData.append('category', 'Pagos');
         formData.append('context', 'taller_repair');
         await api.post(`/quotes/${quoteId}/attachments`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' }

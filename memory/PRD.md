@@ -4666,3 +4666,4 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - PDF Comprobante de Recepción con logo (uploads/logo.*). Testing iter339 100%.
 - Backlog: error 500 contactos legacy integradores; RCA Docker de notificación de proyecto (requiere logs).
 - Eliminar cotización de reparación (DELETE /quotes/{id}): seriales Recibido/Cotizado/En reparación vuelven a 'Recibido' (release_quote_serials); Reparado/Entregado no se tocan. Toast muestra cantidad liberada. Verificado por curl.
+- Fix: RepairCompleteModal (acción Reparada) subía comprobante con categoría 'Soporte de Aprobación' (removida del whitelist) → ahora 'Pagos'. Verificado por curl.
