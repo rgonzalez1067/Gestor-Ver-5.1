@@ -4657,3 +4657,11 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Depuración de Archivos: módulo genérico multi-colección (inbox_messages, notifications, email_logs, bitacora, user_sessions) con whitelist de seguridad.
 - MPOS (Tablet/Móvil) oculto del menú de cotizaciones; filtro de Integradores por integration_type (CR/MP/PG/LP/TK) + badges [PG]/[LP]/[TK] en proyectos pasarela.
 - FIX CRÍTICO: restauración modular/por grupo ya NO blanquea las demás colecciones (ver CHANGELOG). Requiere DEPLOY a producción para aplicar el fix allí.
+
+### 2026-06 — Seriales en modificación de Reparaciones + logo en Comprobante de Recepción
+- Nueva versión (duplicate new_version): seriales de la original se transfieren (precargados) a la nueva; original queda linked_taller_equipo_ids=[] + released_taller_equipo_ids (su aprobación ya no recrea equipos).
+- PUT /quotes (repair, equipment_items): sync_repair_serials (routes/quote_taller.py) N:N por línea de servicio; libera a Recibido solo si el serial no queda en ninguna línea; vincula Recibido del cliente; reconstruye repair_models/linked ids.
+- EditEquipRepairDialog: botón seriales por línea + SerialsSelectorModal con badges de origen; valida seriales = cantidad.
+- Fix: models.py EquipmentQuoteItem.serials/no_serial y Quote.repair_models/linked_taller_equipo_ids (GET /quotes los eliminaba).
+- PDF Comprobante de Recepción con logo (uploads/logo.*). Testing iter339 100%.
+- Backlog: error 500 contactos legacy integradores; RCA Docker de notificación de proyecto (requiere logs).

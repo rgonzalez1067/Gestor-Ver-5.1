@@ -719,8 +719,7 @@ async def approve_quote(
                 {"$set": {"estatus": "En reparación", "updated_at": now_iso}},
             )
             logger.info(f"Taller: {upd.modified_count} equipo(s) vinculados de cotización {quote.get('quote_number')} → 'En reparación'")
-        else:
-            # Fallback (carga manual/Excel): crear los registros directamente en 'En reparación'.
+        elif not quote.get("released_taller_equipo_ids"):
             repair_models = quote.get("repair_models", [])
             taller_docs = []
             for rm in repair_models:

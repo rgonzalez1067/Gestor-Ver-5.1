@@ -578,6 +578,9 @@ class EquipmentQuoteItem(BaseModel):
     quantity: int = 1
     unit_price_usd: float = 0
     total_usd: float = 0
+    # Reparaciones: seriales por línea (N:N) y concepto sin serial
+    serials: Optional[List[str]] = []
+    no_serial: Optional[bool] = False
 
 # Tipos de cotización - ACTUALIZADO con nueva estructura jerárquica
 QUOTE_CATEGORIES = ["implementation", "equipment", "repair"]  # Implementación, Equipos/Accesorios o Reparaciones
@@ -753,6 +756,9 @@ class Quote(BaseModel):
     hardware: List[QuoteItem] = []
     equipment_items: List[EquipmentQuoteItem] = []  # Items para cotización de equipos
     ft_equipment_items: List[dict] = []  # Fast Track equipment items for Mega Soft sponsor
+    # Reparaciones: pool de seriales por modelo y equipos de taller vinculados
+    repair_models: Optional[List[dict]] = []
+    linked_taller_equipo_ids: Optional[List[str]] = []
     subtotal_usd: float
     total_usd: float
     exchange_rate: float

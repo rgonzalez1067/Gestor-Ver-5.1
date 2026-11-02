@@ -1,0 +1,37 @@
+{
+  "summary": "Tested repair quote serial management end-to-end (backend + UI). Backend: 9/9 pytest pass (reception -> Recibido, create repair quote -> Cotizado, PUT sync multiline N:N release/keep, add Recibido serial, duplicate new_version transfer + PUT unmark, in_place + PUT sync, non-repair PUT untouched, reception PDF embeds logo image). Frontend: found and FIXED a CRITICAL bug — GET /api/quotes (response_model=List[Quote]) stripped equipment_items[].serials/no_serial and repair_models, so EditEquipRepairDialog showed 0/qty for every line and the pool lacked the quote's own serials ('En esta cotización' missing). After fix, UI flow fully verified: counters 2/2,1/1; origin badges correct; qty increase without serials -> error toast & justification blocked; adjusting serials + justification saves; DB confirms new version owns S1,S2,S3 (Cotizado) and original has linked=[] + released ids; in_place mode unmarking S3 returns it to Recibido.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "GET /api/quotes", "issue": "FIXED by testing agent: Pydantic response models dropped repair serial data. EquipmentQuoteItem (models.py) lacked serials/no_serial and Quote lacked repair_models/linked_taller_equipo_ids. Consequence before fix: edit dialog lost all serials; if client had no 'Recibido' equipment, validation was skipped and the PUT sent serials:[] -> sync_repair_serials would RELEASE all serials of the quote (silent data loss).", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/quotes/{id}/duplicate?mode=new_version", "issue": "Original quote keeps stale equipment_items[].serials and repair_models after its serials are transferred; if original is edited/approved later its PDF/dialog still shows serials owned by the new version (sync won't steal them, but display is misleading)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "EditEquipRepairDialog", "issue": "Success toast always says 'Nueva versión X (vN) creada exitosamente' even in mode=in_place; footer text 'La cotización original v1 permanece intacta' is inaccurate for repair new_version (its serials are released) and for in_place.", "selector": "[data-testid='confirm-save-btn']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_repair_serials_sync.py", "/app/backend/tests/ui_fixture_repair_serials.py", "/app/test_reports/pytest/pytest_repair_serials_sync.xml"],
+  "action_items": [
+    "Review/keep testing-agent fix in backend/models.py (EquipmentQuoteItem.serials/no_serial, Quote.repair_models/linked_taller_equipo_ids as Optional with [] defaults). Check other endpoints using response_model=Quote/EquipmentQuoteItem return the same fields.",
+    "Defensive: in EditEquipRepairDialog, block save for repair quotes when a line has quantity>0 and 0 serials even if pool is empty, or fetch full quote via GET /quotes/{id} before opening the dialog.",
+    "Adjust toast/footer copy per editMode (in_place vs new_version).",
+    "Optional: on new_version transfer, clear or mark serials in the original quote's equipment_items/repair_models."
+  ],
+  "critical_code_review_comments": [
+    "Frontend flow duplicates first then PUTs; if PUT fails after new_version the serials already moved to an orphan Borrador quote (no rollback).",
+    "transfer_repair_serials sets 'En reparación' serials back to 'Cotizado' in new version — acceptable but confirm business intent.",
+    "Test runs consume quote number sequence (COT-2026-11-00x) even though fixtures are deleted."
+  ],
+  "updated_files": ["/app/backend/models.py", "/app/backend/tests/test_repair_serials_sync.py", "/app/backend/tests/ui_fixture_repair_serials.py"],
+  "success_rate": {"backend": "100% (9/9) after fix", "frontend": "100% after backend model fix (was failing before)"},
+  "seed_data_creation": "All fixtures cleaned up: TEST_ clients, TST- taller_equipos, test quotes, related bitacora/client_logs. Verified 0 remaining.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login UI via API: POST /api/auth/login then localStorage.setItem('session_token'), goto /dashboard then /quotes. ui_fixture_repair_serials.py setup|teardown SUF creates client + 3 received serials + repair quote. Modify flow: quote-actions-{id} -> modify-quote-btn-{id} -> modify-choice-new-version|in-place.",
+  "rca of the issue": "Root cause: GET /api/quotes uses response_model=List[Quote]; Pydantic filtered unknown fields so serials per line and repair_models never reached the frontend although stored in Mongo. Repro: create repair quote with serials, open Modificar -> counters 0/qty. Mitigation applied: added fields to models.py."
+}

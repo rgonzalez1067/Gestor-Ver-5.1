@@ -245,7 +245,9 @@ export const EditEquipRepairDialog = ({ open, onClose, quote, onSaved, editMode 
         });
       } catch (logErr) { console.error('Error bitácora:', logErr); }
 
-      toast.success(`Nueva versión ${newQuoteNumber} (v${newVersion}) creada exitosamente`);
+      toast.success(editMode === 'in_place'
+        ? `Cotización ${newQuoteNumber} actualizada exitosamente`
+        : `Nueva versión ${newQuoteNumber} (v${newVersion}) creada exitosamente`);
       setShowJustifyModal(false);
       setJustification('');
       onSaved && onSaved();
@@ -272,7 +274,7 @@ export const EditEquipRepairDialog = ({ open, onClose, quote, onSaved, editMode 
               Modificar {isRepair ? 'Reparación' : 'Equipos y Accesorios'}
             </DialogTitle>
             <DialogDescription>
-              Cotización {quote.quote_number} — {quote.client_name}. Al guardar se creará la versión {(quote.version || 1) + 1}.
+              Cotización {quote.quote_number} — {quote.client_name}. {editMode === 'in_place' ? 'Se conservará el número original.' : `Al guardar se creará la versión ${(quote.version || 1) + 1}.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -430,7 +432,13 @@ export const EditEquipRepairDialog = ({ open, onClose, quote, onSaved, editMode 
                     <span>Total:</span>
                     <span className="text-emerald-300">{formatCurrency(totalConIva)}</span>
                   </div>
-                  <p className="text-[10px] text-blue-300 mt-2">La cotización original v{quote.version || 1} permanece intacta</p>
+                  <p className="text-[10px] text-blue-300 mt-2">
+                    {editMode === 'in_place'
+                      ? `Se actualizará la misma cotización ${quote.quote_number}`
+                      : isRepair
+                        ? `La v${quote.version || 1} queda como histórico; sus seriales pasan a la nueva versión`
+                        : `La cotización original v${quote.version || 1} permanece intacta`}
+                  </p>
                 </div>
                 <Button onClick={handleInitSave} className="bg-blue-600 hover:bg-blue-700 ml-4" data-testid="save-version-btn">
                   <Save className="w-4 h-4 mr-2" /> Generar Nueva Versión
