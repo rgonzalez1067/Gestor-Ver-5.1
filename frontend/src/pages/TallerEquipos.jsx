@@ -24,6 +24,7 @@ const ESTATUS_OPTIONS = [
   { value: 'Recibido', label: 'Recibido' },
   { value: 'Cotizado', label: 'Cotizado' },
   { value: 'En reparación', label: 'En reparación' },
+  { value: 'Reparado', label: 'Reparado' },
   { value: 'Entregado', label: 'Entregado' },
 ];
 
@@ -398,6 +399,7 @@ export default function TallerEquipos() {
                                 eq.estatus === 'En reparación' ? 'bg-cyan-100 text-cyan-700'
                                 : eq.estatus === 'Recibido' ? 'bg-amber-100 text-amber-700'
                                 : eq.estatus === 'Cotizado' ? 'bg-indigo-100 text-indigo-700'
+                                : eq.estatus === 'Reparado' ? 'bg-blue-100 text-blue-700'
                                 : 'bg-green-100 text-green-700'
                               }`}>
                                 {eq.estatus === 'En reparación' ? <Wrench size={11} />

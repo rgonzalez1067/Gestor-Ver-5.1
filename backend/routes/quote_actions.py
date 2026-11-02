@@ -1159,6 +1159,17 @@ async def repair_complete(quote_id: str, body: dict = None, authorization: Optio
         {"$set": update_fields}
     )
 
+    # Requerimiento: los seriales asociados a la reparación pasan a estatus 'Reparado'
+    upd_taller = await db.taller_equipos.update_many(
+        {
+            "$or": [{"quote_id": quote_id}, {"quote_number": quote.get("quote_number", "")}],
+            "estatus": "En reparación",
+        },
+        {"$set": {"estatus": "Reparado", "updated_at": update_fields["updated_at"]}},
+    )
+    if upd_taller.modified_count:
+        logger.info(f"[repair-complete] {upd_taller.modified_count} equipo(s) de {quote.get('quote_number')} → estatus 'Reparado'")
+
     cc_emails = [e.strip() for e in (additional_recipients or "").split(",") if e.strip() and "@" in e.strip()]
     # Override de destinatario del cliente (reglas de perfilamiento "Taller"
     # resueltas por el frontend: A→único contacto Taller, B→contacto elegido en
@@ -2830,6 +2841,29 @@ async def deliver_quote(quote_id: str, body: dict = {}, authorization: Optional[
 
 # ===================== ENTREGA DE REPARACIONES =====================
 
+# === Regla de emisión de Nota de Entrega en Reparaciones (estatus Reparado/Pagado) ===
+REPAIR_UNPAID_LEGEND = "Equipos se estan entregando sin haberse recibido y validado el correspondiente pago"
+REPAIR_DELIVER_BLOCK_MSG = "No es posible generar la Nota de Entrega. Los equipos deben encontrarse en estatus 'Reparado' o 'Pagado'."
+# Estatus de taller_equipos desde los cuales se puede entregar (incluye el
+# legacy 'En reparación' para cotizaciones anteriores al cambio de estatus).
+REPAIR_DELIVERABLE_ESTATUS = ["En reparación", "Reparado", "Pagado"]
+
+
+def _repair_payment_validated(quote: dict) -> bool:
+    """'Pagado' = la cotización pasó por la acción financiera 'Validar Pago'."""
+    ex = quote.get("custom_actions_executed") or {}
+    return bool(ex.get("pago_validado") or ex.get("pago_validado_rep") or ex.get("pago_validado_eq"))
+
+
+def _repair_delivery_mode(quote: dict) -> str:
+    """normal=Pagado (Validar Pago) | warning=Reparada/Pagada sin validar | blocked=otro estatus."""
+    if _repair_payment_validated(quote):
+        return "normal"
+    if quote.get("repaired_at") or quote.get("paid_at") or quote.get("quote_status") in ("Reparada", "Pagada"):
+        return "warning"
+    return "blocked"
+
+
 @router.get("/quotes/{quote_id}/repair-delivery-prep")
 async def repair_delivery_prep(quote_id: str, authorization: Optional[str] = Header(None)):
     """Obtener equipos en reparación del cliente para selección de entrega."""
@@ -2853,7 +2887,7 @@ async def repair_delivery_prep(quote_id: str, authorization: Optional[str] = Hea
     equipos_cursor = db.taller_equipos.find(
         {
             "$or": [{"quote_id": quote_id}, {"quote_number": quote_number}],
-            "estatus": "En reparación",
+            "estatus": {"$in": REPAIR_DELIVERABLE_ESTATUS},
         },
         {"_id": 0}
     )
@@ -2911,6 +2945,10 @@ async def repair_delivery_prep(quote_id: str, authorization: Optional[str] = Hea
         "total_equipos": len(equipos),
         "total_entregados": total_entregados,
         "entrega_completa": quote.get("entrega_completa", False),
+        # Regla de Nota de Entrega (Reparaciones): modo de emisión según estatus
+        "delivery_mode": _repair_delivery_mode(quote),
+        "payment_validated": _repair_payment_validated(quote),
+        "block_message": REPAIR_DELIVER_BLOCK_MSG if _repair_delivery_mode(quote) == "blocked" else "",
     }
 
 
@@ -2931,13 +2969,20 @@ async def repair_deliver(quote_id: str, body: dict = {}, authorization: Optional
         raise HTTPException(status_code=400, detail="Esta cotización ya fue entregada totalmente. No se pueden despachar más equipos.")
 
     current_status = quote.get("quote_status", "Borrador")
-    is_irregular = current_status != "Pagada"
 
-    if is_irregular:
+    # === Regla de emisión de Nota de Entrega (Reparaciones) ===
+    # normal  → 'Pagado' (Validar Pago ejecutado): flujo habitual sin alertas.
+    # warning → 'Reparada'/'Pagada' sin validar: exige confirmación y estampa leyenda.
+    # blocked → cualquier otro estatus: bloqueo; la excepción irregular (motivo +
+    #           auditoría) se mantiene como válvula adicional.
+    delivery_mode = _repair_delivery_mode(quote)
+    if delivery_mode == "blocked":
         if not exception_reason:
-            raise HTTPException(status_code=422, detail="IRREGULAR:Debe proporcionar un motivo para entregar sin pago registrado")
+            raise HTTPException(status_code=400, detail=REPAIR_DELIVER_BLOCK_MSG)
         await mark_quote_irregular(quote_id, "repair-deliver", exception_reason, regularization_date)
         await log_audit_exception(quote_id, quote.get("quote_number"), "repair-deliver", "Pagada", current_status, exception_reason, regularization_date, current_user)
+    elif delivery_mode == "warning" and not body.get("confirm_unpaid_delivery"):
+        raise HTTPException(status_code=428, detail="UNPAID_CONFIRM:Atención: Se está realizando la entrega de los equipos sin estar pagados. ¿Desea continuar con la generación de la Nota de Entrega?")
 
     selected_serials = body.get("selected_serials", [])  # Lista de taller_equipo_id
     delivery_method = body.get("delivery_method", "personalizada")
@@ -2947,6 +2992,10 @@ async def repair_deliver(quote_id: str, body: dict = {}, authorization: Optional
     courier_name = body.get("courier_name", "")
     courier_office = body.get("courier_office", "")
     delivery_notes = body.get("notes", "")
+    # Leyenda obligatoria en Observaciones cuando el despacho se hace sin pago
+    # validado (estatus 'Reparado' o entrega irregular sin Validar Pago).
+    if delivery_mode != "normal":
+        delivery_notes = f"{delivery_notes} | {REPAIR_UNPAID_LEGEND}" if delivery_notes else REPAIR_UNPAID_LEGEND
     repair_invoice_number = body.get("invoice_number", "")
     consumed_supplies = body.get("consumed_supplies", [])  # [{item_id, quantity}]
 
@@ -2964,7 +3013,7 @@ async def repair_deliver(quote_id: str, body: dict = {}, authorization: Optional
 
     # Obtener los equipos seleccionados de taller_equipos
     equipos_to_deliver = await db.taller_equipos.find(
-        {"taller_equipo_id": {"$in": selected_serials}, "estatus": "En reparación"},
+        {"taller_equipo_id": {"$in": selected_serials}, "estatus": {"$in": REPAIR_DELIVERABLE_ESTATUS}},
         {"_id": 0}
     ).to_list(1000)
 
@@ -2976,7 +3025,7 @@ async def repair_deliver(quote_id: str, body: dict = {}, authorization: Optional
     total_pendientes = await db.taller_equipos.count_documents(
         {
             "$or": [{"quote_id": quote_id}, {"quote_number": quote.get("quote_number", "")}],
-            "estatus": "En reparación",
+            "estatus": {"$in": REPAIR_DELIVERABLE_ESTATUS},
         }
     )
     cantidad_entregando = len(equipos_to_deliver)

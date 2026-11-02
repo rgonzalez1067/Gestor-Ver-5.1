@@ -2775,7 +2775,16 @@ export const Quotes = () => {
   const checkIrregularAndProceed = (quoteId, action, proceedFn) => {
     const quote = quotes.find(q => q.quote_id === quoteId);
     const currentStatus = quote?.quote_status || 'Borrador';
-    const expectedStatus = REGULAR_FLOW_MAP[action];
+    let expectedStatus = REGULAR_FLOW_MAP[action];
+    // Reparaciones (Nota de Entrega): la entrega es flujo regular si el pago fue
+    // validado ('Pagado') o si está Reparada/Pagada — el warning modal y la leyenda
+    // los gestiona el RepairDeliveryDialog. Otros estatus conservan la excepción.
+    if (action === 'deliver' && quote?.quote_category === 'repair') {
+      const ex = quote?.custom_actions_executed || {};
+      const paymentValidated = !!(ex.pago_validado || ex.pago_validado_rep || ex.pago_validado_eq);
+      const isRegularRepair = paymentValidated || !!quote?.repaired_at || !!quote?.paid_at || ['Reparada', 'Pagada'].includes(currentStatus);
+      if (isRegularRepair) expectedStatus = null;
+    }
     if (expectedStatus && currentStatus !== expectedStatus) {
       // Flujo irregular — abrir modal de excepción
       setPendingAction({ quoteId, action, proceedFn, currentStatus, expectedStatus });

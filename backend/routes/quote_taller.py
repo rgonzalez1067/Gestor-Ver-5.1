@@ -505,7 +505,7 @@ class EstatusUpdateRequest(BaseModel):
     motivo: str = ""
 
 
-VALID_TALLER_ESTATUS = ["Recibido", "Cotizado", "En reparación", "Entregado"]
+VALID_TALLER_ESTATUS = ["Recibido", "Cotizado", "En reparación", "Reparado", "Entregado"]
 
 
 @router.put("/taller-equipos/{taller_equipo_id}/estatus")

@@ -6,7 +6,7 @@ import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
-import { Wrench, User, Building, Package, Check, Search, Plus, Trash2, FileText, ShoppingCart } from 'lucide-react';
+import { Wrench, User, Building, Package, Check, Search, Plus, Trash2, FileText, ShoppingCart, AlertTriangle } from 'lucide-react';
 import api from '../../utils/api';
 import { toast } from 'sonner';
 
@@ -33,6 +33,10 @@ export function RepairDeliveryDialog({ open, onOpenChange, quoteId, exceptionInf
   const [availableSupplies, setAvailableSupplies] = useState([]);
   const [consumedSupplies, setConsumedSupplies] = useState([]);  // [{item_id, item_name, quantity}]
   const [selectedSupplyId, setSelectedSupplyId] = useState('');
+
+  // Regla Nota de Entrega (Reparaciones): modal de advertencia para despacho sin pago validado
+  const [showUnpaidConfirm, setShowUnpaidConfirm] = useState(false);
+  const [unpaidConfirmed, setUnpaidConfirmed] = useState(false);
 
   const fetchPrep = useCallback(async () => {
     if (!quoteId) return;
@@ -72,6 +76,8 @@ export function RepairDeliveryDialog({ open, onOpenChange, quoteId, exceptionInf
       setConsumedSupplies([]);
       setSelectedSupplyId('');
       setPrepData(null);
+      setShowUnpaidConfirm(false);
+      setUnpaidConfirmed(false);
       fetchPrep();
       // Cargar insumos disponibles (Accesorios/Componentes)
       api.get('/repair-supplies').then(r => setAvailableSupplies(r.data || [])).catch(() => setAvailableSupplies([]));
@@ -133,8 +139,12 @@ export function RepairDeliveryDialog({ open, onOpenChange, quoteId, exceptionInf
     setConsumedSupplies(prev => prev.filter((_, i) => i !== idx));
   };
 
-  const handleSubmit = async () => {
-    if (!isValid) return;
+  // Regla Nota de Entrega (Reparaciones): normal=Pagado | warning=Reparada sin validar | blocked=otro
+  const deliveryMode = prepData?.delivery_mode;
+  const blockMessage = prepData?.block_message || '';
+  const isBlocked = deliveryMode === 'blocked' && !exceptionInfo;
+
+  const doSubmit = async (confirmedUnpaid = false) => {
     setSubmitting(true);
     try {
       const headers = {};
@@ -153,6 +163,7 @@ export function RepairDeliveryDialog({ open, onOpenChange, quoteId, exceptionInf
         notes,
         invoice_number: invoiceNumber,
         consumed_supplies: consumedSupplies.map(s => ({ item_id: s.item_id, quantity: s.quantity })),
+        confirm_unpaid_delivery: (confirmedUnpaid || unpaidConfirmed) || undefined,
       };
       const res = await api.post(`/quotes/${quoteId}/repair-deliver`, payload, { headers });
       toast.success(res.data.message || 'Entrega registrada exitosamente');
@@ -169,7 +180,9 @@ export function RepairDeliveryDialog({ open, onOpenChange, quoteId, exceptionInf
       if (onDelivered) onDelivered(res.data);
     } catch (error) {
       const detail = error.response?.data?.detail || '';
-      if (detail.startsWith('IRREGULAR:')) {
+      if (detail.startsWith('UNPAID_CONFIRM:')) {
+        setShowUnpaidConfirm(true);
+      } else if (detail.startsWith('IRREGULAR:')) {
         toast.error(detail.replace('IRREGULAR:', ''));
       } else {
         toast.error(detail || 'Error al procesar la entrega');
@@ -177,6 +190,16 @@ export function RepairDeliveryDialog({ open, onOpenChange, quoteId, exceptionInf
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSubmit = async () => {
+    if (!isValid || isBlocked) return;
+    // Estatus 'Reparado' (sin Validar Pago): modal de advertencia obligatorio
+    if (deliveryMode === 'warning' && !unpaidConfirmed) {
+      setShowUnpaidConfirm(true);
+      return;
+    }
+    await doSubmit(false);
   };
 
   return (
@@ -436,17 +459,65 @@ export function RepairDeliveryDialog({ open, onOpenChange, quoteId, exceptionInf
               />
             </div>
 
-            {/* Acciones */}
+            {/* Alerta de bloqueo por estatus (ni Reparado ni Pagado) */}
+          {!loading && isBlocked && (
+            <div className="bg-rose-50 border border-rose-300 rounded-lg p-3 flex items-start gap-2" data-testid="repair-delivery-blocked-alert">
+              <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-rose-700 font-medium">{blockMessage}</p>
+            </div>
+          )}
+          {/* Aviso de despacho sin pago validado (estatus Reparado) */}
+          {!loading && deliveryMode === 'warning' && (
+            <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 flex items-start gap-2" data-testid="repair-delivery-unpaid-hint">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800">
+                Esta entrega se realizará <b>sin pago validado</b>. Al confirmar se mostrará una advertencia y se agregará
+                automáticamente en Observaciones: <i>"Equipos se estan entregando sin haberse recibido y validado el correspondiente pago"</i>.
+              </p>
+            </div>
+          )}
+
+          {/* Acciones */}
             <div className="flex justify-end gap-2 pt-2 border-t">
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
               <Button
                 onClick={handleSubmit}
-                disabled={!isValid || submitting}
-                className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                disabled={!isValid || submitting || isBlocked}
+                className="bg-cyan-600 hover:bg-cyan-700 text-white disabled:opacity-50"
                 data-testid="repair-delivery-submit"
               >
                 {submitting ? 'Procesando...' : `Confirmar Entrega (${selectedIds.size} equipo${selectedIds.size !== 1 ? 's' : ''})`}
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de advertencia: despacho sin pago validado (estatus Reparado) */}
+        {showUnpaidConfirm && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4" data-testid="repair-unpaid-confirm-modal">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+              <div className="flex items-center gap-2 text-amber-700 mb-3">
+                <AlertTriangle size={22} />
+                <h3 className="text-base font-bold">Despacho sin pago validado</h3>
+              </div>
+              <p className="text-sm text-slate-800 font-medium" data-testid="repair-unpaid-modal-text">
+                ⚠️ Atención: Se está realizando la entrega de los equipos sin estar pagados. ¿Desea continuar con la generación de la Nota de Entrega?
+              </p>
+              <p className="text-xs text-slate-500 mt-3">
+                Al confirmar, se estampará automáticamente en Observaciones: <i>"Equipos se estan entregando sin haberse recibido y validado el correspondiente pago"</i>.
+              </p>
+              <div className="flex justify-end gap-2 mt-5">
+                <Button variant="outline" onClick={() => setShowUnpaidConfirm(false)} data-testid="repair-unpaid-cancel">
+                  Cancelar
+                </Button>
+                <Button
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={() => { setUnpaidConfirmed(true); setShowUnpaidConfirm(false); doSubmit(true); }}
+                  data-testid="repair-unpaid-confirm"
+                >
+                  Sí, continuar
+                </Button>
+              </div>
             </div>
           </div>
         )}
