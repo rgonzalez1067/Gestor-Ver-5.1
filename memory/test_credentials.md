@@ -3,7 +3,7 @@ Password para todos: Test1234! (reseteado por el agente con config.hash_password
 - gteran@megasoft.com.ve  → sede PYME, Coordinador, quote_history=edit. Ve SOLO histórico de sede PYME (105 registros).
 - ablanco@megasoft.com.ve → sede CORP, Coordinador, quote_history=read (otorgado por el agente para QA). Ve SOLO histórico de sede CORP (5 registros).
 - acastro@megasoft.com.ve → sede CORP, cargo Director. EXCEPCIÓN: ve TODO (128, Corp+Pyme+TBP).
-- Admin (rgonzalez@megasoft.com.ve / admin123): ve TODO (128).
+- Admin (rgonzalez@megasoft.com.ve / Mega2026*): ve TODO (128).
 Regla: usuarios no-admin/no-Director solo ven registros del Histórico cuya `sede` (sede del USUARIO creador) coincida con la suya.
 
 ## QA — Cotizaciones de Reparación / seriales (Jun 2026)
@@ -23,7 +23,7 @@ Regla: usuarios no-admin/no-Director solo ven registros del Histórico cuya `sed
 
 ## Admin principal
 - Email: rgonzalez@megasoft.com.ve
-- Password: admin123
+- Password: Mega2026*
 - Role: admin
 - Name: Rafael González
 - Nota (2026-06): password re-restablecido a `admin123` con config.hash_password en PREVIEW (se había cambiado a otra clave). Verificado login OK vía API.
@@ -37,7 +37,7 @@ Regla: usuarios no-admin/no-Director solo ven registros del Histórico cuya `sed
 
 ## Usuario Corporativo (antes "parachute") — AHORA role=user
 - Email: ragg1008@gmail.com
-- Password: admin123
+- Password: Mega2026*
 - Role: user (⚠️ fue degradado de admin a user)
 - Name: Rafael González (Respaldo)
 - departamento: Ventas Corporativas · cotizaciones=edit
@@ -102,5 +102,7 @@ Password para todos: Test1234!
 - qa_corp@megasoft.com.ve  → departamento "Ventas Corporativas" (cargo Gerente), permisos proyectos=edit. Puede alternar $ en proyectos CORP; bloqueado en PYME.
 - qa_pyme@megasoft.com.ve  → departamento "Ventas Pyme" (cargo Ejecutivo), permisos proyectos=read. Puede alternar $ en proyectos PYME; bloqueado en CORP.
 - qa_impl@megasoft.com.ve  → departamento "Implementación" (cargo Implementador), proyectos=edit. Ve el $ como indicador de solo lectura (deshabilitado).
-Admin (toggle cualquiera): rgonzalez@megasoft.com.ve / admin123
+Admin (toggle cualquiera): rgonzalez@megasoft.com.ve / Mega2026*
 Proyectos de referencia: CORP=prj_ad1bb4bd314e, PYME=prj_826643491b64
+
+- Nota (2026-11-03): PREVIEW — rgonzalez y dcollazo@megasoft.com.ve con clave Mega2026* (tras restore de Backup Center que revirtió hashes). Login verificado.
