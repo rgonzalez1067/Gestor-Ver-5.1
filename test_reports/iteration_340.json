@@ -1,0 +1,38 @@
+{
+  "summary": "Tested Comunicación Masiva chooser (A Integradores / A Bancos/Entes) backend+UI using fixtures only (bnk_TEST_*, int_TEST_*, tpl_TEST_* with @example.com). Backend 13/13 pass (1 skip: non-admin jrojas credentials invalid). Integrator flow regression OK after _mass_dispatch refactor (same response shape, 400 empty ids, 400 no email, 404 bad template). Bank endpoints: GET recipients structure OK (incl. legacy contact_* fallback); POST sends only selected keys, dedups case-insensitively, ignores unknown keys, 400 empty/invalid JSON/no valid email, 404 template, 422 missing repo doc, local attachments counted, bitacora action=bank_mass_communication with recipients + bank_ids. UI: chooser -> integrators dialog unchanged; chooser -> banks dialog grouped grid, master select all (95/95), granular deselect keeps others, bank checkbox indeterminate & toggles block, master indeterminate, template preview renders HTML, send to fixture bank returned exactly the 2 checked recipients and toast + close. All fixtures, bitacora and email_logs test entries removed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/banks/mass/communication", "issue": "contact_keys are index-based (bank_id::idx). If a bank's contacts are edited/reordered between opening the dialog and sending, a different person may receive the mail. Consider stable contact_id keys (contacts already have contact_id)."},
+      {"endpoint": "POST /api/integrators/mass/communication (pre-existing)", "issue": "Integrator email field in real data often contains multiple addresses with display names (e.g. \"Johan ... <jloza...>, ... <jchirivi@109apps.com>\"); backend passes the whole string as a single BCC entry (only checks '@'). Could fail SMTP/Resend for those recipients. Not introduced by this change."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BankMassCommunicationDialog search", "issue": "Selections hidden by the search filter remain selected and are sent. Repro: Seleccionar Todos (95) -> search fixture bank -> counter/send button still say 95; master checkbox then only toggles visible rows (95->91). Risk of unintended sends to real bank contacts. Suggest: clear selection on search change, or show warning / 'X ocultos seleccionados', or restrict send to visible.", "selector": "[data-testid=bank-mass-search], [data-testid=bank-mass-select-all]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "bank-mass-template-preview", "issues": ["Template HTML rendered without prose/typography styles: <h2> shows as plain body text due to Tailwind preflight (add 'prose' or basic heading styles) - minor"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter340_bank_mass_communication.py", "/app/test_reports/pytest/iter340.xml"],
+  "action_items": [
+    "Handle hidden-by-search selections in BankMassCommunicationDialog (clear on search or show/limit) to avoid accidental sends to real bank contacts",
+    "Optional: use contact_id instead of positional index for contact_keys",
+    "Optional: style preview HTML (prose)",
+    "Note: preview env has no INTEGRADORES templates and empty INTEGRADORES repository; test used a fixture template"
+  ],
+  "critical_code_review_comments": [
+    "Old test tests/test_iter274_mass_communication.py teardown deletes bitacora/email_logs by action + recipients_count in [1,2] — broad filter that can delete real entries; should be scoped by template/ids",
+    "_mass_dispatch saves uploaded files before validating internal docs; on 422 the saved local files are orphaned (pre-existing behavior)",
+    "Frontend dialog fetch errors are silently swallowed (catch -> []), user sees 'Sin contactos' instead of an error toast"
+  ],
+  "updated_files": ["/app/backend/tests/test_iter340_bank_mass_communication.py"],
+  "success_rate": {"backend": "100% (13/13, 1 skipped)", "frontend": "100% core flows; 1 medium UX risk"},
+  "test_credentials": "admin rgonzalez@megasoft.com.ve/admin123 OK. jrojas@megasoft.com.ve/Test1234! returns 401 'Credenciales inválidas' (credentials file out of date) — 403 non-admin test skipped.",
+  "seed_data_creation": "Temporary fixtures only (bnk_TEST_*, int_TEST_*, tpl_TEST_*), all deleted along with their bitacora/email_logs entries. Verified 0 leftovers.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login via API then localStorage session_token, goto /dashboard then /integrators (direct goto redirects to dashboard). Test file creates its own fixture template since no INTEGRADORES templates exist. /tmp/fx.py pattern: setup fixture bank bnk_TEST_ui1 + tpl_TEST_ui, filter UI search 'TEST_UIBANK_ZZ' before sending."
+}

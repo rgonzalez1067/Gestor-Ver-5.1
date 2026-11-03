@@ -74,6 +74,10 @@ export const BankMassCommunicationDialog = ({ open, onOpenChange }) => {
   }, [banks, search]);
 
   const allKeys = useMemo(() => visible.flatMap(b => b.contacts.filter(c => c.has_email).map(c => c.key)), [visible]);
+  const hiddenSelected = useMemo(() => {
+    const vis = new Set(allKeys);
+    return Array.from(selected).filter(k => !vis.has(k)).length;
+  }, [selected, allKeys]);
   const totalWithEmail = banks.reduce((a, b) => a + b.contacts.filter(c => c.has_email).length, 0);
   const tpl = templates.find(t => t.template_id === templateId);
 
@@ -122,6 +126,13 @@ export const BankMassCommunicationDialog = ({ open, onOpenChange }) => {
             <div className="text-xs text-slate-500 mb-1 flex items-center gap-1.5" data-testid="bank-mass-counter">
               <Users size={12} /> {selected.size} seleccionado(s) · {totalWithEmail} con correo en {banks.length} Banco(s)/Ente(s)
             </div>
+            {hiddenSelected > 0 && (
+              <div className="text-xs mb-1 px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-between" data-testid="bank-mass-hidden-warning">
+                <span>{hiddenSelected} contacto(s) seleccionado(s) ocultos por la búsqueda también recibirán el correo.</span>
+                <button type="button" className="underline ml-2" data-testid="bank-mass-clear-hidden"
+                  onClick={() => setSelected(new Set(Array.from(selected).filter(k => allKeys.includes(k))))}>Quitar ocultos</button>
+              </div>
+            )}
             <div className="border border-slate-200 rounded-lg overflow-auto" style={{ maxHeight: '50vh' }}>
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 sticky top-0 z-10">
@@ -196,7 +207,7 @@ export const BankMassCommunicationDialog = ({ open, onOpenChange }) => {
     <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-auto" data-testid="bank-mass-template-preview">
         <DialogHeader><DialogTitle className="text-sm">{tpl?.subject || tpl?.name}</DialogTitle></DialogHeader>
-        <div className="border rounded-lg p-3 bg-white text-sm" dangerouslySetInnerHTML={{ __html: tpl?.body_html || tpl?.body || '' }} />
+        <div className="border rounded-lg p-3 bg-white text-sm [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:font-semibold [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: tpl?.body_html || tpl?.body || '' }} />
       </DialogContent>
     </Dialog>
     <DocumentViewerModal open={!!viewerDoc} onOpenChange={(v) => !v && setViewerDoc(null)} doc={viewerDoc} />

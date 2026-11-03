@@ -688,8 +688,10 @@ def _bank_contact_rows(bank: dict) -> List[dict]:
     for idx, c in enumerate(bank.get("contacts") or []):
         name = (c.get("full_name") or f"{c.get('first_name', '')} {c.get('last_name', '')}").strip()
         email = (c.get("email") or "").strip()
+        cid = c.get("contact_id") or ""
+        stable = cid if cid and not cid.startswith("bcn_legacy_") else f"idx{idx}"
         rows.append({
-            "key": f"{bank['bank_id']}::{idx}",
+            "key": f"{bank['bank_id']}::{stable}",
             "name": name, "email": email, "position": (c.get("position") or "").strip(),
             "has_email": bool(email and "@" in email),
         })
