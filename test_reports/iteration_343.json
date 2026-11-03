@@ -1,0 +1,32 @@
+{
+  "summary": "Tested Banco/Contacto template variables and the automatic send mode for bank mass communication, on both backend and frontend. Backend: new pytest test_iter343 passed 6/6. With a contacto_ template the mode is per_contact: one email per contact, sent To the contact with no BCC, and the subject and body show that contact's name, cargo and phone plus the bank's RIF and code. With a banco_ template the mode is per_bank: one BCC per bank, using only the selected contacts, with the bank's data rendered. With no variables the mode is single_bcc, batches_count=1, and 3 contacts in BCC. The {{banco_nombre}} double-brace form is detected too. The bitácora stores send_mode and batches_count. Contacts that were unchecked got no email. Integrators mass communication has no regression (4/4). The older iter340 test file was out of date: contact keys are now 'bank_id::idx{n}' or contact_id, and the recipients response has a 'phone' field. I updated it and it passes 13/13 (1 skipped because the non-admin login failed). Frontend: the entity-tpl-variables panel shows the Integradores, Bancos y Entes, Contacto and Generales groups with all 10 new chips. A chip goes into the subject when the subject was the last field edited, and into the body editor after clicking it. The editor preview shows the example values. Saving keeps the tokens in subject and body_html. In bank-mass-comm-dialog, bank-mass-send-mode shows the right text for all 3 templates and the counts change with the selection. A real send from the UI with one contact returned per_contact, and email_logs has subject 'TEST_UI343 TEST Uno' To that contact. All fixtures, templates, bitácora entries and email_logs I created were deleted.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/banks/mass/communication", "issue": "In per_bank/per_contact mode, response 'subject' and the bitácora description still contain the raw tokens (e.g. 'TEST_UI343 {contacto_nombre}'). This is cosmetic; the emails themselves are rendered correctly."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "bank-mass-comm-dialog", "issues": ["The dialog subtitle ('El envío se realiza en copia oculta (BCC)') and the amber privacy notice ('todos los correos se envían en copia oculta (BCC)') stay the same in per_contact mode, where each email goes To the contact. They should change based on sendMode."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter343_bank_template_vars_send_mode.py", "/app/backend/tests/test_iter340_bank_mass_communication.py", "/app/backend/tests/ui_fixtures_iter343.py", "/app/test_reports/pytest/pytest_iter343.xml"],
+  "action_items": [
+    "Optional: return/log the rendered subject (or a per-batch sample) instead of the raw template subject for per_bank/per_contact modes",
+    "Optional: change the BCC privacy text in BankMassCommunicationDialog based on sendMode"
+  ],
+  "critical_code_review_comments": [
+    "EntityTemplatesConfig: subjectFocusRef is set to false only by body mousedown/onChange. If the user focuses the subject and then the Nombre input, clicking a chip still adds to the subject. This is minor and arguably intended ('último campo editado').",
+    "BankMassCommunicationDialog per_contact count uses selected.size. The backend removes duplicate emails, so the count shown can be higher than the number of emails actually sent when contacts share an email.",
+    "Contact keys now use 'bank_id::idx{n}' or contact_id. Any older stored or external callers using 'bank_id::{n}' get 400. Only the tests were affected (updated)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter340_bank_mass_communication.py (key format idx{n} + phone field)", "/app/backend/tests/test_iter343_bank_template_vars_send_mode.py (new)", "/app/backend/tests/ui_fixtures_iter343.py (new)"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporary bnk_TEST_* banks with @example.com contacts and tpl_TEST_* INTEGRADORES templates were created and then deleted, along with the bitácora and email_logs entries. A check afterwards found 0 left.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login: POST /api/auth/login returns session_token; put it in localStorage 'session_token' and 'user'. Open the bank dialog with /integrators > mass-comm-btn > mass-chooser-banks. Contact checkbox testid: bank-contact-check-{bank_id}::idx{n}. Run the tests with -p no:xdist because they depend on order. email_logs store 'to' and 'bcc_count' but not the BCC list. UI fixtures: python /app/backend/tests/ui_fixtures_iter343.py setup|teardown."
+}

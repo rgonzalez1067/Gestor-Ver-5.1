@@ -121,7 +121,7 @@ export const BankMassCommunicationDialog = ({ open, onOpenChange }) => {
       <DialogContent className="max-w-6xl max-h-[92vh] overflow-hidden flex flex-col" data-testid="bank-mass-comm-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-emerald-700"><Landmark size={20} />Comunicación Masiva a Bancos/Entes</DialogTitle>
-          <DialogDescription className="text-xs text-slate-500">Seleccione contactos, plantilla y adjuntos. El envío se realiza en copia oculta (BCC).</DialogDescription>
+          <DialogDescription className="text-xs text-slate-500">Seleccione contactos, plantilla y adjuntos. {sendMode === 'per_contact' ? 'Cada contacto recibe su propio correo personalizado.' : 'El envío se realiza en copia oculta (BCC).'}</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-5 gap-5 pr-1">
           <div className="lg:col-span-3 flex flex-col min-h-0">
@@ -202,7 +202,11 @@ export const BankMassCommunicationDialog = ({ open, onOpenChange }) => {
               {localFiles.length > 0 && <p className="text-xs text-slate-500 mt-1">{localFiles.length} archivo(s) local(es)</p>}
             </div>
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-800">
-              Privacidad: todos los correos se envían en <strong>copia oculta (BCC)</strong>. Solo los contactos marcados reciben la comunicación.
+              Privacidad: {sendMode === 'per_contact'
+                ? <>cada contacto recibe un <strong>correo individual</strong>; nadie ve a los demás destinatarios.</>
+                : sendMode === 'per_bank'
+                  ? <>un correo por Banco/Ente en <strong>copia oculta (BCC)</strong>.</>
+                  : <>todos los correos se envían en <strong>copia oculta (BCC)</strong>.</>} Solo los contactos marcados reciben la comunicación.
             </div>
           </div>
         </div>

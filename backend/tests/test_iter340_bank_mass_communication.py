@@ -151,8 +151,8 @@ class TestBankRecipients:
         assert BANK1 in by and BANK2 in by and BANK3 in by
         c = by[BANK1]["contacts"]
         assert len(c) == 5
-        assert set(c[0]) == {"key", "name", "email", "position", "has_email"}
-        assert c[0]["key"] == f"{BANK1}::0" and c[0]["name"] == "TEST Ana" and c[0]["position"] == "Gerente"
+        assert set(c[0]) == {"key", "name", "email", "position", "phone", "has_email"}
+        assert c[0]["key"] == f"{BANK1}::idx0" and c[0]["name"] == "TEST Ana" and c[0]["position"] == "Gerente"
         assert c[4]["has_email"] is False
         assert by[BANK2]["contacts"][0]["name"] == "TEST Eva"
         assert by[BANK3]["contacts"][0]["email"] == f"lu_{SUF}@example.com"
@@ -169,7 +169,7 @@ class TestBankRecipients:
 # --- Bancos/Entes: POST communication ---
 class TestBankSend:
     def test_only_selected_dedup_and_bitacora(self, H, tpl):
-        keys = [f"{BANK1}::0", f"{BANK1}::3", f"{BANK1}::4", f"{BANK2}::0", f"{BANK3}::0"]  # Beto/Ceci deselected
+        keys = [f"{BANK1}::idx0", f"{BANK1}::idx3", f"{BANK1}::idx4", f"{BANK2}::idx0", f"{BANK3}::idx0"]  # Beto/Ceci deselected
         r = _send_bank(H, keys, tpl["template_id"])
         assert r.status_code == 200, r.text
         b = r.json()
@@ -187,13 +187,13 @@ class TestBankSend:
         assert sorted(e.lower() for e in log["recipients"]) == sorted(rec)
 
     def test_unknown_keys_ignored(self, H, tpl):
-        r = _send_bank(H, [f"{BANK2}::0", f"{BANK2}::9", "bnk_doesnotexist::0"], tpl["template_id"])
+        r = _send_bank(H, [f"{BANK2}::idx0", f"{BANK2}::idx9", "bnk_doesnotexist::idx0"], tpl["template_id"])
         assert r.status_code == 200, r.text
         assert r.json()["recipients"] == [f"eva_{SUF}@example.com"]
 
     def test_with_local_attachment(self, H, tpl):
         files = [("files", ("TEST_local.txt", io.BytesIO(b"hola"), "text/plain"))]
-        r = _send_bank(H, [f"{BANK2}::0"], tpl["template_id"], files=files)
+        r = _send_bank(H, [f"{BANK2}::idx0"], tpl["template_id"], files=files)
         assert r.status_code == 200, r.text
         assert r.json()["attachments_count"] == 1
 
@@ -206,11 +206,11 @@ class TestBankSend:
         assert r.status_code == 400
 
     def test_no_valid_email_400(self, H, tpl):
-        assert _send_bank(H, [f"{BANK1}::4"], tpl["template_id"]).status_code == 400
+        assert _send_bank(H, [f"{BANK1}::idx4"], tpl["template_id"]).status_code == 400
 
     def test_bad_template_404(self, H):
-        assert _send_bank(H, [f"{BANK2}::0"], "tpl_nope_xx").status_code == 404
+        assert _send_bank(H, [f"{BANK2}::idx0"], "tpl_nope_xx").status_code == 404
 
     def test_missing_doc_422(self, H, tpl):
-        r = _send_bank(H, [f"{BANK2}::0"], tpl["template_id"], docs=json.dumps(["edoc_NOPE"]))
+        r = _send_bank(H, [f"{BANK2}::idx0"], tpl["template_id"], docs=json.dumps(["edoc_NOPE"]))
         assert r.status_code == 422

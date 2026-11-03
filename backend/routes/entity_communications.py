@@ -673,6 +673,8 @@ async def _mass_dispatch(recipients: List[str], template_id: str, internal_doc_i
             statuses.append("error"); errors.append(f"{', '.join(bt['to'])}: {e}")
     result = {"status": statuses[0] if len(set(statuses)) == 1 else "partial"}
     mode_label = "en BCC" if len(batches) == 1 else f"en {len(batches)} envío(s) personalizados"
+    if len(batches) > 1 or (batches[0].get("vars")):
+        subject = _render_vars(subject, batches[0].get("vars") or {}) if len(batches) == 1 else (tpl.get("name") or subject)
 
     user_name = f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip() or current_user.get("email", "")
     now = datetime.now(timezone.utc).isoformat()
