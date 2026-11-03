@@ -15,7 +15,7 @@ import { ProcessorLinkBankModal } from '../components/shared/ProcessorLinkBankMo
 import { DirectMultiRifSection } from '../components/projects/DirectMultiRifSection';
 import { toast } from 'sonner';
 import api from '../utils/api';
-import { integratorModalityMatch, shouldShowIntegrationBadge, integrationTypesForName, formatIntegrationBadge } from '../utils/integratorModality';
+import { integratorModalityMatch, shouldShowIntegrationBadge, integrationTypesForName, formatIntegrationBadge, isSelectableIntegrator, isInProcessName } from '../utils/integratorModality';
 import { usePermission } from '../hooks/usePermission';
 
 const QUOTE_TYPES = [
@@ -471,7 +471,7 @@ export default function DirectProjectCreation() {
   const certifiedIntegrators = useMemo(() => {
     const matches = integratorModalityMatch(form.quote_type);
     return integrators.filter(
-      (i) => i.integrator_status === 'Certificado' && matches(i.integration_type)
+      (i) => isSelectableIntegrator(i) && matches(i.integration_type)
     );
   }, [integrators, form.quote_type]);
 
@@ -953,8 +953,11 @@ export default function DirectProjectCreation() {
                 // dejar pendiente la elección manual (Escenario B). Solo entre los
                 // integradores certificados compatibles con el tipo de proyecto.
                 const apps = certifiedIntegrators.filter((i) => i.name === v && (i.app_name || '').trim());
+                const recs = certifiedIntegrators.filter((i) => i.name === v);
                 if (apps.length === 1) {
                   set({ integrator_name: v, integrator_id: apps[0].integrator_id, integrator_app_name: apps[0].app_name || '' });
+                } else if (apps.length === 0 && recs.length === 1) {
+                  set({ integrator_name: v, integrator_id: recs[0].integrator_id, integrator_app_name: '' });
                 } else {
                   set({ integrator_name: v, integrator_id: '', integrator_app_name: '' });
                 }
@@ -962,13 +965,14 @@ export default function DirectProjectCreation() {
                 <SelectTrigger className="h-10" data-testid="dp-integrator"><SelectValue placeholder="Sin integrador" /></SelectTrigger>
                 <SelectContent>
                   {integratorNames.length === 0 ? (
-                    <div className="px-3 py-2 text-xs text-slate-400 italic">No hay integradores certificados para este tipo de proyecto</div>
+                    <div className="px-3 py-2 text-xs text-slate-400 italic">No hay integradores certificados o en proceso para este tipo de proyecto</div>
                   ) : integratorNames.map((n) => {
                     const badge = shouldShowIntegrationBadge(form.quote_type) ? formatIntegrationBadge(integrationTypesForName(certifiedIntegrators, n)) : '';
                     return (
-                      <SelectItem key={n} value={n}>
+                      <SelectItem key={n} value={n} data-testid={`dp-integrator-option-${n.trim().replace(/\s+/g, '-').toLowerCase()}`}>
                         <span>{n}</span>
                         {badge && <span className="ml-1.5 text-xs font-semibold text-indigo-600">{badge}</span>}
+                        {isInProcessName(certifiedIntegrators, n) && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">En proceso</span>}
                       </SelectItem>
                     );
                   })}

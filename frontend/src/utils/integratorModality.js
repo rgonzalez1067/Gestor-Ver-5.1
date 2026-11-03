@@ -17,8 +17,18 @@ const PROJECT_TYPE_INTEGRATION = {
   MPOS: ['MP'],
   FAST_TRACK: ['MP'],
   GATEWAY: ['PG'],
-  LINK_PAGO: ['LP', 'TK'],
-  LINK: ['LP', 'TK'],
+  LINK_PAGO: ['LP', 'LK', 'TK'],
+  LINK: ['LP', 'LK', 'TK'],
+};
+
+// Estatus de integrador elegibles en Cotizaciones / Proyectos Directos.
+export const SELECTABLE_INTEGRATOR_STATUSES = ['Certificado', 'En proceso'];
+export const isSelectableIntegrator = (i) => SELECTABLE_INTEGRATOR_STATUSES.includes(i?.integrator_status);
+
+// ¿Todos los registros de ese nombre están "En proceso"? (para etiqueta visible)
+export const isInProcessName = (rows, name) => {
+  const recs = (rows || []).filter((r) => r.name === name);
+  return recs.length > 0 && recs.every((r) => r.integrator_status === 'En proceso');
 };
 
 // Tipos de proyecto "pasarela" que muestran distintivo visual [PG]/[LP]/[TK].

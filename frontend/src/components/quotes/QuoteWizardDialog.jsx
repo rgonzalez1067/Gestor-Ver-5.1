@@ -16,7 +16,7 @@ import { BranchDetailPanel } from '../BranchDetailPanel';
 import { MultiRifDistributionPanel } from './MultiRifDistributionPanel';
 import { MultiProductSelector } from '../MultiProductSelector';
 import { QUOTE_TYPES, PRICING_MODELS, SETUP_CONCEPTS } from './constants';
-import { integratorModalityMatch, shouldShowIntegrationBadge, integrationTypesForName, formatIntegrationBadge } from '../../utils/integratorModality';
+import { integratorModalityMatch, shouldShowIntegrationBadge, integrationTypesForName, formatIntegrationBadge, isSelectableIntegrator, isInProcessName } from '../../utils/integratorModality';
 import { toast } from 'sonner';
 
 export const QuoteWizardDialog = ({ ctx }) => {
@@ -872,7 +872,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                   {(() => {
                     const matches = integratorModalityMatch(quoteData.quote_type);
                     const certifiedFiltered = integrators.filter(i =>
-                      i.integrator_status === 'Certificado' && matches(i.integration_type)
+                      isSelectableIntegrator(i) && matches(i.integration_type)
                     );
                     const showBadge = shouldShowIntegrationBadge(quoteData.quote_type);
                     const q = integratorSearchQuery.trim().toLowerCase();
@@ -890,8 +890,11 @@ export const QuoteWizardDialog = ({ ctx }) => {
                         return;
                       }
                       const apps = certifiedFiltered.filter(i => i.name === name && (i.app_name || '').trim());
+                      const recs = certifiedFiltered.filter(i => i.name === name);
                       if (apps.length === 1) {
                         setQuoteData({ ...quoteData, integrator_name: name, integrator_id: apps[0].integrator_id, integrator_app_name: apps[0].app_name || '' });
+                      } else if (apps.length === 0 && recs.length === 1) {
+                        setQuoteData({ ...quoteData, integrator_name: name, integrator_id: recs[0].integrator_id, integrator_app_name: '' });
                       } else {
                         setQuoteData({ ...quoteData, integrator_name: name, integrator_id: '', integrator_app_name: '' });
                       }
@@ -933,6 +936,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                                   <SelectItem key={name} value={name} data-testid={`integrator-option-${name.trim().replace(/\s+/g, '-').toLowerCase()}`}>
                                     <span>{name}</span>
                                     {badge && <span className="ml-1.5 text-xs font-semibold text-indigo-600">{badge}</span>}
+                                    {isInProcessName(certifiedFiltered, name) && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700" data-testid={`integrator-inprocess-${name.trim().replace(/\s+/g, '-').toLowerCase()}`}>En proceso</span>}
                                   </SelectItem>
                                 );
                               }) : (
