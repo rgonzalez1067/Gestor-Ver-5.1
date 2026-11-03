@@ -162,7 +162,7 @@ export const QuoteFilters = ({
           </Button>
         )}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-7 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div>
           <Label className="text-xs text-slate-500 mb-1 block">Cliente</Label>
           <ClientSearchableSelect clients={clients} value={filterClient} onChange={setFilterClient} />

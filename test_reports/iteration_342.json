@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only, read-only test of the Cotizaciones > Filtros Rápidos changes: the new 'Grupo Económico' filter and the Cliente search by fantasy name. Logged in as admin rgonzalez. The preview DB has only 2 quotes (TRACTOCAMIONES and TPI REPUESTOS), and neither client belongs to a group. With real data the group popover correctly shows only 'Todos los grupos', matching the API. To test the positive cases without writing to the DB, I intercepted GET /api/quotes in Playwright (page.route) and added fake quotes for SALUS 7 (Grupo Brasero), SJB 777 (Grupo Brasero), EXCELSIOR MARKET (GRUPO EXCELSIOR) and the sucursal CUBITT MARACAIBO. I also added archived quotes for FARMA EXCELSIOR and HALE 444. Results: only groups with active quotes are listed (Grupo Brasero 2 clientes, GRUPO EXCELSIOR 1, Rower 1). Clients with only archived quotes are left out of the group ids. filter-group-search works ('brase' -> Grupo Brasero; 'zzzz' -> 'Sin coincidencias'). Picking Grupo Brasero filters the grid to its 2 quotes and recalculates the KPIs (total 2, borrador 1, enviada 1). Grupo + Estado=Enviada leaves 1 row. Cliente(SJB) + Grupo + Enviada leaves 1 row; with Borrador, 0 rows. The Cliente search matches by fantasy name: 'Brasero El Marq' finds INVERSIONES SALUS 7 C.A. with subtitle 'Brasero El Marqúez'. Search by razón social ('salus') and by another fantasy name ('barako') also works. clear-filters-btn resets Cliente, Grupo and Estado, restores all rows and KPIs, and hides itself. A sucursal inherits the principal's group id. Layout at 1920: the 7 filters sit in one row at the same y position, about 159px each, with no overlap.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Quotes.jsx groupsWithActiveQuotes", "issue": "The group label is taken from the client's own denormalized `grupo_economico` before the principal's, but the key uses the principal's `grupo_economico_id`. Real data: the sucursales of DISTRIBUIDORA ROWER (cli_d5a4e0ea9050, cli_51e45eb9a168, cli_0d40ee105d2e) have grupo_economico='Rower' and no id. Their principal cli_2503893281a8 has grp_a80ef506f35b, whose real name in /api/grupos-economicos is 'Casiolandia', and its grupo_economico field is null. The filter would show 'Rower' (or 'Grupo sin nombre' if the principal itself had a quote) instead of 'Casiolandia'. The name is also fixed by whichever client comes first, so a group whose first member has no name stays 'Grupo sin nombre' even if a later member has one.", "selector": "[data-testid^='filter-group-option-']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Cotizaciones > Filtros Rápidos (1920px)", "issues": ["The page content is capped at about 1000px, so each of the 7 filters is about 159px wide. Trigger text gets cut off ('Todos los clien...', 'Todos los grup...', 'Todas las categor'). Selected client names will also be truncated. Consider a wider container or a 2-row layout at xl."]}
+    ]
+  },
+  "test_report_links": ["/app/tests/check_groups_iter342.py"],
+  "action_items": [
+    "In groupsWithActiveQuotes, take the group name from the principal (or from the /api/grupos-economicos catalog by id) when the key comes from the principal's grupo_economico_id. Fill in a missing name from later members or from the catalog instead of keeping 'Grupo sin nombre'.",
+    "Optional: widen the filter grid at 1920 so the trigger labels are not truncated."
+  ],
+  "critical_code_review_comments": [
+    "Quotes.jsx is about 4760 lines; it should be split.",
+    "The data has inconsistencies: 69 clients reference grupo_economico_id values that are missing from the /api/grupos-economicos catalog (45 groups), and some sucursales keep stale group names. The current approach based on denormalized names hides most of this, but the label and key can disagree.",
+    "QuotesTable does not exclude archived quotes itself; it relies on the backend not returning them. The KPIs and the group/client lists do exclude archived quotes."
+  ],
+  "updated_files": ["/app/tests/check_groups_iter342.py"],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100% of requested flows pass; 1 low-priority labeling issue"},
+  "seed_data_creation": "None. Positive cases used in-browser mocking of GET /api/quotes (page.route); nothing was written to the DB.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Auth: POST /api/auth/login returns session_token. Put it in localStorage 'session_token' plus 'user', then go to /quotes. The preview DB has only 2 quotes and both clients have no group, so mock /api/quotes (regex .*/api/quotes(\\?.*)?$) to test group cases. Grupo Brasero members: cli_874a6ea688e9 (SALUS 7 / Brasero El Marqúez), cli_40e36f150d9d (SJB 777 / Barako), cli_bd12925ab654, cli_2657337835da. Group option testid = filter-group-option-{comma-joined client ids}. KPI values: quotes-kpi-{total|borrador|enviada|aprobada|facturada|pagada}-value."
+}

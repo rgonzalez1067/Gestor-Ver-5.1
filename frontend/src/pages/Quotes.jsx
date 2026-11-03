@@ -104,19 +104,29 @@ export const Quotes = () => {
   }, [rbacFilteredQuotes, clients]);
 
   // Grupos Económicos con cotizaciones activas. Sucursales heredan el grupo del Principal.
+  const [economicGroupNames, setEconomicGroupNames] = useState({});
+  useEffect(() => {
+    api.get('/grupos-economicos')
+      .then((r) => setEconomicGroupNames(Object.fromEntries((r.data || []).map((g) => [g.group_id, g.name]))))
+      .catch(() => setEconomicGroupNames({}));
+  }, []);
   const groupsWithActiveQuotes = useMemo(() => {
     const byId = new Map((clients || []).map((c) => [c.client_id, c]));
     const acc = {};
     clientsWithActiveQuotes.forEach((c) => {
       const principal = c.parent_client_id ? (byId.get(c.parent_client_id) || c) : c;
-      const gid = c.grupo_economico_id || principal.grupo_economico_id;
-      const gname = (c.grupo_economico || principal.grupo_economico || '').trim();
+      const gid = principal.grupo_economico_id || c.grupo_economico_id;
+      const gname = ((gid && economicGroupNames[gid]) || principal.grupo_economico || c.grupo_economico || '').trim();
       if (!gid && !gname) return;
       const key = gid || gname.toUpperCase();
-      (acc[key] = acc[key] || { key, name: gname || 'Grupo sin nombre', ids: [] }).ids.push(c.client_id);
+      const g = (acc[key] = acc[key] || { key, name: '', ids: [] });
+      g.ids.push(c.client_id);
+      if (!g.name && gname) g.name = gname;
     });
-    return Object.values(acc).sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
-  }, [clientsWithActiveQuotes, clients]);
+    return Object.values(acc)
+      .map((g) => ({ ...g, name: g.name || 'Grupo sin nombre' }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+  }, [clientsWithActiveQuotes, clients, economicGroupNames]);
 
   // Migración de BD (solo admin)
   const isAdmin = (currentUser?.role || '').toLowerCase() === 'admin';
