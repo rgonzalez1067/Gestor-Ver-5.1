@@ -589,6 +589,23 @@ async def send_mass_communication(
     if not recipients:
         raise HTTPException(status_code=400, detail="Ninguno de los integradores seleccionados tiene un correo válido")
 
+    meta = await _mass_dispatch(
+        recipients, template_id, internal_doc_ids, files, current_user,
+        folder="integradores_masivo", action="integrator_mass_communication", target_label="integrador(es)",
+    )
+    return {
+        "status": meta["status"],
+        "recipients_count": len(recipients),
+        "attachments_count": meta["attachments_count"],
+        "subject": meta["subject"],
+        "message": f"Comunicación masiva enviada en BCC a {len(recipients)} integrador(es).",
+    }
+
+
+async def _mass_dispatch(recipients: List[str], template_id: str, internal_doc_ids: str,
+                         files: List[UploadFile], current_user: dict, folder: str,
+                         action: str, target_label: str, extra_log: Optional[dict] = None) -> dict:
+    """Envío masivo BCC con plantilla INTEGRADORES + adjuntos + bitácora (compartido)."""
     tpl = await db.email_templates.find_one({"template_id": template_id}, {"_id": 0})
     if not tpl:
         raise HTTPException(status_code=404, detail="Plantilla no encontrada")
@@ -601,8 +618,7 @@ async def send_mass_communication(
     subject = _render_vars(tpl.get("subject", "") or "Comunicación", variables)
     html = _render_vars(tpl.get("body_html", "") or tpl.get("body", "") or "", variables)
 
-    # Adjuntos: archivos locales + documentos del repositorio (entity_documents).
-    upload_dir = "/app/backend/uploads/entity_emails/integradores_masivo"
+    upload_dir = f"/app/backend/uploads/entity_emails/{folder}"
     os.makedirs(upload_dir, exist_ok=True)
     email_attachments, attachment_names = [], []
     for f in files:
@@ -641,7 +657,7 @@ async def send_mass_communication(
         to=[mass_sender or SENDER_EMAIL],
         subject=subject,
         html=html,
-        action="integrator_mass_communication",
+        action=action,
         attachments=email_attachments or None,
         bcc=recipients,
         sender=mass_sender,
@@ -651,21 +667,94 @@ async def send_mass_communication(
     now = datetime.now(timezone.utc).isoformat()
     await db.bitacora.insert_one({
         "entry_id": f"bit_{uuid.uuid4().hex[:12]}",
-        "action": "integrator_mass_communication",
-        "description": f"[Comunicación masiva] '{subject}' → {len(recipients)} integrador(es) en BCC"
+        "action": action,
+        "description": f"[Comunicación masiva] '{subject}' → {len(recipients)} {target_label} en BCC"
                        + (f" ({len(attachment_names)} adjunto(s))" if attachment_names else ""),
         "date": now[:10], "created_at": now,
         "created_by": current_user.get("email", ""), "created_by_name": user_name,
         "recipients_count": len(recipients), "template_id": template_id,
         "attachments": attachment_names, "email_status": result.get("status"),
+        **(extra_log or {}),
     })
+    return {"status": result.get("status"), "subject": subject, "attachments_count": len(attachment_names)}
 
+
+# ==================== COMUNICACIÓN MASIVA A BANCOS/ENTES (BCC) ====================
+
+def _bank_contact_rows(bank: dict) -> List[dict]:
+    from routes.banks import ensure_bank_contacts
+    ensure_bank_contacts(bank)
+    rows = []
+    for idx, c in enumerate(bank.get("contacts") or []):
+        name = (c.get("full_name") or f"{c.get('first_name', '')} {c.get('last_name', '')}").strip()
+        email = (c.get("email") or "").strip()
+        rows.append({
+            "key": f"{bank['bank_id']}::{idx}",
+            "name": name, "email": email, "position": (c.get("position") or "").strip(),
+            "has_email": bool(email and "@" in email),
+        })
+    return rows
+
+
+@router.get("/banks/mass/recipients")
+async def list_bank_mass_recipients(authorization: Optional[str] = Header(None)):
+    """Bancos/Entes con sus contactos (Nombre, Correo, Cargo) para la Comunicación Masiva."""
+    current_user = await get_current_user(authorization)
+    await _require_mass_comm(current_user)
+    banks = []
+    async for b in db.banks.find({}, {"_id": 0, "bank_id": 1, "name": 1, "contacts": 1,
+                                      "contact_name": 1, "contact_email": 1, "contact_phone": 1}).sort("name", 1):
+        rows = _bank_contact_rows(b)
+        if rows:
+            banks.append({"bank_id": b["bank_id"], "name": b.get("name", ""), "contacts": rows})
     return {
-        "status": result.get("status"),
+        "banks": banks,
+        "total_contacts": sum(len(b["contacts"]) for b in banks),
+        "with_email": sum(1 for b in banks for c in b["contacts"] if c["has_email"]),
+    }
+
+
+@router.post("/banks/mass/communication")
+async def send_bank_mass_communication(
+    template_id: str = Form(...),
+    contact_keys: str = Form(...),
+    internal_doc_ids: str = Form(default="[]"),
+    files: List[UploadFile] = File(default=[]),
+    authorization: Optional[str] = Header(None),
+):
+    """Envía en BCC solo a los contactos seleccionados (claves `bank_id::idx`)."""
+    current_user = await get_current_user(authorization)
+    await _require_mass_comm(current_user)
+    try:
+        keys = json.loads(contact_keys)
+        assert isinstance(keys, list)
+    except (json.JSONDecodeError, ValueError, AssertionError):
+        raise HTTPException(status_code=400, detail="Lista de contactos inválida")
+    if not keys:
+        raise HTTPException(status_code=400, detail="Debe seleccionar al menos un contacto")
+    wanted = set(keys)
+    bank_ids = list({k.split("::", 1)[0] for k in wanted})
+    recipients, seen, banks_hit = [], set(), set()
+    async for b in db.banks.find({"bank_id": {"$in": bank_ids}}, {"_id": 0}):
+        for r in _bank_contact_rows(b):
+            if r["key"] in wanted and r["has_email"] and r["email"].lower() not in seen:
+                recipients.append(r["email"]); seen.add(r["email"].lower()); banks_hit.add(b["bank_id"])
+    if not recipients:
+        raise HTTPException(status_code=400, detail="Ninguno de los contactos seleccionados tiene un correo válido")
+
+    meta = await _mass_dispatch(
+        recipients, template_id, internal_doc_ids, files, current_user,
+        folder="bancos_masivo", action="bank_mass_communication", target_label="contacto(s) de Bancos/Entes",
+        extra_log={"recipients": recipients, "bank_ids": sorted(banks_hit)},
+    )
+    return {
+        "status": meta["status"],
         "recipients_count": len(recipients),
-        "attachments_count": len(attachment_names),
-        "subject": subject,
-        "message": f"Comunicación masiva enviada en BCC a {len(recipients)} integrador(es).",
+        "recipients": recipients,
+        "banks_count": len(banks_hit),
+        "attachments_count": meta["attachments_count"],
+        "subject": meta["subject"],
+        "message": f"Comunicación masiva enviada en BCC a {len(recipients)} contacto(s) de {len(banks_hit)} Banco(s)/Ente(s).",
     }
 
 

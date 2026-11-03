@@ -17,6 +17,8 @@ import { Plus, Pencil, Trash2, Upload, FileSpreadsheet, FileText, Search, Filter
 import { EntityEmailDialog } from '../components/EntityEmailDialog';
 import { InternalEmailInput } from '../components/InternalEmailInput';
 import { MassCommunicationDialog } from '../components/MassCommunicationDialog';
+import { MassCommChooserDialog } from '../components/MassCommChooserDialog';
+import { BankMassCommunicationDialog } from '../components/BankMassCommunicationDialog';
 import { IntegratorCertificatesCell } from '../components/IntegratorCertificatesCell';
 import PurgeIntegratorsDialog from '../components/PurgeIntegratorsDialog';
 import api from '../utils/api';
@@ -868,6 +870,8 @@ export const Integrators = () => {
   const [closePreviewUrl, setClosePreviewUrl] = useState('');
   const [closePreviewLoading, setClosePreviewLoading] = useState(false);
   const [massCommOpen, setMassCommOpen] = useState(false);
+  const [massCommChooserOpen, setMassCommChooserOpen] = useState(false);
+  const [bankMassCommOpen, setBankMassCommOpen] = useState(false);
   const [certCounts, setCertCounts] = useState({});
 
   const addCloseRecipient = () => {
@@ -1369,7 +1373,7 @@ export const Integrators = () => {
                 <Button variant="outline" onClick={() => setPurgeDialogOpen(true)} data-testid="purge-integrators-btn"
                   className="border-rose-200 text-rose-700 hover:bg-rose-50"><Trash2 size={16} className="mr-1" />Vaciar BD</Button>
               )}
-              {(isAdmin || hasSpecial('integradores:mass_comm')) && <Button variant="outline" onClick={() => setMassCommOpen(true)} data-testid="mass-comm-btn" className="border-blue-200 text-blue-700 hover:bg-blue-50"><Mail size={16} className="mr-1" />Comunicación Masiva</Button>}
+              {(isAdmin || hasSpecial('integradores:mass_comm')) && <Button variant="outline" onClick={() => setMassCommChooserOpen(true)} data-testid="mass-comm-btn" className="border-blue-200 text-blue-700 hover:bg-blue-50"><Mail size={16} className="mr-1" />Comunicación Masiva</Button>}
               {isAdmin && <Button variant="outline" onClick={() => setImportDialogOpen(true)} data-testid="import-integrators-btn"><Upload size={16} className="mr-1" />Importar</Button>}
               <Button variant="outline" onClick={handleExportExcel} data-testid="export-excel-btn"><FileSpreadsheet size={16} className="mr-1" />Excel</Button>
               <Button variant="outline" onClick={handleExportPDF} data-testid="export-pdf-btn"><FileText size={16} className="mr-1" />PDF</Button>
@@ -2823,7 +2827,10 @@ export const Integrators = () => {
       />
 
       {/* Comunicación Masiva a Integradores (BCC) */}
+      <MassCommChooserDialog open={massCommChooserOpen} onOpenChange={setMassCommChooserOpen}
+        onPick={(ch) => { setMassCommChooserOpen(false); ch === 'banks' ? setBankMassCommOpen(true) : setMassCommOpen(true); }} />
       <MassCommunicationDialog open={massCommOpen} onOpenChange={setMassCommOpen} />
+      <BankMassCommunicationDialog open={bankMassCommOpen} onOpenChange={setBankMassCommOpen} />
 
       {/* Notification Dialog Genérico */}
       {notifyIntegrator && (
