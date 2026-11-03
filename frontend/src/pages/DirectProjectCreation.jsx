@@ -954,7 +954,9 @@ export default function DirectProjectCreation() {
                 // integradores certificados compatibles con el tipo de proyecto.
                 const apps = certifiedIntegrators.filter((i) => i.name === v && (i.app_name || '').trim());
                 const recs = certifiedIntegrators.filter((i) => i.name === v);
-                if (apps.length === 1) {
+                if (v === '__none__') {
+                  set({ integrator_name: '', integrator_id: '', integrator_app_name: '' });
+                } else if (apps.length === 1) {
                   set({ integrator_name: v, integrator_id: apps[0].integrator_id, integrator_app_name: apps[0].app_name || '' });
                 } else if (apps.length === 0 && recs.length === 1) {
                   set({ integrator_name: v, integrator_id: recs[0].integrator_id, integrator_app_name: '' });
@@ -964,6 +966,7 @@ export default function DirectProjectCreation() {
               }}>
                 <SelectTrigger className="h-10" data-testid="dp-integrator"><SelectValue placeholder="Sin integrador" /></SelectTrigger>
                 <SelectContent>
+                  {form.integrator_name && <SelectItem value="__none__" data-testid="dp-integrator-none">Sin integrador</SelectItem>}
                   {integratorNames.length === 0 ? (
                     <div className="px-3 py-2 text-xs text-slate-400 italic">No hay integradores certificados o en proceso para este tipo de proyecto</div>
                   ) : integratorNames.map((n) => {
@@ -972,7 +975,7 @@ export default function DirectProjectCreation() {
                       <SelectItem key={n} value={n} data-testid={`dp-integrator-option-${n.trim().replace(/\s+/g, '-').toLowerCase()}`}>
                         <span>{n}</span>
                         {badge && <span className="ml-1.5 text-xs font-semibold text-indigo-600">{badge}</span>}
-                        {isInProcessName(certifiedIntegrators, n) && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">En proceso</span>}
+                        {isInProcessName(certifiedIntegrators, n) && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700" data-testid={`dp-integrator-inprocess-${n.trim().replace(/\s+/g, '-').toLowerCase()}`}>En proceso</span>}
                       </SelectItem>
                     );
                   })}

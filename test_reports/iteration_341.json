@@ -1,0 +1,30 @@
+{
+  "summary": "Frontend-only test of the integrator filter by integration_type in the QuoteWizardDialog (Cotizaciones > Nueva Implementación PYME) and in DirectProjectCreation (/direct-projects). Logged in as admin rgonzalez. I compared the UI option lists with GET /api/integrators (501 records), keeping status in [Certificado, En proceso] and matching on type. Every count matched exactly. QuoteWizard: MPOS (Imple+POS)/FAST_TRACK showed 22 MP names plus 'Sin integrador'. Corporación XETUX was listed with the En proceso chip (integrator-inprocess-corporación-xetux). VPOS showed 188 CR names, without XETUX and without [PG] badges. Payment Gateway showed 169 PG names, each with a [PG] badge. Link de Pago/Tokenizador (after the sub-type modal 'Continuar') showed 16 LP/TK names with [LP]/[TK] badges; Yango shows '[TK] [LP]'. Choosing XETUX filled in the app 'Xetux V2.0' (1 app, so it is auto-selected and locked). The summary banner 'Integrador: Corporación XETUX (Xetux V2.0)' appeared, so integrator_id was assigned. DirectProjectCreation: MPOS 22, VPOS 188, PG 169, Link de Pago 16, all matching the expected lists. XETUX showed the En proceso chip, and selecting it locked the app to 'Xetux V2.0'. None of the 28 integrators whose only status is Suspendido appeared in any selector. Names that also have a Certificado record or an En proceso record (e.g. Spartan Tech, Sunacrip, Ecom Software, Ridery) do appear, which is correct. No quotes or projects were saved.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DirectProjectCreation dp-integrator", "issue": "There is no explicit 'Sin integrador' option. Once an integrator is chosen, the user cannot clear it without changing the Tipo de Proyecto. The QuoteWizard does offer 'Sin integrador'.", "selector": "[data-testid='dp-integrator']", "priority": "LOW"},
+      {"component": "DirectProjectCreation En proceso chip", "issue": "The En proceso chip has no data-testid. QuoteWizard uses integrator-inprocess-<slug>; for consistency this could be dp-integrator-inprocess-<slug>.", "selector": "[data-testid^='dp-integrator-option-']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Integrator selectors", "issues": ["Near-duplicate names that differ only by internal whitespace appear as separate entries (e.g. 'Directpay C.A (Pago Directo)' appears twice; 'Harold System C.A.    antes Haroldo Cisnero'). This is a catalog data-quality issue, not a code bug."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: add a 'Sin integrador'/clear option to the dp-integrator select",
+    "Optional: add data-testid to the En proceso chip in DirectProjectCreation"
+  ],
+  "critical_code_review_comments": [
+    "In both onSelect handlers, when a name has 0 apps and more than 1 record (or 2+ apps), integrator_id is set to ''. With 2+ apps the user must pick an app, which is fine. A name with several records and no app_name, however, leaves integrator_id empty with no app dropdown to resolve it. Consider falling back to recs[0].integrator_id.",
+    "isInProcessName is computed over the type-filtered list. A name can therefore show the En proceso chip for one type (e.g. Somos Sistemas C.A. under VPOS) and not for another. This is consistent with the per-type status, but worth knowing.",
+    "QuoteWizardDialog.jsx is 2647 lines and DirectProjectCreation.jsx is 1700 lines; both should be split."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "seed_data_creation": "None. No quotes or projects were saved.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Quote wizard: /quotes > create-quote-button > new-impl-pyme > select-quote-type. LINK_PAGO opens a sub-type modal; click 'Continuar'. The MPOS option label is 'MPOS (Imple + POS)'. Direct projects: /direct-projects with dp-quote-type options MPOS/VPOS/Payment Gateway/Link de Pago, then dp-integrator. Expected counts from /api/integrators: MP 22, CR 188, PG 169, LP/LK/TK 16. Auth: login returns session_token, used as a Bearer token."
+}
