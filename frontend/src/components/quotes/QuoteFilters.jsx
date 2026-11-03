@@ -21,35 +21,22 @@ const QUOTE_FILTER_CATEGORIES = [
   { id: 'repair', name: 'Reparaciones' },
 ];
 
-// Buscador predictivo de clientes (input text + listado filtrado)
-// Reemplaza el Select estándar para evitar scroll manual con muchos clientes.
-const ClientSearchableSelect = ({ clients, value, onChange }) => {
+// Buscador predictivo genérico (input text + listado filtrado).
+const SearchableSelect = ({ items, value, onChange, allLabel, placeholder, testid }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
 
-  // Agrupar por legal_name (mismo nombre → un solo item con todos los IDs)
-  const groups = useMemo(() => {
-    const acc = {};
-    (clients || []).forEach((c) => {
-      const key = (c.legal_name || c.fantasy_name || '').trim().toUpperCase();
-      if (!key) return;
-      (acc[key] = acc[key] || { name: c.legal_name || c.fantasy_name, ids: [] }).ids.push(c.client_id);
-    });
-    return Object.values(acc).sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
-  }, [clients]);
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return groups;
-    return groups.filter((g) => g.name.toLowerCase().includes(q));
-  }, [groups, query]);
+    if (!q) return items;
+    return items.filter((g) => g.searchText.includes(q));
+  }, [items, query]);
 
-  // Texto a mostrar en el trigger según el value seleccionado
   const selectedLabel = useMemo(() => {
-    if (!value || value === 'all') return 'Todos los clientes';
-    const found = groups.find((g) => g.ids.join(',') === value);
-    return found ? found.name : 'Cliente filtrado';
-  }, [value, groups]);
+    if (!value || value === 'all') return allLabel;
+    const found = items.find((g) => g.value === value);
+    return found ? found.label : 'Filtrado';
+  }, [value, items, allLabel]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -57,12 +44,12 @@ const ClientSearchableSelect = ({ clients, value, onChange }) => {
         <button
           type="button"
           className="h-9 w-full px-3 rounded-md border border-input bg-white flex items-center justify-between text-sm hover:bg-slate-50"
-          data-testid="filter-client">
+          data-testid={testid}>
           <span className="truncate text-left">{selectedLabel}</span>
           <ChevronDown size={14} className="text-slate-400 shrink-0 ml-2" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[280px] p-0" align="start">
+      <PopoverContent className="w-[300px] p-0" align="start">
         <div className="p-2 border-b">
           <div className="relative">
             <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -70,33 +57,33 @@ const ClientSearchableSelect = ({ clients, value, onChange }) => {
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar cliente..."
+              placeholder={placeholder}
               className="h-8 pl-7 text-sm"
-              data-testid="filter-client-search" />
+              data-testid={`${testid}-search`} />
           </div>
         </div>
-        <div className="max-h-64 overflow-y-auto py-1" data-testid="filter-client-options">
+        <div className="max-h-64 overflow-y-auto py-1" data-testid={`${testid}-options`}>
           <button
             type="button"
             className={`w-full text-left px-3 py-1.5 text-sm hover:bg-slate-100 ${(!value || value === 'all') ? 'bg-slate-50 font-medium' : ''}`}
             onClick={() => { onChange('all'); setOpen(false); setQuery(''); }}
-            data-testid="filter-client-option-all">
-            Todos los clientes
+            data-testid={`${testid}-option-all`}>
+            {allLabel}
           </button>
           {filtered.length === 0 && (
             <p className="px-3 py-3 text-xs text-slate-400 text-center">Sin coincidencias</p>
           )}
           {filtered.map((g) => {
-            const v = g.ids.join(',');
-            const isSel = v === value;
+            const isSel = g.value === value;
             return (
               <button
-                key={v}
+                key={g.value}
                 type="button"
                 className={`w-full text-left px-3 py-1.5 text-sm hover:bg-slate-100 ${isSel ? 'bg-blue-50 text-blue-700 font-medium' : ''}`}
-                onClick={() => { onChange(v); setOpen(false); setQuery(''); }}
-                data-testid={`filter-client-option-${v}`}>
-                {g.name}
+                onClick={() => { onChange(g.value); setOpen(false); setQuery(''); }}
+                data-testid={`${testid}-option-${g.value}`}>
+                <span className="block truncate">{g.label}</span>
+                {g.sub && <span className="block truncate text-[11px] text-slate-400">{g.sub}</span>}
               </button>
             );
           })}
@@ -106,9 +93,45 @@ const ClientSearchableSelect = ({ clients, value, onChange }) => {
   );
 };
 
+// Clientes agrupados por razón social; búsqueda también por nombre de fantasía.
+const ClientSearchableSelect = ({ clients, value, onChange }) => {
+  const items = useMemo(() => {
+    const acc = {};
+    (clients || []).forEach((c) => {
+      const key = (c.legal_name || c.fantasy_name || '').trim().toUpperCase();
+      if (!key) return;
+      const g = (acc[key] = acc[key] || { name: c.legal_name || c.fantasy_name, ids: [], fantasy: new Set() });
+      g.ids.push(c.client_id);
+      const f = (c.fantasy_name || '').trim();
+      if (f && f.toUpperCase() !== key) g.fantasy.add(f);
+    });
+    return Object.values(acc)
+      .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }))
+      .map((g) => {
+        const fantasy = Array.from(g.fantasy);
+        return {
+          value: g.ids.join(','), label: g.name, sub: fantasy.join(' · '),
+          searchText: [g.name, ...fantasy].join(' ').toLowerCase(),
+        };
+      });
+  }, [clients]);
+  return <SearchableSelect items={items} value={value} onChange={onChange}
+    allLabel="Todos los clientes" placeholder="Buscar razón social o fantasía..." testid="filter-client" />;
+};
+
+const GroupSearchableSelect = ({ groups, value, onChange }) => {
+  const items = useMemo(() => (groups || []).map((g) => ({
+    value: g.ids.join(','), label: g.name, sub: `${g.ids.length} cliente(s)`, searchText: g.name.toLowerCase(),
+  })), [groups]);
+  return <SearchableSelect items={items} value={value} onChange={onChange}
+    allLabel="Todos los grupos" placeholder="Buscar grupo económico..." testid="filter-group" />;
+};
+
 export const QuoteFilters = ({
   clients,
+  groups,
   filterClient, setFilterClient,
+  filterGroup, setFilterGroup,
   filterStatus, setFilterStatus,
   filterCategory, setFilterCategory,
   filterSegment, setFilterSegment,
@@ -117,6 +140,7 @@ export const QuoteFilters = ({
 }) => {
   const clearFilters = () => {
     setFilterClient('');
+    setFilterGroup('');
     setFilterStatus('');
     setFilterCategory('');
     setFilterSegment('');
@@ -124,7 +148,7 @@ export const QuoteFilters = ({
     setFilterDateTo('');
   };
 
-  const hasFilters = filterClient || filterStatus || filterCategory || filterSegment || filterDateFrom || filterDateTo;
+  const hasFilters = filterClient || filterGroup || filterStatus || filterCategory || filterSegment || filterDateFrom || filterDateTo;
 
   return (
     <div className="bg-slate-50 rounded-lg p-4 mb-4 border border-slate-200" data-testid="quote-filters">
@@ -138,10 +162,15 @@ export const QuoteFilters = ({
           </Button>
         )}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-7 gap-3">
         <div>
           <Label className="text-xs text-slate-500 mb-1 block">Cliente</Label>
           <ClientSearchableSelect clients={clients} value={filterClient} onChange={setFilterClient} />
+        </div>
+
+        <div>
+          <Label className="text-xs text-slate-500 mb-1 block">Grupo Económico</Label>
+          <GroupSearchableSelect groups={groups} value={filterGroup} onChange={setFilterGroup} />
         </div>
 
         <div>

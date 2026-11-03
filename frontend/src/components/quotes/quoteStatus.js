@@ -36,13 +36,16 @@ export function getEffectiveStatus(q) {
 // ese estado).
 export function quoteMatchesFilters(quote, filters, { includeStatus = true } = {}) {
   const {
-    filterClient, filterStatus, filterCategory,
+    filterClient, filterGroup, filterStatus, filterCategory,
     filterSegment, filterDateFrom, filterDateTo,
   } = filters;
 
   if (filterClient && filterClient !== 'all') {
     const allowedIds = filterClient.split(',');
     if (!allowedIds.includes(quote.client_id)) return false;
+  }
+  if (filterGroup && filterGroup !== 'all') {
+    if (!filterGroup.split(',').includes(quote.client_id)) return false;
   }
   if (includeStatus && filterStatus && filterStatus !== 'all' && getEffectiveStatus(quote) !== filterStatus) return false;
   if (filterCategory && filterCategory !== 'all') {

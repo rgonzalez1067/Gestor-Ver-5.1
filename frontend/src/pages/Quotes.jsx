@@ -76,6 +76,7 @@ export const Quotes = () => {
   // Estados para filtros rápidos
   const {
     filterClient, setFilterClient,
+    filterGroup, setFilterGroup,
     filterStatus, setFilterStatus,
     filterCategory, setFilterCategory,
     filterSegment, setFilterSegment,
@@ -101,6 +102,21 @@ export const Quotes = () => {
     );
     return (clients || []).filter((c) => ids.has(c.client_id));
   }, [rbacFilteredQuotes, clients]);
+
+  // Grupos Económicos con cotizaciones activas. Sucursales heredan el grupo del Principal.
+  const groupsWithActiveQuotes = useMemo(() => {
+    const byId = new Map((clients || []).map((c) => [c.client_id, c]));
+    const acc = {};
+    clientsWithActiveQuotes.forEach((c) => {
+      const principal = c.parent_client_id ? (byId.get(c.parent_client_id) || c) : c;
+      const gid = c.grupo_economico_id || principal.grupo_economico_id;
+      const gname = (c.grupo_economico || principal.grupo_economico || '').trim();
+      if (!gid && !gname) return;
+      const key = gid || gname.toUpperCase();
+      (acc[key] = acc[key] || { key, name: gname || 'Grupo sin nombre', ids: [] }).ids.push(c.client_id);
+    });
+    return Object.values(acc).sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+  }, [clientsWithActiveQuotes, clients]);
 
   // Migración de BD (solo admin)
   const isAdmin = (currentUser?.role || '').toLowerCase() === 'admin';
@@ -4302,7 +4318,7 @@ export const Quotes = () => {
           {/* Iter49: KPI cards — computados del array de cotizaciones, no requiere backend */}
           <QuotesKpiCards
             quotes={rbacFilteredQuotes}
-            filters={{ filterClient, filterStatus, filterCategory, filterSegment, filterDateFrom, filterDateTo }}
+            filters={{ filterClient, filterGroup, filterStatus, filterCategory, filterSegment, filterDateFrom, filterDateTo }}
           />
 
           {/* Botones de Nueva Cotización — Visibilidad por Permisos Especiales */}
@@ -4316,7 +4332,9 @@ export const Quotes = () => {
           {/* Filtros Rápidos */}
           <QuoteFilters
             clients={clientsWithActiveQuotes}
+            groups={groupsWithActiveQuotes}
             filterClient={filterClient} setFilterClient={setFilterClient}
+            filterGroup={filterGroup} setFilterGroup={setFilterGroup}
             filterStatus={filterStatus} setFilterStatus={setFilterStatus}
             filterCategory={filterCategory} setFilterCategory={setFilterCategory}
             filterSegment={filterSegment} setFilterSegment={setFilterSegment}
@@ -4376,6 +4394,7 @@ export const Quotes = () => {
               setEmailModalOpen(true);
             }}
             filterClient={filterClient}
+            filterGroup={filterGroup}
             filterStatus={filterStatus}
             filterCategory={filterCategory}
             filterSegment={filterSegment}

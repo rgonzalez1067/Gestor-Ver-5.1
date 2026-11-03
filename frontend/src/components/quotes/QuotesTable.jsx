@@ -44,7 +44,7 @@ const getQuoteTypeName = (type, variant) => {
 
 export const QuotesTable = ({
   quotes, clients,
-  filterClient, filterStatus, filterCategory, filterSegment, filterDateFrom, filterDateTo,
+  filterClient, filterGroup, filterStatus, filterCategory, filterSegment, filterDateFrom, filterDateTo,
   actionLoading, canEdit,
   highlightedQuoteNumber,
   onOpenAnexos, onEditQuote, onSendToClient,
@@ -199,7 +199,7 @@ export const QuotesTable = ({
   const getEffectiveStatus = getEffectiveStatusShared;
 
   const filteredQuotes = quotes.filter(quote => quoteMatchesFilters(quote, {
-    filterClient, filterStatus, filterCategory, filterSegment, filterDateFrom, filterDateTo,
+    filterClient, filterGroup, filterStatus, filterCategory, filterSegment, filterDateFrom, filterDateTo,
   }, { includeStatus: true }));
 
   // === Doble scrollbar sincronizado (arriba + abajo) ===
@@ -217,7 +217,7 @@ export const QuotesTable = ({
     if (bottomScrollRef.current) {
       setTableScrollWidth(bottomScrollRef.current.scrollWidth);
     }
-  }, [quotes, filterClient, filterStatus, filterCategory, filterSegment]);
+  }, [quotes, filterClient, filterGroup, filterStatus, filterCategory, filterSegment]);
 
   const onTopScroll = (e) => {
     if (syncingRef.current) return;

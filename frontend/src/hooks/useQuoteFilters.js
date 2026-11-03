@@ -6,6 +6,7 @@ import { useState, useCallback } from 'react';
  */
 export function useQuoteFilters() {
   const [filterClient, setFilterClient] = useState('');
+  const [filterGroup, setFilterGroup] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterSegment, setFilterSegment] = useState('');
@@ -14,6 +15,7 @@ export function useQuoteFilters() {
 
   const clearFilters = useCallback(() => {
     setFilterClient('');
+    setFilterGroup('');
     setFilterStatus('');
     setFilterCategory('');
     setFilterSegment('');
@@ -23,6 +25,7 @@ export function useQuoteFilters() {
 
   return {
     filterClient, setFilterClient,
+    filterGroup, setFilterGroup,
     filterStatus, setFilterStatus,
     filterCategory, setFilterCategory,
     filterSegment, setFilterSegment,
