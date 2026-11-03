@@ -604,9 +604,11 @@ async def send_mass_communication(
 
 async def _mass_dispatch(recipients: List[str], template_id: str, internal_doc_ids: str,
                          files: List[UploadFile], current_user: dict, folder: str,
-                         action: str, target_label: str, extra_log: Optional[dict] = None) -> dict:
-    """Envío masivo BCC con plantilla INTEGRADORES + adjuntos + bitácora (compartido)."""
-    tpl = await db.email_templates.find_one({"template_id": template_id}, {"_id": 0})
+                         action: str, target_label: str, extra_log: Optional[dict] = None,
+                         batches: Optional[List[dict]] = None, tpl: Optional[dict] = None) -> dict:
+    """Envío masivo BCC con plantilla INTEGRADORES + adjuntos + bitácora (compartido).
+    `batches` = [{"to": [...], "bcc": bool, "vars": {...}}] para envíos personalizados."""
+    tpl = tpl or await db.email_templates.find_one({"template_id": template_id}, {"_id": 0})
     if not tpl:
         raise HTTPException(status_code=404, detail="Plantilla no encontrada")
 
@@ -653,33 +655,61 @@ async def _mass_dispatch(recipients: List[str], template_id: str, internal_doc_i
 
     from config import SENDER_EMAIL
     mass_sender = await resolve_sender_for_area("integradores")
-    result = await send_email(
-        to=[mass_sender or SENDER_EMAIL],
-        subject=subject,
-        html=html,
-        action=action,
-        attachments=email_attachments or None,
-        bcc=recipients,
-        sender=mass_sender,
-    )
+    batches = batches or [{"to": recipients, "bcc": True, "vars": {}}]
+    statuses, errors = [], []
+    for bt in batches:
+        b_subject = _render_vars(subject, bt.get("vars") or {})
+        b_html = _render_vars(html, bt.get("vars") or {})
+        try:
+            r = await send_email(
+                to=bt["to"] if not bt.get("bcc") else [mass_sender or SENDER_EMAIL],
+                subject=b_subject, html=b_html, action=action,
+                attachments=email_attachments or None,
+                bcc=bt["to"] if bt.get("bcc") else None,
+                sender=mass_sender,
+            )
+            statuses.append(r.get("status"))
+        except Exception as e:  # noqa: BLE001
+            statuses.append("error"); errors.append(f"{', '.join(bt['to'])}: {e}")
+    result = {"status": statuses[0] if len(set(statuses)) == 1 else "partial"}
+    mode_label = "en BCC" if len(batches) == 1 else f"en {len(batches)} envío(s) personalizados"
 
     user_name = f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip() or current_user.get("email", "")
     now = datetime.now(timezone.utc).isoformat()
     await db.bitacora.insert_one({
         "entry_id": f"bit_{uuid.uuid4().hex[:12]}",
         "action": action,
-        "description": f"[Comunicación masiva] '{subject}' → {len(recipients)} {target_label} en BCC"
+        "description": f"[Comunicación masiva] '{subject}' → {len(recipients)} {target_label} {mode_label}"
                        + (f" ({len(attachment_names)} adjunto(s))" if attachment_names else ""),
         "date": now[:10], "created_at": now,
         "created_by": current_user.get("email", ""), "created_by_name": user_name,
         "recipients_count": len(recipients), "template_id": template_id,
         "attachments": attachment_names, "email_status": result.get("status"),
+        "batches_count": len(batches), "batch_errors": errors,
         **(extra_log or {}),
     })
-    return {"status": result.get("status"), "subject": subject, "attachments_count": len(attachment_names)}
+    return {"status": result.get("status"), "subject": subject, "attachments_count": len(attachment_names),
+            "batches_count": len(batches), "batch_errors": errors}
 
 
-# ==================== COMUNICACIÓN MASIVA A BANCOS/ENTES (BCC) ====================
+# ==================== COMUNICACIÓN MASIVA A BANCOS/ENTES ====================
+
+BANK_VAR_KEYS = ["banco_nombre", "banco_rif", "banco_codigo", "banco_tipo", "banco_pais", "banco_procesador"]
+CONTACT_VAR_KEYS = ["contacto_nombre", "contacto_cargo", "contacto_email", "contacto_telefono"]
+
+
+def _build_bank_vars(bank: dict) -> dict:
+    return {
+        "banco_nombre": bank.get("name", ""), "banco_rif": bank.get("rif", ""),
+        "banco_codigo": bank.get("bank_code", ""), "banco_tipo": bank.get("type", ""),
+        "banco_pais": bank.get("country", ""), "banco_procesador": bank.get("procesador", ""),
+    }
+
+
+def _uses_vars(tpl: dict, keys: List[str]) -> bool:
+    text = f"{tpl.get('subject', '')} {tpl.get('body_html', '')} {tpl.get('body', '')}"
+    return any(f"{{{k}}}" in text for k in keys)
+
 
 def _bank_contact_rows(bank: dict) -> List[dict]:
     from routes.banks import ensure_bank_contacts
@@ -693,6 +723,7 @@ def _bank_contact_rows(bank: dict) -> List[dict]:
         rows.append({
             "key": f"{bank['bank_id']}::{stable}",
             "name": name, "email": email, "position": (c.get("position") or "").strip(),
+            "phone": (c.get("phone") or "").strip(),
             "has_email": bool(email and "@" in email),
         })
     return rows
@@ -737,27 +768,56 @@ async def send_bank_mass_communication(
     wanted = set(keys)
     bank_ids = list({k.split("::", 1)[0] for k in wanted})
     recipients, seen, banks_hit = [], set(), set()
+    picked = []  # (bank_vars, contact_row)
     async for b in db.banks.find({"bank_id": {"$in": bank_ids}}, {"_id": 0}):
+        bvars = _build_bank_vars(b)
         for r in _bank_contact_rows(b):
             if r["key"] in wanted and r["has_email"] and r["email"].lower() not in seen:
                 recipients.append(r["email"]); seen.add(r["email"].lower()); banks_hit.add(b["bank_id"])
+                picked.append((b["bank_id"], bvars, r))
     if not recipients:
         raise HTTPException(status_code=400, detail="Ninguno de los contactos seleccionados tiene un correo válido")
+
+    tpl = await db.email_templates.find_one({"template_id": template_id}, {"_id": 0})
+    if not tpl:
+        raise HTTPException(status_code=404, detail="Plantilla no encontrada")
+    # Modo automático: contacto → 1 correo por contacto; banco → 1 BCC por banco; sin variables → 1 BCC.
+    if _uses_vars(tpl, CONTACT_VAR_KEYS):
+        mode = "per_contact"
+        batches = [{"to": [r["email"]], "bcc": False, "vars": {
+            **bv, "contacto_nombre": r["name"], "contacto_cargo": r["position"],
+            "contacto_email": r["email"], "contacto_telefono": r["phone"]}} for _, bv, r in picked]
+    elif _uses_vars(tpl, BANK_VAR_KEYS):
+        mode = "per_bank"
+        grouped = {}
+        for bid, bv, r in picked:
+            grouped.setdefault(bid, {"to": [], "bcc": True, "vars": bv})["to"].append(r["email"])
+        batches = list(grouped.values())
+    else:
+        mode, batches = "single_bcc", None
 
     meta = await _mass_dispatch(
         recipients, template_id, internal_doc_ids, files, current_user,
         folder="bancos_masivo", action="bank_mass_communication", target_label="contacto(s) de Bancos/Entes",
-        extra_log={"recipients": recipients, "bank_ids": sorted(banks_hit)},
+        extra_log={"recipients": recipients, "bank_ids": sorted(banks_hit), "send_mode": mode},
+        batches=batches, tpl=tpl,
     )
+    mode_msg = {"per_contact": f"en {meta['batches_count']} correo(s) individuales",
+                "per_bank": f"en {meta['batches_count']} correo(s) por Banco/Ente (BCC)",
+                "single_bcc": "en BCC"}[mode]
     return {
         "status": meta["status"],
+        "send_mode": mode,
+        "batches_count": meta["batches_count"],
+        "batch_errors": meta["batch_errors"],
         "recipients_count": len(recipients),
         "recipients": recipients,
         "banks_count": len(banks_hit),
         "attachments_count": meta["attachments_count"],
         "subject": meta["subject"],
-        "message": f"Comunicación masiva enviada en BCC a {len(recipients)} contacto(s) de {len(banks_hit)} Banco(s)/Ente(s).",
+        "message": f"Comunicación masiva enviada {mode_msg} a {len(recipients)} contacto(s) de {len(banks_hit)} Banco(s)/Ente(s).",
     }
+
 
 
 

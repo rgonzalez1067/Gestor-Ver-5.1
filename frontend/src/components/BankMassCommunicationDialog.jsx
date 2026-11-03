@@ -80,6 +80,13 @@ export const BankMassCommunicationDialog = ({ open, onOpenChange }) => {
   }, [selected, allKeys]);
   const totalWithEmail = banks.reduce((a, b) => a + b.contacts.filter(c => c.has_email).length, 0);
   const tpl = templates.find(t => t.template_id === templateId);
+  const sendMode = useMemo(() => {
+    const txt = `${tpl?.subject || ''} ${tpl?.body_html || ''} ${tpl?.body || ''}`;
+    if (/\{\{?contacto_(nombre|cargo|email|telefono)\}?\}/.test(txt)) return 'per_contact';
+    if (/\{\{?banco_(nombre|rif|codigo|tipo|pais|procesador)\}?\}/.test(txt)) return 'per_bank';
+    return 'single';
+  }, [tpl]);
+  const selectedBanks = useMemo(() => new Set(Array.from(selected).map(k => k.split('::')[0])).size, [selected]);
 
   const toggleKeys = (keys) => {
     const next = new Set(selected);
@@ -165,6 +172,13 @@ export const BankMassCommunicationDialog = ({ open, onOpenChange }) => {
                 <Button variant="outline" size="icon" disabled={!tpl} onClick={() => setPreviewOpen(true)} title="Vista previa" data-testid="bank-mass-template-preview-btn"><Eye size={16} /></Button>
               </div>
               {templates.length === 0 && <p className="text-xs text-slate-400 mt-1">No hay plantillas en la biblioteca de Integradores.</p>}
+              {tpl && (
+                <p className="text-[11px] mt-1.5 px-2 py-1 rounded bg-slate-50 border border-slate-200 text-slate-600" data-testid="bank-mass-send-mode">
+                  Modo de envío: <strong>{sendMode === 'per_contact' ? `un correo individual por contacto (${selected.size})`
+                    : sendMode === 'per_bank' ? `un correo por Banco/Ente en BCC (${selectedBanks})`
+                    : 'un solo correo en BCC'}</strong>
+                </p>
+              )}
             </div>
             <div>
               <Label className="text-sm font-medium flex items-center gap-1"><FileText size={14} />Documentos del repositorio</Label>

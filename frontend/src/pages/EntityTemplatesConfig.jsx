@@ -26,8 +26,11 @@ export const EntityTemplatesConfig = ({
   permissionKey,
   templateIdPrefix = 'tpl',
   variablesHint = '',
+  variableGroups = null,
 }) => {
   const navigate = useNavigate();
+  const editorRef = useRef(null);
+  const subjectFocusRef = useRef(false);
   const { user: currentUser } = usePermission(permissionKey);
   const isAdmin = currentUser?.role === 'admin';
 
@@ -183,12 +186,41 @@ export const EntityTemplatesConfig = ({
                 </DialogHeader>
                 <div className="space-y-3 flex-1 min-h-0 overflow-y-auto px-6 py-4" data-testid="entity-template-body">
                   <div><Label className="text-xs">Nombre</Label><Input value={tplForm.name} onChange={e => setTplForm({...tplForm, name: e.target.value})} /></div>
-                  <div><Label className="text-xs">Asunto</Label><Input value={tplForm.subject} onChange={e => setTplForm({...tplForm, subject: e.target.value})} /></div>
+                  <div><Label className="text-xs">Asunto</Label><Input value={tplForm.subject}
+                    onFocus={() => { subjectFocusRef.current = true; }}
+                    onChange={e => setTplForm({...tplForm, subject: e.target.value})} data-testid="entity-tpl-subject" /></div>
+                  {variableGroups && (
+                    <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50 space-y-2" data-testid="entity-tpl-variables">
+                      <p className="text-[11px] text-slate-500">Clic en una variable para insertarla en el cuerpo (o en el asunto si es el último campo editado).</p>
+                      {variableGroups.map(g => (
+                        <div key={g.title}>
+                          <p className="text-[11px] font-semibold text-slate-600 mb-1">{g.title}{g.note && <span className="font-normal text-slate-400"> — {g.note}</span>}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {g.vars.map(v => (
+                              <button key={v.key} type="button" title={v.label}
+                                className={`text-[11px] px-2 py-0.5 rounded border font-mono transition-colors ${g.tone || 'bg-white border-blue-200 text-blue-700 hover:bg-blue-50'}`}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                  const token = `{{${v.key}}}`;
+                                  if (subjectFocusRef.current) setTplForm(f => ({ ...f, subject: `${f.subject}${token}` }));
+                                  else editorRef.current?.insertText(token);
+                                }}
+                                data-testid={`entity-tpl-var-${v.key}`}>
+                                {`{{${v.key}}}`}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div>
                     <Label className="text-xs">Cuerpo del Mensaje</Label>
+                    <div onMouseDown={() => { subjectFocusRef.current = false; }}>
                     <RichTextEditor
+                      ref={editorRef}
                       value={tplForm.body_html}
-                      onChange={(html) => setTplForm({ ...tplForm, body_html: html })}
+                      onChange={(html) => { subjectFocusRef.current = false; setTplForm({ ...tplForm, body_html: html }); }}
                       maxChars={20000}
                       hardLimit={false}
                       placeholder="Redacte aquí el cuerpo del correo..."
@@ -197,7 +229,8 @@ export const EntityTemplatesConfig = ({
                       minHeight={240}
                       maxHeight={400}
                     />
-                    {variablesHint && <p className="text-[10px] text-slate-400 mt-1">Variables: {variablesHint}</p>}
+                    </div>
+                    {variablesHint && !variableGroups && <p className="text-[10px] text-slate-400 mt-1">Variables: {variablesHint}</p>}
                   </div>
                 </div>
                 <DialogFooter className="px-6 py-4 border-t border-slate-100 bg-white shrink-0">
@@ -278,6 +311,26 @@ export const EntityTemplatesConfig = ({
 };
 
 // Wrappers específicos por módulo
+const INTEGRATOR_VARIABLE_GROUPS = [
+  { title: 'Integradores', vars: [
+    { key: 'nombre_integrador', label: 'Nombre del Integrador' }, { key: 'razon_social', label: 'Razón Social' },
+    { key: 'rif', label: 'RIF' }, { key: 'email', label: 'Correo' }, { key: 'telefono', label: 'Teléfono' },
+    { key: 'contacto', label: 'Contacto' }, { key: 'estado', label: 'Estatus' },
+    { key: 'aplicativo', label: 'Aplicativo' }, { key: 'fase', label: 'Fase' },
+  ] },
+  { title: 'Bancos y Entes', note: 'un correo por Banco/Ente (BCC)', tone: 'bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50', vars: [
+    { key: 'banco_nombre', label: 'Nombre del Banco/Ente' }, { key: 'banco_rif', label: 'RIF del Banco/Ente' },
+    { key: 'banco_codigo', label: 'Código bancario' }, { key: 'banco_tipo', label: 'Tipo (Banco/Ente)' },
+    { key: 'banco_pais', label: 'País' }, { key: 'banco_procesador', label: 'Procesador' },
+  ] },
+  { title: 'Contacto del Banco/Ente', note: 'un correo individual por contacto', tone: 'bg-white border-amber-200 text-amber-700 hover:bg-amber-50', vars: [
+    { key: 'contacto_nombre', label: 'Nombre del contacto' }, { key: 'contacto_cargo', label: 'Cargo' },
+    { key: 'contacto_email', label: 'Correo del contacto' }, { key: 'contacto_telefono', label: 'Teléfono del contacto' },
+  ] },
+  { title: 'Generales', tone: 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100', vars: [
+    { key: 'fecha_sistema', label: 'Fecha del sistema' }, { key: 'Firma_Notificacion_Global', label: 'Firma del usuario' },
+  ] },
+];
 export const IntegratorTemplatesConfig = () => (
   <EntityTemplatesConfig
     context="INTEGRADORES"
@@ -287,7 +340,8 @@ export const IntegratorTemplatesConfig = () => (
     backLabel="Integradores"
     permissionKey="integradores"
     templateIdPrefix="int_tpl"
-    variablesHint="{{nombre_integrador}}, {{razon_social}}, {{rif}}, {{email}}, {{telefono}}, {{contacto}}, {{estado}}, {{aplicativo}}, {{fase}}"
+    variablesHint="{{nombre_integrador}}, {{razon_social}}, {{rif}}, {{email}}, {{telefono}}, {{contacto}}, {{estado}}, {{aplicativo}}, {{fase}} · Bancos/Entes: {{banco_nombre}}, {{banco_rif}}, {{banco_codigo}}, {{banco_tipo}}, {{banco_pais}}, {{banco_procesador}}, {{contacto_nombre}}, {{contacto_cargo}}, {{contacto_email}}, {{contacto_telefono}}"
+    variableGroups={INTEGRATOR_VARIABLE_GROUPS}
   />
 );
 
