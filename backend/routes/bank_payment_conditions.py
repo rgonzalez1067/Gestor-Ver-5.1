@@ -38,9 +38,8 @@ async def bpc_list_medios_pago(bank_id: Optional[str] = None, authorization: Opt
     """Medios de Pago que cumplen ESTRICTAMENTE Categoria='Producto' AND Tipo='Setup'
     (en el esquema: service_type='Producto' AND application_type='setup').
 
-    Si se recibe `bank_id`, se filtra además a los medios que ESE banco tiene
-    certificados (igual que en Cotizaciones): match por nombre contra los
-    `products` del banco, excluyendo los que están en pre_producción."""
+    Si se recibe `bank_id`, se filtra además a los medios asociados a ESE banco
+    (en cualquier fase operativa) y se devuelve su `operational_status`."""
     await require_permission(authorization, MODULE, "read")
     docs = await db.services.find(
         {"service_type": "Producto", "application_type": "setup"},
@@ -49,12 +48,15 @@ async def bpc_list_medios_pago(bank_id: Optional[str] = None, authorization: Opt
 
     if bank_id:
         bank = await db.banks.find_one({"bank_id": bank_id}, {"_id": 0, "products": 1})
-        certified = {
-            (p.get("product_name") or "").strip().lower()
+        status_by_name = {
+            (p.get("product_name") or "").strip().lower():
+                p.get("operational_status") or ("Imple" if p.get("pre_production") else "Producción")
             for p in (bank or {}).get("products", [])
-            if not p.get("pre_production")
         }
-        docs = [d for d in docs if (d.get("name") or "").strip().lower() in certified]
+        docs = [
+            {**d, "operational_status": status_by_name[(d.get("name") or "").strip().lower()]}
+            for d in docs if (d.get("name") or "").strip().lower() in status_by_name
+        ]
 
     docs.sort(key=lambda s: (s.get("name") or "").lower())
     return docs

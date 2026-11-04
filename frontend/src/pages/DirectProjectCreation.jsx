@@ -15,6 +15,8 @@ import { ProcessorLinkBankModal } from '../components/shared/ProcessorLinkBankMo
 import { DirectMultiRifSection } from '../components/projects/DirectMultiRifSection';
 import { toast } from 'sonner';
 import api from '../utils/api';
+import { PhaseTag } from '../components/PhaseTag';
+import { getProductStatus } from '../utils/bankProductStatus';
 import { integratorModalityMatch, shouldShowIntegrationBadge, integrationTypesForName, formatIntegrationBadge, isSelectableIntegrator, isInProcessName } from '../utils/integratorModality';
 import { usePermission } from '../hooks/usePermission';
 
@@ -418,7 +420,7 @@ export default function DirectProjectCreation() {
       ...f,
       boxes_grid: [
         ...f.boxes_grid,
-        ...chosen.map((p) => ({ quantity: qty, bank_name: reelBank, product_name: p.product_name, store_name: '' })),
+        ...chosen.map((p) => ({ quantity: qty, bank_name: reelBank, product_name: p.product_name, store_name: '', operational_status: getProductStatus(p) })),
       ],
     }));
     toast.success(
@@ -1433,7 +1435,8 @@ export default function DirectProjectCreation() {
                           onCheckedChange={() => toggleReelProduct(p.product_name)}
                           data-testid={`dp-reel-check-${p.product_name}`}
                         />
-                        <span className="text-xs text-slate-700">{p.product_name}</span>
+                        <span className="text-xs text-slate-700 flex-1">{p.product_name}</span>
+                        <PhaseTag status={getProductStatus(p)} testId={`dp-reel-phase-${p.product_name}`} />
                       </label>
                     ))}
                   </div>
@@ -1498,7 +1501,7 @@ export default function DirectProjectCreation() {
                       <span className="text-sm text-slate-700 font-medium" data-testid={`dp-box-${i}-bank`}>{b.bank_name}</span>
                     </td>
                     <td className="px-3 py-1.5">
-                      <span className="text-sm text-slate-700" data-testid={`dp-box-${i}-product`}>{b.product_name}</span>
+                      <span className="text-sm text-slate-700 inline-flex items-center gap-2" data-testid={`dp-box-${i}-product`}>{b.product_name}<PhaseTag status={b.operational_status} testId={`dp-box-${i}-phase`} /></span>
                     </td>
                     {form.is_multistore && (
                       <td className="px-3 py-1.5">

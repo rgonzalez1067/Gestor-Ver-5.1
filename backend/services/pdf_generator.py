@@ -1,8 +1,9 @@
 """
 Generador de PDFs dinámico para cotizaciones VPOS y Payment Gateway.
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional
+import re
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -15,7 +16,15 @@ import os
 import logging
 from datetime import datetime, timedelta
 
-from models import QuotePDFItem
+from models import QuotePDFItem, with_phase_tag
+
+
+def _short_concepto(concepto: str, limit: int = 45) -> str:
+    """Trunca el concepto conservando la etiqueta de fase final '[...]'."""
+    m = re.search(r" \[[^\]]+\]$", concepto)
+    tag = m.group(0) if m else ""
+    base = concepto[: len(concepto) - len(tag)]
+    return (base[:limit] + ("..." if len(base) > limit else "")) + tag
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +61,15 @@ class TemplateQuotePDFRequest(BaseModel):
     pg_setup_items: List[dict] = []  # Items de setup PG: {concepto, costo, banco, observacion}
     pg_recurring_cost: Optional[dict] = None  # {rangos: [{rango_label, costo_base_total, precio_tope}], num_products: int}
     include_recurring: bool = True  # Si False, omite la sección de costos recurrentes del PDF
+
+    @field_validator("pg_setup_items")
+    @classmethod
+    def _tag_pg_items(cls, items):
+        return [
+            {**it, "concepto": with_phase_tag(str(it.get("concepto", "")), it.get("operational_status"))}
+            if isinstance(it, dict) else it
+            for it in items
+        ]
     descuento: float = 0
     descuento_setup: float = 0
     descuento_recurrente: float = 0
@@ -483,7 +501,7 @@ class DynamicQuotePDFGenerator:
             
             table_data.append([
                 str(i),
-                item.concepto[:45] + ('...' if len(item.concepto) > 45 else ''),
+                _short_concepto(item.concepto),
                 str(item.cantidad_cajas),
                 str(item.cantidad_bancos),
                 f"${item.tarifa:.2f}",

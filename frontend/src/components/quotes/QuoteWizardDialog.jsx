@@ -19,6 +19,7 @@ import { QUOTE_TYPES, PRICING_MODELS, SETUP_CONCEPTS } from './constants';
 import { integratorModalityMatch, shouldShowIntegrationBadge, integrationTypesForName, formatIntegrationBadge, isSelectableIntegrator, isInProcessName } from '../../utils/integratorModality';
 import { toast } from 'sonner';
 import { ProjectFeaturesField } from '../ProjectFeaturesField';
+import { PhaseTag } from '../PhaseTag';
 
 export const QuoteWizardDialog = ({ ctx }) => {
   const {
@@ -1327,6 +1328,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                             <tr key={index} className={`hover:bg-slate-50 ${item.fixed ? 'bg-amber-50' : ''}`}>
                               <td className="border p-2 text-sm font-medium">
                                 {item.concepto}
+                                <PhaseTag status={item.operational_status} testId={`pg-setup-phase-${index}`} className="ml-2" />
                                 {item.fixed && <span className="ml-2 text-xs bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded">Fijo</span>}
                               </td>
                               <td className="border p-2">
@@ -1725,7 +1727,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                           <tr key={`add-setup-${index}`} className="bg-white border-l-4 border-l-amber-500">
                             <td className="px-3 py-2 text-center font-medium border border-slate-300">{quoteData.setup_items.length + index + 1}</td>
                             <td className="px-3 py-2 border border-slate-300">
-                              <div className="font-medium text-slate-900">{item.medio_pago_name}</div>
+                              <div className="font-medium text-slate-900 flex items-center gap-2">{item.medio_pago_name}<PhaseTag status={item.operational_status} testId={`additional-phase-${index}`} /></div>
                               <div className="text-xs text-slate-500">{item.bank_name}</div>
                             </td>
                             <td className="px-3 py-2 text-center border border-slate-300">
@@ -2377,6 +2379,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                                   bankProductMap[key] = {
                                     bank: bankName,
                                     product: productName,
+                                    status: item.operational_status,
                                     cajas: 0
                                   };
                                 }
@@ -2398,7 +2401,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                             return rows.map((row, idx) => (
                               <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
                                 <td className="px-4 py-2 border border-slate-200 text-slate-900">{row.bank}</td>
-                                <td className="px-4 py-2 border border-slate-200 text-slate-700">{row.product}</td>
+                                <td className="px-4 py-2 border border-slate-200 text-slate-700"><span className="inline-flex items-center gap-2">{row.product}<PhaseTag status={row.status} testId={`summary-phase-${idx}`} /></span></td>
                                 <td className="px-4 py-2 border border-slate-200 text-center font-medium text-slate-900">{row.cajas}</td>
                               </tr>
                             ));

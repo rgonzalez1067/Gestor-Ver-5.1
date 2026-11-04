@@ -4,6 +4,8 @@ import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
 import { Checkbox } from '../components/ui/checkbox';
 import { ChevronDown, Search, CheckSquare, Square, Plus, X } from 'lucide-react';
+import { PhaseTag } from './PhaseTag';
+import { getProductStatus } from '../utils/bankProductStatus';
 
 export const MultiProductSelector = ({
   products = [],
@@ -176,6 +178,7 @@ export const MultiProductSelector = ({
                     className="h-4 w-4"
                   />
                   <span className="flex-1 truncate">{product.product_name}</span>
+                  <PhaseTag status={getProductStatus(product)} testId={`multi-product-phase-${product.product_name}`} />
                   {product.isDuplicate && (
                     <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full shrink-0">Ya agregado</span>
                   )}

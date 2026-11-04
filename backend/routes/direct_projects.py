@@ -68,6 +68,7 @@ class DirectProjectBox(BaseModel):
     bank_name: str
     product_name: str
     store_name: Optional[str] = None  # solo para multitienda
+    operational_status: Optional[str] = None  # fase del medio de pago al registrar
 
 
 class DirectProjectStore(BaseModel):
@@ -181,13 +182,17 @@ def _grid_to_services(boxes_grid) -> list[dict]:
     dicts con esas mismas claves.
     """
     grid_pairs: dict[tuple[str, str], int] = {}
+    statuses: dict[tuple[str, str], str] = {}
     for box in boxes_grid or []:
         bn = (getattr(box, "bank_name", None) or (box.get("bank_name") if isinstance(box, dict) else "") or "").strip()
         pn = (getattr(box, "product_name", None) or (box.get("product_name") if isinstance(box, dict) else "") or "").strip()
         qty = int(getattr(box, "quantity", None) or (box.get("quantity") if isinstance(box, dict) else 0) or 0)
+        st = getattr(box, "operational_status", None) or (box.get("operational_status") if isinstance(box, dict) else None)
         if not bn or not pn:
             continue
         grid_pairs[(bn, pn)] = grid_pairs.get((bn, pn), 0) + qty
+        if st:
+            statuses[(bn, pn)] = st
     out = []
     for (bank, product), qty in grid_pairs.items():
         out.append({
@@ -198,6 +203,7 @@ def _grid_to_services(boxes_grid) -> list[dict]:
             "quantity": qty,
             "price_usd": 0,
             "total_usd": 0,
+            "operational_status": statuses.get((bank, product)),
         })
     return out
 

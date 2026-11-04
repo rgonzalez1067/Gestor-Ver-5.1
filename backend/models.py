@@ -583,6 +583,7 @@ class QuoteItem(BaseModel):
     bancosOverride: Optional[int] = None
     totalOverride: Optional[float] = None
     isAutoLinked: Optional[bool] = None
+    operational_status: Optional[str] = None  # Fase del medio de pago al cotizar
 
 # Modelo para items de cotización de equipos
 class EquipmentQuoteItem(BaseModel):
@@ -981,6 +982,13 @@ class Project(BaseModel):
     completed_at: Optional[str] = None
 
 # Modelo para generar PDF desde frontend
+def with_phase_tag(name: str, status: Optional[str]) -> str:
+    """Agrega '[Fase]' al nombre del medio de pago (idempotente)."""
+    tag = f" [{status}]" if status else ""
+    if not tag or (name or "").endswith(tag):
+        return name
+    return f"{name}{tag}"
+
 class QuotePDFItem(BaseModel):
     concepto: str
     cantidad_cajas: int = 1
@@ -989,6 +997,12 @@ class QuotePDFItem(BaseModel):
     total: float = 0
     bank_name: Optional[str] = None  # Para la matriz de distribución
     tipo_corp: Optional[str] = None  # "Derecho de Uso", "Apoyo Técnico", "Soporte y Monitoreo"
+    operational_status: Optional[str] = None  # Fase del medio de pago al cotizar (DESA..Producción)
+
+    @model_validator(mode="after")
+    def _apply_phase_tag(self):
+        self.concepto = with_phase_tag(self.concepto, self.operational_status)
+        return self
 
 class QuotePDFRequest(BaseModel):
     cliente_nombre: str

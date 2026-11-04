@@ -1231,7 +1231,8 @@ async def regenerate_quote_pdf(quote_id: str, data: dict = {}, authorization: Op
                     "cantidad_bancos": svc.get("cantidad_bancos", 1),
                     "tarifa": svc.get("tarifa_setup") or svc.get("unit_price_usd", 0),
                     "bank_name": svc.get("bank_name") or None,
-                    "tipo_corp": svc.get("tipo_corp", "")
+                    "tipo_corp": svc.get("tipo_corp", ""),
+                    "operational_status": svc.get("operational_status")
                 })
                 # Also add to additional_items for the Resumen Ejecutivo bank/product table
                 additional_items.append({
@@ -1240,7 +1241,8 @@ async def regenerate_quote_pdf(quote_id: str, data: dict = {}, authorization: Op
                     "cantidad_bancos": svc.get("cantidad_bancos", 1),
                     "tarifa": svc.get("tarifa_setup") or svc.get("unit_price_usd", 0),
                     "bank_name": svc.get("bank_name") or None,
-                    "tipo_corp": svc.get("tipo_corp", "")
+                    "tipo_corp": svc.get("tipo_corp", ""),
+                    "operational_status": svc.get("operational_status")
                 })
             elif item_type == "production_recurring":
                 production_items.append(pdf_item)

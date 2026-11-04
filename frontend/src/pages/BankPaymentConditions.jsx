@@ -6,6 +6,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { BookOpen, Save, Lock, Building2, CreditCard } from 'lucide-react';
 import api from '../utils/api';
+import { PhaseTag } from '../components/PhaseTag';
 import { toast } from 'sonner';
 import { usePermission } from '../hooks/usePermission';
 
@@ -129,7 +130,7 @@ export default function BankPaymentConditions() {
                   </SelectTrigger>
                   <SelectContent>
                     {medios.map((s) => (
-                      <SelectItem key={s.service_id} value={s.service_id} data-testid={`bpc-medio-option-${s.service_id}`}>{s.name}</SelectItem>
+                      <SelectItem key={s.service_id} value={s.service_id} data-testid={`bpc-medio-option-${s.service_id}`}><span className="inline-flex items-center gap-2">{s.name}<PhaseTag status={s.operational_status} testId={`bpc-medio-phase-${s.service_id}`} /></span></SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

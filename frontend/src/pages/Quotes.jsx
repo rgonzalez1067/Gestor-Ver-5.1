@@ -37,6 +37,7 @@ import { QuoteModals } from '../components/quotes/QuoteModals';
 import { QuotesBundleMigrationModal } from '../components/quotes/QuotesBundleMigrationModal';
 import { QUOTE_TYPES, PRICING_MODELS, SETUP_CONCEPTS, RECURRING_BASIC_CONCEPTS, RECURRING_OTHER_CONCEPTS, STATUS_COLORS, STATUS_DISPLAY_NAMES, QUOTE_CATEGORY_LABELS, ACTION_LABELS } from '../components/quotes/constants';
 import api from '../utils/api';
+import { getProductStatus } from '../utils/bankProductStatus';
 import { contactMatchesPurpose, purposeForQuoteCategory } from '../utils/contactPurposes';
 import { toast } from 'sonner';
 import { usePermission } from '../hooks/usePermission';
@@ -868,7 +869,7 @@ export const Quotes = () => {
     if (bank && bank.products) {
       const compatibilityField = getCompatibilityField(quoteData.quote_type);
       // Excluir productos en "Fase Previa a Producción" (no disponibles para este banco).
-      const filteredProducts = bank.products.filter(p => p[compatibilityField] !== false && !p.pre_production);
+      const filteredProducts = bank.products.filter(p => p[compatibilityField] !== false);
       setAvailableMediosPago(filteredProducts);
     } else {
       setAvailableMediosPago([]);
@@ -1145,6 +1146,7 @@ export const Quotes = () => {
       bank_name: bank.name,
       medio_pago_name: medioPago.product_name,
       description: medioPago.description || '',
+      operational_status: getProductStatus(medioPago),
       cantidad_cajas: quoteData.cantidad_cajas,
       cantidad_bancos: 1, // Siempre inicia en 1, configuración granular
       tarifa_setup: prices.setup_cost,
@@ -1229,6 +1231,7 @@ export const Quotes = () => {
         bank_name: bank.name,
         medio_pago_name: medioPago.product_name,
         description: medioPago.description || '',
+        operational_status: getProductStatus(medioPago),
         cantidad_cajas: quoteData.cantidad_cajas,
         cantidad_bancos: 1,
         tarifa_setup: prices.setup_cost,
@@ -1586,7 +1589,7 @@ export const Quotes = () => {
     const bank = banks.find(b => b.bank_id === bankId);
     if (bank) {
       // Filtrar por gateway_available y excluir "Fase Previa a Producción".
-      const filtered = (bank.products || []).filter(p => p.gateway_available && !p.pre_production);
+      const filtered = (bank.products || []).filter(p => p.gateway_available);
       setPgFilteredProducts(filtered);
     }
   };
@@ -1618,6 +1621,7 @@ export const Quotes = () => {
     const outsourcingCost = getPgOutsourcingPrice(pgSelectedMedioPago);
     setPgSetupItems([...pgSetupItems, {
       concepto: pgSelectedMedioPago,
+      operational_status: getProductStatus(pgFilteredProducts.find(p => p.product_name === pgSelectedMedioPago)),
       costo: outsourcingCost,
       banco: bank?.name || 'N/A',
       observacion: ''
@@ -1645,6 +1649,7 @@ export const Quotes = () => {
       const outsourcingCost = getPgOutsourcingPrice(product.product_name);
       newItems.push({
         concepto: product.product_name,
+        operational_status: getProductStatus(product),
         costo: outsourcingCost,
         banco: bank.name,
         observacion: ''
@@ -1782,7 +1787,8 @@ export const Quotes = () => {
           cantidad_bancos: parseInt(item.cantidad_bancos) || 1,
           tarifa: parseFloat(item.tarifa_setup) || 0,
           bank_name: item.bank_name || null,
-          tipo_corp: findServiceTipoCorp(item.medio_pago_name)
+          tipo_corp: findServiceTipoCorp(item.medio_pago_name),
+          operational_status: item.operational_status || null
         }))
       ],
       recurring_basic_items: quoteData.recurring_basic_items.map(item => ({
@@ -1809,7 +1815,8 @@ export const Quotes = () => {
           cantidad_bancos: parseInt(item.cantidad_bancos) || 1,
           tarifa: parseFloat(item.tarifa_setup) || 0,
           bank_name: item.bank_name,
-          tipo_corp: findServiceTipoCorp(item.medio_pago_name)
+          tipo_corp: findServiceTipoCorp(item.medio_pago_name),
+          operational_status: item.operational_status || null
         })),
       descuento: quoteData.descuento || 0,
       descuento_setup: quoteData.descuento_setup || 0,
@@ -1820,7 +1827,7 @@ export const Quotes = () => {
       notes: quoteData.notes || '',
       is_production_client: isProductionClient,
       pg_setup_items: pgSetupItems.map(item => ({
-        concepto: item.concepto, costo: item.costo || 0, banco: item.banco || '', observacion: item.observacion || ''
+        concepto: item.concepto, costo: item.costo || 0, banco: item.banco || '', observacion: item.observacion || '', operational_status: item.operational_status || null
       })),
       production_items: productionItems.map(item => ({
         concepto: item.medio_pago_name,
@@ -2008,7 +2015,8 @@ export const Quotes = () => {
           bank_id: item.bank_id || '',
           bank_name: item.bank_name || '',
           tarifa_setup: item.tarifa_setup || 0,
-          tarifa_recurrente: item.tarifa_recurrente || 0
+          tarifa_recurrente: item.tarifa_recurrente || 0,
+          operational_status: item.operational_status || null
         })),
         // Items de cliente en producción
         ...productionItems.map(item => ({
@@ -2067,7 +2075,8 @@ export const Quotes = () => {
             cantidad_bancos: parseInt(item.cantidad_bancos) || 1,
             tarifa: parseFloat(item.tarifa_setup) || 0,
             bank_name: item.bank_name || null,
-            tipo_corp: findServiceTipoCorp(item.medio_pago_name)
+            tipo_corp: findServiceTipoCorp(item.medio_pago_name),
+          operational_status: item.operational_status || null
           }))
         ],
         recurring_basic_items: quoteData.recurring_basic_items.map(item => ({
@@ -2094,7 +2103,8 @@ export const Quotes = () => {
             cantidad_bancos: parseInt(item.cantidad_bancos) || 1,
             tarifa: parseFloat(item.tarifa_setup) || 0,
             bank_name: item.bank_name,
-            tipo_corp: findServiceTipoCorp(item.medio_pago_name)
+            tipo_corp: findServiceTipoCorp(item.medio_pago_name),
+          operational_status: item.operational_status || null
           })),
         descuento: quoteData.descuento || 0,
         descuento_setup: quoteData.descuento_setup || 0,
@@ -2108,7 +2118,8 @@ export const Quotes = () => {
           concepto: item.concepto,
           costo: item.costo || 0,
           banco: item.banco || '',
-          observacion: item.observacion || ''
+          observacion: item.observacion || '',
+          operational_status: item.operational_status || null
         })),
         production_items: productionItems.map(item => ({
           concepto: item.medio_pago_name,
@@ -3669,6 +3680,7 @@ export const Quotes = () => {
         quantity: s.quantity || 1,
         bank_id: s.bank_id || '',
         bank_name: s.bank_name || '',
+        operational_status: s.operational_status || '',
         tarifa_setup: setup,
         tarifa_recurrente: recurrente,
         unit_price_usd: s.unit_price_usd || 0,
@@ -3925,7 +3937,8 @@ export const Quotes = () => {
           bank_id: item.bank_id || '',
           bank_name: item.bank_name || '',
           tarifa_setup: item.tarifa_setup || 0,
-          tarifa_recurrente: item.tarifa_recurrente || 0
+          tarifa_recurrente: item.tarifa_recurrente || 0,
+          operational_status: item.operational_status || null
         })),
         // Items de cliente en producción
         ...productionItems.map(item => ({
