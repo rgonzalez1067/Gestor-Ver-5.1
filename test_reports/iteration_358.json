@@ -1,0 +1,34 @@
+{
+  "summary": "Probé la conversión de sede única a multitienda en Edición Maestra (botón 'Agregar Sucursal'). El pytest nuevo test_master_branches_iter358.py pasa 5/5 y la regresión iter355-358 pasa 37/37. UI con Playwright sobre prj_826643491b64 (single, 4 cajas, Banco Activo). Antes de convertir inyecté temporalmente fases Recibido y Configurado completadas en la matriz. master-single-add-branch es visible. En master-convert-confirm, Cancelar cierra la confirmación sin cambios: no aparece el editor y el diálogo sigue abierto. Al Aceptar aparece master-branches-editor con 2 tarjetas. master-branch-0 se llama 'Principal' (client_sede), tiene 4 cajas, sus 3 medios marcados y RIF J405522194. master-branch-1 está vacía (0 cajas, sin medios) y el contador muestra 'Cajas asignadas 4 / 4 contratadas'. Con 4+1 el contador pasa a 5/4 y aparece el toast 'Límite Excedido: La sumatoria de cajas asignadas (5) supera el tope máximo… (4)' (400). Con 3+1 y TDC marcado en la 2, aparece el toast 'Proyecto actualizado (Edición Maestra)' (200). En BD el proyecto queda multistore con 2 stores. La Sucursal 1 conserva las fases Recibido y Configurado de la matriz original y la Sucursal 2 solo tiene TDC, sin avance. No se crean rifs (cliente propio) y contract_baseline queda en total_boxes 4. La bitácora registra \"Estructura: 'single' → 'multistore'\" más las 2 sucursales nuevas. El detalle /projects/{id} muestra la insignia 'Multitienda (2)' sin errores de consola. Backend: convert_to_multistore sin branches (o con []) devuelve 400 y el proyecto sigue single. Mandar convert_to_multistore=true a un proyecto que ya es multistore no rompe nada. Respaldé el documento completo antes de cada prueba y lo restauré con replace_one: quedó idéntico (verificado).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/projects/{id}/master-override (convert_to_multistore)", "issue": "inherit_main se aplica a TODAS las sucursales que lo envíen, no solo a la primera. Si vía API se manda inherit_main=true en 2 sucursales, ambas heredan el avance de la matriz y el progreso se duplica. La UI solo lo marca en la Sucursal 1. Sugerencia: aplicarlo solo a la primera sucursal con inherit_main."},
+      {"endpoint": "PUT /api/projects/{id}/master-override (convert_to_multistore)", "issue": "La matriz principal conserva las fases originales del single, porque se reconstruye con _build_override_matrix sobre la matriz previa. Reportes como implementer_report leen la matriz principal; si después se cargan fases en las tiendas, el avance de la matriz original podría contarse por partida doble en vistas que lean ambas. Conviene revisar."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Detalle de proyecto (Implementación)", "issue": "Tras convertir con un reparto 3+1 (S1 con 3 medios y S2 con 1), 'Nro de PVV' sigue mostrando 12 (4 cajas × 3 medios). El valor real por sucursal es 3×3 + 1×1 = 10. Parece calcularse con box_count × medios de la matriz principal.", "selector": "detalle: Nro de PVV", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_master_branches_iter358.py", "/app/backend/tests/_iter358_backup.py", "/app/test_reports/pytest/pytest_iter358.xml", "/app/test_reports/pytest/pytest_iter358_regr.xml"],
+  "action_items": [
+    "(LOW) Backend: aplicar inherit_main solo a la primera sucursal para evitar que el avance se duplique si la API lo recibe en varias",
+    "(LOW) Detalle multitienda: calcular 'Nro de PVV' como la suma de cajas × medios de cada sucursal",
+    "(LOW) startConversion: si falla master-branches-context, avisar al usuario, porque branchesCtx queda null y el contador no tiene tope"
+  ],
+  "critical_code_review_comments": [
+    "MasterEditDialog.jsx tiene 650 líneas, cerca del límite de 700. Tiene un ClientCombobox duplicado (ya reportado en iter357).",
+    "startConversion usa .catch(() => ({data:null})) sin aviso al usuario",
+    "Los errores de consola 'span cannot be child of tbody/tr' en /projects vienen de los wrappers del editor visual (x-excluded) y no de la funcionalidad. El único 400 corresponde a la prueba intencional de exceso de cajas."
+  ],
+  "updated_files": ["/app/backend/tests/test_master_branches_iter358.py", "/app/backend/tests/_iter358_backup.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Ninguno persistente. Inyecté fases temporalmente en prj_826643491b64 y restauré el documento completo con replace_one; está idéntico al original (single).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Corre los pytest con -p no:xdist porque los tests comparten el mismo proyecto. El proyecto prj_826643491b64 está Culminado: en /projects hay que poner el filtro de estado en 'Todos los estados' para ver master-edit-btn. El script _iter358_backup.py (backup/restore/show/inject) sirve para respaldar y restaurar."
+}

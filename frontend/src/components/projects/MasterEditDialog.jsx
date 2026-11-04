@@ -181,6 +181,10 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
   // Sede única → multitienda: la sede actual pasa a ser la Sucursal 1 (hereda cajas, medios y avance).
   const startConversion = async () => {
     const ctx = await api.get(`/projects/${project.project_id}/master-branches-context`).catch(() => ({ data: null }));
+    if (!ctx.data) {
+      toast.error('No se pudieron cargar los topes contratados del proyecto. Intenta de nuevo.');
+      return;
+    }
     setBranchesCtx(ctx.data);
     const medios = form.banks_products.flatMap(r => r.products.map(product_name => ({ bank_name: r.bank_name, product_name })));
     setForm(prev => ({

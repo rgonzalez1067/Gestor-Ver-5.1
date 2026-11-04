@@ -1882,6 +1882,8 @@ Antes, usuarios con permisos limitados no cargaban catálogos en el frontend →
 - GET /api/projects/{id}/master-branches-context; PUT master-override acepta `branches` y `medio_replacements` (multistore y multirif, incluye Proyectos Directos).
 - `BranchesEditor.jsx` en MasterEditDialog; Servidor de Instalación = Select de /api/servers con "(valor anterior)".
 - Fix: "Comercio / RIF" de sucursales = buscador sobre TODOS los clientes (`ClientCombobox.jsx`), sin restricción de grupo; multitienda con comercio ajeno vincula todas las sucursales a rifs[]. Testing: iteration_357 + tests iter355-357 (32/32).
+- Edición Maestra: proyectos de sede única → botón "Agregar Sucursal" con confirmación; convierte a multistore (`convert_to_multistore`), la sede actual = Sucursal 1 (cajas, medios y avance heredados vía `inherit_main`, solo una vez). Testing: iteration_358 + tests iter355-358 (37/37).
+
 
 - Testing: iteration_355/356; tests/test_master_branches_iter355.py + iter356.py (28/28).
 
