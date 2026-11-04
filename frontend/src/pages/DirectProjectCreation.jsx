@@ -293,15 +293,19 @@ export default function DirectProjectCreation() {
   const isPaymentGateway = PG_LIKE(form.quote_type);
 
   /* Carga inicial */
+  const [servers, setServers] = useState([]);
+  const [fiscalPrinters, setFiscalPrinters] = useState([]);
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
       try {
-        const [cRes, bRes, iRes, hRes] = await Promise.all([
+        const [cRes, bRes, iRes, hRes, sRes, fpRes] = await Promise.all([
           api.get('/clients'),
           api.get('/banks'),
           api.get('/integrators'),
           api.get('/hardware'),
+          api.get('/servers').catch(() => ({ data: [] })),
+          api.get('/fiscal-printers').catch(() => ({ data: [] })),
         ]);
         const sortedClients = [...(cRes.data || [])].sort((a, b) =>
           (a.fantasy_name || a.legal_name || '').localeCompare(b.fantasy_name || b.legal_name || '', 'es', { sensitivity: 'base' })
@@ -310,6 +314,10 @@ export default function DirectProjectCreation() {
         setBanks(bRes.data || []);
         setIntegrators(iRes.data || []);
         setHardware(hRes.data || []);
+        setServers((sRes.data || []).map((s) => (s.descripcion || s.name || '').trim()).filter(Boolean)
+          .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })));
+        setFiscalPrinters((fpRes.data || []).map((p) => (p.name || '').trim()).filter(Boolean)
+          .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })));
       } catch (e) {
         toast.error(`Error cargando datos: ${e.response?.data?.detail || e.message}`);
       } finally { setLoading(false); }
@@ -1098,7 +1106,19 @@ export default function DirectProjectCreation() {
               </div>
               <div>
                 <Label className="text-xs">Modelo Impresora Fiscal</Label>
-                <Input value={form.fiscal_printer_model} onChange={(e) => set({ fiscal_printer_model: e.target.value })} data-testid="dp-fiscal-printer" />
+                <Select value={form.fiscal_printer_model || '__none__'} onValueChange={(v) => set({ fiscal_printer_model: v === '__none__' ? '' : v })}>
+                  <SelectTrigger className="h-10" data-testid="dp-fiscal-printer"><SelectValue placeholder="Seleccionar impresora fiscal..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__" data-testid="dp-fiscal-printer-none">Sin impresora fiscal</SelectItem>
+                    {form.fiscal_printer_model && !fiscalPrinters.includes(form.fiscal_printer_model) && (
+                      <SelectItem value={form.fiscal_printer_model}>{form.fiscal_printer_model}</SelectItem>
+                    )}
+                    {fiscalPrinters.map((p) => (
+                      <SelectItem key={p} value={p} data-testid={`dp-fiscal-printer-option-${p.replace(/\s+/g, '-').toLowerCase()}`}>{p}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fiscalPrinters.length === 0 && <p className="text-[11px] text-slate-400 mt-1">No hay impresoras en el catálogo (Configuración → Impresoras Fiscales).</p>}
               </div>
             </div>
 
@@ -1175,8 +1195,8 @@ export default function DirectProjectCreation() {
             <Select value={form.server_name || ''} onValueChange={(v) => set({ server_name: v, server_name_custom: v === 'Otra' ? form.server_name_custom : '' })}>
               <SelectTrigger className="h-10 mt-1" data-testid="dp-server-name"><SelectValue placeholder="Seleccionar servidor..." /></SelectTrigger>
               <SelectContent>
-                {['Multicomercio MSC', 'Multicomercio MSC2', 'Otra'].map((opt) => (
-                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                {[...(servers.length ? servers : ['Multicomercio MSC', 'Multicomercio MSC2']), 'Otra'].map((opt) => (
+                  <SelectItem key={opt} value={opt} data-testid={`dp-server-option-${opt.replace(/\s+/g, '-').toLowerCase()}`}>{opt}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

@@ -1072,7 +1072,7 @@ export const Quotes = () => {
       integrator_app_name: '',
       pinpad_id: '',
       sponsor_bank_id: '',
-      requires_pinpad_config: true,
+      requires_pinpad_config: segment !== 'CORP',
       requires_vpn: false,
       communication_type: 'NO_APLICA',
       setup_items: [],

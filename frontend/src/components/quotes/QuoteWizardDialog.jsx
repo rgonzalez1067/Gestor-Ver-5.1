@@ -336,7 +336,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                           pricing_model: isPGLike ? 'conventional' : (isMposLike ? 'outsourcing' : ''),
                           requires_vpn: false,
                           communication_type: 'NO_APLICA',
-                          requires_pinpad_config: true,
+                          requires_pinpad_config: quoteData.client_segment !== 'CORP',
                           integrator_id: newIntegratorId,
                           integrator_name: newIntegratorName,
                           integrator_app_name: newIntegratorApp,
