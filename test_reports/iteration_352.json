@@ -1,0 +1,51 @@
+{
+  "summary": "Iter 352 – Se probó (A) que el tag [Producción] ya no aparece y (B) la pregunta de Servicio Express en VPOS, MPOS y PG. (A) funciona bien en la UI, en el backend y en el PDF. En (B), el toggle, el cálculo con max(conv, cajas×outs), la edición manual, el borrado, el cambio a No y el aviso de ítem faltante funcionan. Se encontraron 2 bugs funcionales: (1) en VPOS y MPOS, el total de la fila Express se multiplica por las cajas del header; (2) en PG, servicio_express no se guarda al crear la cotización, y al reabrirla con Modificar la fila Express se pierde.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "tests/test_quote_phase_tags.py", "issue": "El test seguía comprobando '[Producción]' in txt aunque el requerimiento pide lo contrario. Se corrigió la aserción a 'not in' y ahora pasa."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "VPOS/MPOS Setup – fila Servicio Express", "issue": "El useEffect de propagación de cajas (Quotes.jsx ~l.721-726) cambia cantidad_cajas en TODAS las filas de setup_items, también en la fila express. Como Total = tarifa × cajas × bancos, el monto de cajas se cuenta dos veces: con 8 cajas la tarifa es 160 pero el Total da $1280; con la tarifa manual en 125 y 3 cajas da $375. Se guardó así en BD (total_usd=375) y en el PDF. Además, la columna Cajas de la fila express es editable.", "selector": "tr:has-text('Servicio Express') td:nth(5)", "priority": "HIGH"},
+      {"component": "Payment Gateway – guardar/reabrir", "issue": "El payload de creación PG (Quotes.jsx ~l.1946-1968, /quotes/create-with-pdf) no envía servicio_express, así que se guarda como False aunque pg_setup_items tenga la fila express. Al reabrir con Modificar, la pregunta aparece en No y el useEffect PG (l.463-464) borra la fila express sin avisar: el total baja de 424 a 324.", "selector": "[data-testid=pg-submit-quote-button]", "priority": "HIGH"},
+      {"component": "VPOS/MPOS fila express – botón Duplicar", "issue": "Duplicar la fila express crea una copia con express:true, lo que deja 2 filas 'Servicio Express' que se recalculan juntas. Conviene ocultar Duplicar en esa fila.", "selector": "tr:has-text('Servicio Express') button[title=Duplicar]", "priority": "MEDIUM"},
+      {"component": "VPOS edición – fila express", "issue": "Al reabrir, mapService fija lockBancos:false, así que la columna Bancos de la fila express pasa de 'N/A' a un input editable.", "selector": "tr:has-text('Servicio Express')", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Setup VPOS", "issues": ["La fila Servicio Express muestra el badge 'Base', pero no es un concepto base.", "En PG, eliminar la fila express no pide confirmación; en VPOS/MPOS sí (window.confirm). Es inconsistente."]}
+    ]
+  },
+  "passed_checks": [
+    "Tag de Producción oculto: en MultiProductSelector, 'Tarjetas...' (Producción) no tiene tag y 'Cambio Pago Movil' muestra 'Imple'; additional-phase-* solo muestra 'Imple'; en PG, Verificación de Depositos muestra Imple y el resto no lleva tag.",
+    "PDF regenerado (VPOS y PG) sin '[Producción]', con '[Imple]' y con la fila 'Servicio Express'.",
+    "express-service-block está junto a iva-exempt-block y por defecto está en No (aria-checked).",
+    "VPOS: con 3 cajas, la tarifa es 100 y la fila se inserta como el último concepto antes de los medios de pago; con 8 cajas pasa a 160 (catálogo simulado 100/20 mediante route interception).",
+    "Con tarifa manual de 125, cambiar las cajas no la sobrescribe; se guarda y al reabrir con Modificar sigue en 125 con la pregunta en Sí.",
+    "Papelera con confirmación: la fila desaparece, el subtotal baja (504→129) y la pregunta pasa a No. Al cambiar de Sí a No, la fila se elimina.",
+    "MPOS: mismo comportamiento que VPOS (incluido el mismo bug de cajas).",
+    "PG: la fila express se crea con costo 100 justo después de Persona Jurídica; es editable con pg-setup-cost-1; pg-remove-item-1 la quita y pone la pregunta en No; 'Medios de Pago seleccionados: 2' no la cuenta.",
+    "Sin el ítem en el catálogo (respuesta /api/services filtrada): aparece express-service-missing y no se agrega ninguna fila."
+  ],
+  "test_report_links": ["/app/backend/tests/test_quote_phase_tags.py", "/app/backend/tests/test_quote_express_service.py", "/app/test_reports/pytest/pytest_iter352.xml"],
+  "action_items": [
+    "Quotes.jsx, efecto de propagación de cajas (~l.723): saltar las filas con item.express (if (item.express) return item) y fijar cantidad_cajas=1 / no editable en la fila express, o calcular su total como solo la tarifa.",
+    "Quotes.jsx, payload de creación PG (~l.1946): agregar servicio_express: !!quoteData.servicio_express (y revisar iva_exempt). Además, en la carga de edición PG (~l.3876), deducir servicio_express = quote.servicio_express || pg_setup_items.some(i => i.express) para no perder la fila en cotizaciones ya guardadas.",
+    "Ocultar el botón Duplicar (y el badge 'Base') en la fila express; restaurar lockBancos:true para las filas express al editar.",
+    "Opcional: pedir confirmación al eliminar la fila express en PG, igual que en VPOS."
+  ],
+  "critical_code_review_comments": [
+    "Quotes.jsx tiene 4854 líneas y QuoteWizardDialog.jsx 2647, muy por encima del límite de 700. Conviene extraer la lógica de Servicio Express a un hook (useExpressService).",
+    "Los useEffect de express dependen de setup_items/pgSetupItems y hacen setState dentro; hoy convergen, pero son frágiles. Es mejor un cálculo derivado o un reducer.",
+    "El ítem del catálogo se busca por nombre exacto 'servicio express'; si cambia el nombre, la funcionalidad se rompe sin aviso. Conviene usar un flag o código en el catálogo."
+  ],
+  "updated_files": ["/app/backend/tests/test_quote_phase_tags.py", "/app/backend/tests/test_quote_express_service.py", "/app/backend/tests/_helper_iter353.py"],
+  "success_rate": {"backend": "100% (14/14 pytest)", "frontend": "~80% (2 bugs HIGH en 9 escenarios)"},
+  "seed_data_creation": "El ítem 'Servicio Express' YA EXISTÍA en el catálogo (srv_18d71a96d087, conv=200, outs=5, creado por el usuario a las 20:19), así que NO se creó ni se borró ninguno, y no se modificó el real. En la UI se simularon los valores 100/20 interceptando /api/services con Playwright. Cotizaciones de prueba COT-2026-11-038/039/040 (quo_59a0c79535d1, quo_b62f8a96e8c6, quo_12aae9b1fbbc) eliminadas por id. El servicio TEST_Servicio Express API del pytest se eliminó en el teardown. Los estatus de bancos quedaron en 146 Producción / 18 Imple.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Login: rgonzalez@megasoft.com.ve / Mega2026* (admin123 da 401). Inyectar session_token y user en localStorage. Flujo: create-quote-button → new-impl-pyme → select-quote-type (VPOS (Cajas)/MPOS/Payment Gateway) → select-client → select-pricing-model → select-integrator 'Sin integrador'. Banco del Tesoro tiene Cambio Pago Movil (Imple) y Tarjetas (Producción); en PG, Banesco tiene 'Verificación de Depositos (PG)' en Imple. Modificar: quote-actions-{id} → modify-quote-btn-{id} → modify-choice-in-place → impl-justification-input (≥20 caracteres) → impl-confirm-save-btn. El ítem real del catálogo tiene 200/5; para probar con 100/20 conviene interceptar /api/services en vez de modificarlo. La fila express no tiene data-testid en VPOS (se ubica con tr:has-text('Servicio Express')).",
+  "rca of the issue": "Bug 1: el useEffect de cajas/bancos del header (Quotes.jsx ~l.688-776) copia newCajas en cada setup_item sin excluir item.express. Como calcularTotal multiplica tarifa×cajas×bancos, la fila express queda en max(conv, N×outs)×N. Para reproducir: VPOS con 3 cajas → Sí (fila con cajas=1, total $100) → cajas 8 → la fila queda con cajas=8 y total $1280. Bug 2: handlePgSubmit (~l.1946) arma el payload sin servicio_express, el backend guarda False, y al editar (l.3876) se restaura servicio_express=false, con lo que el effect PG (l.463) filtra la fila express. Para reproducir: crear PG con Sí → guardar → Modificar → la pregunta está en No y la fila no aparece."
+}

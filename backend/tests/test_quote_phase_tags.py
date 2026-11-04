@@ -164,7 +164,7 @@ class TestQuotePhaseSnapshot:
         txt = _pdf_text(pr.content)
         print(txt[:3000])
         assert "[SQA]" in txt
-        assert "[Producción]" in txt
+        assert "[Producción]" not in txt  # Iter 353: tag Producción omitido
 
     def test_update_quote_keeps_status(self, s, created_quotes):
         if not created_quotes:

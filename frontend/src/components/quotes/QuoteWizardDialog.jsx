@@ -1578,7 +1578,9 @@ export const QuoteWizardDialog = ({ ctx }) => {
                             <td className="px-3 py-2 border border-slate-300">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium text-slate-900">{item.medio_pago_name}</span>
-                                {item.isCopy ? (
+                                {item.express ? (
+                                  <span className="px-1.5 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded" data-testid="setup-express-badge">Express</span>
+                                ) : item.isCopy ? (
                                   <span className="px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded">Copia</span>
                                 ) : (
                                   <span className="px-1.5 py-0.5 text-xs font-medium bg-cyan-100 text-cyan-700 rounded">Base</span>
@@ -1589,6 +1591,9 @@ export const QuoteWizardDialog = ({ ctx }) => {
                               </div>
                             </td>
                             <td className="px-3 py-2 text-center border border-slate-300">
+                              {item.express ? (
+                                <div className="w-16 h-7 flex items-center justify-center text-sm mx-auto font-medium text-slate-400 bg-slate-100 rounded" data-testid="setup-express-cajas">1</div>
+                              ) : (
                               <Input
                                 type="number"
                                 min="1"
@@ -1596,6 +1601,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                                 onChange={(e) => updateSetupItem(index, 'cantidad_cajas', e.target.value)}
                                 className="w-16 h-7 text-center text-sm mx-auto"
                               />
+                              )}
                             </td>
                             <td className="px-3 py-2 text-center border border-slate-300">
                               {item.lockBancos ? (
@@ -1703,6 +1709,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                             </td>
                             <td className="px-3 py-2 text-center border border-slate-300">
                               <div className="flex items-center justify-center gap-1">
+                                {!item.express && (
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -1712,12 +1719,14 @@ export const QuoteWizardDialog = ({ ctx }) => {
                                 >
                                   <Copy size={14} />
                                 </Button>
+                                )}
                                 <Button
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => removeSetupItem(index)}
                                   className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
                                   title="Eliminar"
+                                  data-testid={item.express ? 'setup-express-remove' : `setup-remove-${index}`}
                                 >
                                   <Trash2 size={14} />
                                 </Button>

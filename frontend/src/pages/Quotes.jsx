@@ -720,7 +720,7 @@ export const Quotes = () => {
     // Actualizar Setup items — CAJAS siempre; BANCOS solo si inheritBancos
     const updatedSetupItems = setup_items.map(item => {
       let updated = item;
-      if (cajasChanged && item.cantidad_cajas !== newCajas) {
+      if (cajasChanged && !item.express && item.cantidad_cajas !== newCajas) {
         updated = { ...updated, cantidad_cajas: newCajas };
         needsUpdate = true;
       }
@@ -1960,6 +1960,7 @@ export const Quotes = () => {
         cantidad_cajas: 1,
         cantidad_bancos: 1,
         pg_setup_items: pgSetupItems.map(({ fixed, ...item }) => item), // Remove fixed flag
+        servicio_express: !!quoteData.servicio_express,
         pg_recurring_cost: recurringData,
         pg_transaction_range: pgMediosPagoCount,
         // Mismo payload de PDF que Previsualizar/Exportar → PDF idéntico (incluye
@@ -3772,7 +3773,9 @@ export const Quotes = () => {
                itemLower.includes(conceptLower) || 
                conceptLower.includes(itemLower);
       });
-      return { ...mapService(s, concept, false), express: !!s.express, expressManual: !!s.expressManual };
+      return s.express
+        ? { ...mapService(s, concept, false), express: true, expressManual: !!s.expressManual, lockBancos: true, cantidad_cajas: 1, cantidad_bancos: 1 }
+        : mapService(s, concept, false);
     });
     // Matching más preciso: primero intentar coincidencia exacta, luego parcial
     const recurringBasicItems = services.filter(s => getCategory(s) === 'recurring_basic').map(s => {
@@ -3873,7 +3876,7 @@ export const Quotes = () => {
       sponsoring_processor_id: quote.sponsoring_processor_id || '',
       sponsoring_processor_name: quote.sponsoring_processor_name || '',
       iva_exempt: !!quote.iva_exempt,
-      servicio_express: !!quote.servicio_express,
+      servicio_express: !!quote.servicio_express || (quote.pg_setup_items || []).some(i => i.express),
     });
     
     // Load PG data if it's a Payment Gateway / Link de Pago quote
