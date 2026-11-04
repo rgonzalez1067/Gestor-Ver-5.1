@@ -1,0 +1,44 @@
+{
+  "summary": "Tested the 'Características particulares del Proyecto' feature on backend and frontend. BACKEND: 17 of 19 tests pass. The 3 equipment tests ran and passed, and are now opt-in with RUN_EQUIP_PDF_TESTS=1. Unit tests on project_features_pdf pass: bold font, red color, &/< escaping, plain-text legacy notes, malformed HTML, h2, insert_pdf_before_tail. Preview PDF results: VPOS PYME has the features page right before 'TÉRMINOS DE LA COTIZACIÓN', and with empty notes no page is added. VPOS CORP has the page right before the Anexo Corporativo. GATEWAY PYME places it before Términos. LINK_PAGO PYME places it before the Link de Pago fee annex and Términos. Equipos Verifone and Reparación: page sits between the main page and the appended conditions, there is no 'Observaciones:', and regenerate-equipment-pdf keeps the same structure. FAIL: GATEWAY CORP and LINK_PAGO CORP lose a page because the corporate restructure truncates the PDF to a fixed page count. FRONTEND: the field is present with the correct label, toolbar, 240px height (about 10 rows), x/1000 counter and a hard limit enforced at 1000, in QuoteWizardDialog VPOS (quote-features-editor), PG (pg-features-editor), EquipmentQuoteWizard step 3 (equipment-notes) and EditEquipRepairDialog (edit-equip-features-editor). The edit dialog loads the saved HTML with formatting and saves in place. The regenerated PDF contains the edited text. Previsualizar PDF sends notes as HTML and gets 200 in both VPOS and PG.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/quotes/preview-pdf-with-template, generate-pdf-with-template, create-with-pdf, regenerate-pdf (GATEWAY + CORP)", "issue": "The features page is DROPPED from the PDF. config.apply_corporate_pg_lp_restructure keeps only the first 4 pages (keep_pages=4) and then appends anexo_gateway_corp.pdf. With notes, the features page is page 5, so it is truncated. Measured: 5 pages with notes and 5 pages without.", "priority": "HIGH"},
+      {"endpoint": "Same endpoints (LINK_PAGO + CORP)", "issue": "keep_pages=5 is fixed. With notes, the features page becomes page 5 and pushes the Link de Pago/Tokenizador fee annex (the '1 | 500 | $50,00' page) to page 6, which is then truncated. The fee annex is LOST. Measured: 6 pages with and without notes, and the content differs.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "Quote models (notes: str/Optional[str])", "issue": "The 1000-character limit exists only in the frontend. The backend accepts any length. A long body or many short list items can make the features section span more than one page. Any fix to the CORP page count must therefore count real pages, not assume +1."},
+      {"endpoint": "generate_quote_number (pre-existing, outside this feature)", "issue": "In preview, counters 'quote_PYME_2026_11' has seq=21 while quotes up to COT-2026-11-023-PYME already exist, and several duplicate numbers exist (010, 011, 021). New equipment quotes therefore reuse existing numbers. Because the PDF filename is {quote_number}_Cotizacion_Equipo.pdf, they OVERWRITE another quote's PDF in /uploads and object storage."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "RichTextEditor (used by ProjectFeaturesField)", "issue": "Headings ('títulos') are not available. StarterKit.configure({heading:false}) is set and there is no heading button, although the requirement lists títulos and the backend converter supports h1-h4.", "selector": "[data-testid$='-features-editor'] toolbar", "priority": "MEDIUM"},
+      {"component": "RichTextEditor lists", "issue": "Bullet and numbered lists show no markers in the editor. The computed style of ul/ol is list-style-type: none with padding-left 0, because Tailwind preflight is active and the typography plugin is not installed, so the 'prose' class has no effect. Users cannot see that a list was applied. The PDF does render • and 1.", "selector": "[data-testid='edit-equip-features-editor-content'] ul", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ProjectFeaturesField toolbar", "issues": ["The table add-row and delete-row buttons are always shown (disabled) and do nothing in this field. Consider hiding them, for example with a prop, as is already done for the image button (enableImagePaste=false).", "Pasting text that would go over 1000 characters is silently rejected as a whole. Showing a toast would help."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter348_project_features_page.py", "/app/test_reports/pytest/iter348.xml"],
+  "action_items": [
+    "Fix CORP PG/LP truncation. Make keep_pages dynamic. Either pass the number of features pages to append_quote_static_pages → apply_corporate_pg_lp_restructure at all 5 call sites in routes/quotes.py (286/299, 374/378, 1307/1311, 1965/1973, 2016/2024), or have the generator report how many content pages it produced. Then keep = base_keep + features_pages.",
+    "Enable headings in RichTextEditor for ProjectFeaturesField, for example a prop that turns on StarterKit heading levels [1,2,3] and adds an H1/H2/H3 toolbar control.",
+    "Add CSS so .ProseMirror ul/ol show markers: list-style disc/decimal and padding-left about 1.25rem.",
+    "Optional: enforce the 1000-character limit on plain text in the backend (Pydantic validator) so it matches the frontend.",
+    "Pre-existing: resync the PYME/CORP quote counters with max(existing quote_number) to stop duplicate numbers and PDF filename overwrites."
+  ],
+  "critical_code_review_comments": [
+    "project_features_pdf._to_html only detects HTML when it contains p/ul/ol/h#/div/br/strong/em/span. Legacy text containing only <u>, <s> or <mark> would be escaped and shown as literal tags. Low risk, since TipTap always wraps content in <p>.",
+    "The converter ignores <table> tags that TipTap TableKit can produce, so cell text gets concatenated. The table toolbar is visible in this field.",
+    "The build_features_pdf docstring says '1 página', but long content can span several pages. insert_pdf_before_tail handles this correctly.",
+    "For equipment quotes with repair_models, the features page is inserted after the serials annex, not right after the main page. This fits 'before the conditions', but please confirm it is the intended order."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter348_project_features_page.py"],
+  "success_rate": {"backend": "89% (17/19, 2 CORP PG/LP failures)", "frontend": "90% (all 4 fields, preview and edit/save work. Headings missing and list markers invisible)"},
+  "seed_data_creation": "Created temporary TEST_ equipment quotes through generate-equipment-pdf: 9 from the backend tests (each run deleted its own by id with 200) and 1 for the UI (quo_8d9c08b027b8, deleted). DEFECT CAUSED BY TESTING, ROOT CAUSE IS THE COUNTER DESYNC: one TEST quote received the duplicate number COT-2026-11-016-PYME, and its PDF overwrote /uploads/COT-2026-11-016-PYME_Cotizacion_Equipo.pdf of the real quote quo_ecf39eb7b140 (FARMACIA CASA MEDICA, equipment). Mitigation: I ran POST /api/quotes/quo_ecf39eb7b140/regenerate-equipment-pdf, which rebuilt its PDF from its own stored data. Side effects: the PDF date is now 04/11/2026, and the Cotización attachment entry was replaced (uploaded_by=admin). Please check it with the user. The PYME counter also advanced from about 12 to 21 because of the test quotes.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && python -m pytest tests/test_iter348_project_features_page.py -p no:xdist. The equipment tests are skipped unless RUN_EQUIP_PDF_TESTS=1, because they persist quotes and can collide with real quote numbers. The preview tests use /api/quotes/preview-pdf-with-template with client_segment and no client_id, and inspect pages with fitz. UI login: POST /api/auth/login → localStorage.session_token. Go to /dashboard first, wait about 6 seconds, then /quotes; a direct /quotes load redirects to the dashboard before permissions load. PG wizard: create-quote-button → new-impl-pyme → select-quote-type 'Payment Gateway' → select-client → select-integrator → pg-features-editor appears. VPOS wizard: select-pricing-model, cantidad-cajas-input, select-integrator → quote-features-editor. Admin: rgonzalez@megasoft.com.ve / Mega2026*.",
+  "rca of the issue": "CORP PG/LP: append_quote_static_pages(…, 'CORP') → apply_corporate_pg_lp_restructure keeps only reader.pages[:keep_pages] with a fixed _CORP_PG_LP_ANEXOS keep_pages (GATEWAY 4, LINK_PAGO 5). generate_pg now inserts the features page before Términos, which moves every later page down by one. As a result, PG CORP drops the features page and LP CORP drops the fee annex. Reproduce: preview-pdf-with-template with quote_type=GATEWAY, client_segment=CORP and notes '<p>x</p>' gives 5 pages, the same as without notes."
+}

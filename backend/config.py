@@ -144,14 +144,20 @@ async def generate_quote_number(sede: str) -> str:
     sede_code = sede.upper() if sede in ("PYME", "CORP") else "PYME"
     counter_key = f"quote_{sede_code}_{year}_{month}"
     
-    result = await db.counters.find_one_and_update(
-        {"_id": counter_key},
-        {"$inc": {"seq": 1}},
-        upsert=True,
-        return_document=True
-    )
-    seq = result["seq"]
-    return f"COT-{year}-{month}-{seq:03d}-{sede_code}"
+    # Evita números duplicados si el contador quedó desfasado (p. ej. tras importar datos):
+    # salta los números ya usados en cotizaciones vigentes o históricas.
+    for _ in range(500):
+        result = await db.counters.find_one_and_update(
+            {"_id": counter_key},
+            {"$inc": {"seq": 1}},
+            upsert=True,
+            return_document=True
+        )
+        number = f"COT-{year}-{month}-{result['seq']:03d}-{sede_code}"
+        if not await db.quotes.find_one({"quote_number": number}, {"_id": 1}) and \
+                not await db.quote_history.find_one({"quote_number": number}, {"_id": 1}):
+            return number
+    return number
 
 
 def stamp_header_footer_on_all_pages(pdf_buffer, quote_number="", logo_path=None):
@@ -333,6 +339,15 @@ def apply_corporate_pg_lp_restructure(pdf_buffer: io.BytesIO, quote_type: str) -
     writer = PdfWriter()
     pdf_buffer.seek(0)
     reader = PdfReader(pdf_buffer)
+    # Conservar todo lo anterior a la página "TÉRMINOS DE LA COTIZACIÓN" (incluye la página
+    # opcional de Características particulares del Proyecto). Fallback: número fijo.
+    for idx in range(len(reader.pages) - 1, -1, -1):
+        try:
+            if "TÉRMINOS DE LA COTIZACIÓN" in (reader.pages[idx].extract_text() or ""):
+                keep = idx
+                break
+        except Exception:  # noqa: BLE001
+            break
     for i, page in enumerate(reader.pages):
         if i < keep:
             writer.add_page(page)

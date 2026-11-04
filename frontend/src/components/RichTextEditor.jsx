@@ -269,6 +269,8 @@ export const RichTextEditor = forwardRef(function RichTextEditor({
   tableRowActions = false,
   enableImagePaste = true,
   imageUploadUrl = '/projects/upload-image',
+  enableHeadings = false,
+  showTableControls = true,
 }, ref) {
   const [showHighlights, setShowHighlights] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -310,7 +312,7 @@ export const RichTextEditor = forwardRef(function RichTextEditor({
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: false, codeBlock: false, blockquote: false, horizontalRule: false, link: false, underline: false }),
+      StarterKit.configure({ heading: enableHeadings ? { levels: [1, 2, 3] } : false, codeBlock: false, blockquote: false, horizontalRule: false, link: false, underline: false }),
       Underline,
       TableKit.configure({ table: { resizable: false, HTMLAttributes: { class: 'rte-table' } } }),
       TextStyle,
@@ -385,6 +387,7 @@ export const RichTextEditor = forwardRef(function RichTextEditor({
       const plainText = editor.getText();
       if (hardLimit && plainText.length > maxChars) {
         editor.commands.undo();
+        toast.warning(`Límite de ${maxChars} caracteres alcanzado`, { id: `rte-limit-${testid}` });
         return;
       }
       onChange && onChange(html, plainText.length);
@@ -465,6 +468,15 @@ export const RichTextEditor = forwardRef(function RichTextEditor({
         <Btn active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()} title="Cursiva (Ctrl+I)" tid={`${testid}-italic`}><Italic size={14} /></Btn>
         <Btn active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()} title="Subrayado (Ctrl+U)" tid={`${testid}-underline`}><UnderlineIcon size={14} /></Btn>
         <Btn active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()} title="Tachado" tid={`${testid}-strike`}><Strikethrough size={14} /></Btn>
+
+        {enableHeadings && (<>
+          <span className="mx-1 h-4 w-px bg-slate-300" />
+          {[1, 2, 3].map((lvl) => (
+            <Btn key={lvl} active={editor.isActive('heading', { level: lvl })} onClick={() => editor.chain().focus().toggleHeading({ level: lvl }).run()} title={`Título ${lvl}`} tid={`${testid}-h${lvl}`}>
+              <span className="text-[11px] font-bold leading-none">H{lvl}</span>
+            </Btn>
+          ))}
+        </>)}
 
         <span className="mx-1 h-4 w-px bg-slate-300" />
 
@@ -559,9 +571,11 @@ export const RichTextEditor = forwardRef(function RichTextEditor({
         <Btn onClick={() => editor.chain().focus().redo().run()} title="Rehacer (Ctrl+Y)" tid={`${testid}-redo`}><Redo2 size={14} /></Btn>
 
         {/* Controles de tabla — para la Matriz de Bancos/Productos (activos dentro de una tabla) */}
+        {showTableControls && (<>
         <span className="mx-1 h-4 w-px bg-slate-300" />
         <Btn disabled={!editor.can().addRowAfter?.()} onClick={() => editor.chain().focus().addRowAfter().run()} title="Agregar fila debajo" tid={`${testid}-table-add-row`}><Rows3 size={14} /></Btn>
         <Btn disabled={!editor.can().deleteRow?.()} onClick={() => editor.chain().focus().deleteRow().run()} title="Eliminar fila" tid={`${testid}-table-del-row`}><Trash2 size={14} /></Btn>
+        </>)}
 
         {showPreview && (
           <>
@@ -588,6 +602,12 @@ export const RichTextEditor = forwardRef(function RichTextEditor({
         [data-testid="${testid}"] .ProseMirror .selectedCell:after { background: rgba(99,102,241,0.18); content: ""; position: absolute; inset: 0; pointer-events: none; }
         [data-testid="${testid}"] .ProseMirror table p { margin: 0; }
         [data-testid="${testid}"] .ProseMirror p { margin: 0 0 10px 0; line-height: 1.5; }
+        [data-testid="${testid}"] .ProseMirror ul { list-style: disc; padding-left: 1.4rem; margin: 0 0 10px 0; }
+        [data-testid="${testid}"] .ProseMirror ol { list-style: decimal; padding-left: 1.4rem; margin: 0 0 10px 0; }
+        [data-testid="${testid}"] .ProseMirror li p { margin: 0 0 4px 0; }
+        [data-testid="${testid}"] .ProseMirror h1 { font-size: 1.35rem; font-weight: 700; margin: 6px 0 8px; color: #1E3A8A; }
+        [data-testid="${testid}"] .ProseMirror h2 { font-size: 1.15rem; font-weight: 700; margin: 6px 0 8px; color: #1E3A8A; }
+        [data-testid="${testid}"] .ProseMirror h3 { font-size: 1rem; font-weight: 700; margin: 6px 0 6px; color: #1E3A8A; }
       `}</style>
 
       {/* Editor */}

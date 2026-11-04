@@ -18,6 +18,8 @@ export const ProjectFeaturesField = ({ value, onChange, testid = 'project-featur
       minHeight={240}
       maxHeight={420}
       enableImagePaste={false}
+      enableHeadings
+      showTableControls={false}
       placeholder="Describa las características particulares del proyecto..."
       testid={testid}
     />
