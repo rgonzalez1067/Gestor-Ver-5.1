@@ -696,13 +696,14 @@ async def _mass_dispatch(recipients: List[str], template_id: str, internal_doc_i
 
 # ==================== COMUNICACIÓN MASIVA A BANCOS/ENTES ====================
 
-BANK_VAR_KEYS = ["banco_nombre", "banco_rif", "banco_codigo", "banco_tipo", "banco_pais", "banco_procesador"]
+BANK_VAR_KEYS = ["banco_nombre", "banco_razon_social", "banco_rif", "banco_codigo", "banco_tipo", "banco_pais", "banco_procesador"]
 CONTACT_VAR_KEYS = ["contacto_nombre", "contacto_cargo", "contacto_email", "contacto_telefono"]
 
 
 def _build_bank_vars(bank: dict) -> dict:
     return {
-        "banco_nombre": bank.get("name", ""), "banco_rif": bank.get("rif", ""),
+        "banco_nombre": bank.get("name", ""), "banco_razon_social": bank.get("legal_name") or bank.get("name", ""),
+        "banco_rif": bank.get("rif", ""),
         "banco_codigo": bank.get("bank_code", ""), "banco_tipo": bank.get("type", ""),
         "banco_pais": bank.get("country", ""), "banco_procesador": bank.get("procesador", ""),
     }

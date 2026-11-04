@@ -83,7 +83,7 @@ export const BankMassCommunicationDialog = ({ open, onOpenChange }) => {
   const sendMode = useMemo(() => {
     const txt = `${tpl?.subject || ''} ${tpl?.body_html || ''} ${tpl?.body || ''}`;
     if (/\{\{?contacto_(nombre|cargo|email|telefono)\}?\}/.test(txt)) return 'per_contact';
-    if (/\{\{?banco_(nombre|rif|codigo|tipo|pais|procesador)\}?\}/.test(txt)) return 'per_bank';
+    if (/\{\{?banco_(nombre|razon_social|rif|codigo|tipo|pais|procesador)\}?\}/.test(txt)) return 'per_bank';
     return 'single';
   }, [tpl]);
   const selectedBanks = useMemo(() => new Set(Array.from(selected).map(k => k.split('::')[0])).size, [selected]);

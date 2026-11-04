@@ -245,6 +245,7 @@ export const BankDetail = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-slate-900 font-manrope">{bank.name}</h1>
+                {bank.legal_name && <p className="text-sm text-slate-600 mt-0.5" data-testid="bank-detail-legal-name">{bank.legal_name}</p>}
                 <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
                   <span className="px-2 py-0.5 text-xs font-semibold rounded bg-slate-100 text-slate-600">{bank.type}</span>
                   {bank.rif && <span className="flex items-center gap-1"><Hash size={12} />{bank.rif}</span>}

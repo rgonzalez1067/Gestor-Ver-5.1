@@ -202,6 +202,7 @@ class BankCreate(BaseModel):
     name: str
     type: str
     country: str
+    legal_name: Optional[str] = None  # Nombre Jurídico (razón social)
     rif: Optional[str] = None
     bank_code: Optional[str] = None
     # Procesador asociado (solo aplica a Banco/Fintech). "Procesador Independiente"
@@ -220,6 +221,7 @@ class Bank(BaseModel):
     name: str
     type: str
     country: str
+    legal_name: Optional[str] = None
     rif: Optional[str] = None
     bank_code: Optional[str] = None
     procesador: Optional[str] = None

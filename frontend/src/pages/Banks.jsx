@@ -104,7 +104,7 @@ export const Banks = () => {
   const [deleteBankData, setDeleteBankData] = useState({ id: null, name: null });
   const [formData, setFormData] = useState({
     name: '', type: 'Banco', country: 'Venezuela',
-    rif: '', bank_code: '', procesador: 'Procesador Independiente',
+    legal_name: '', rif: '', bank_code: '', procesador: 'Procesador Independiente',
     contact_name: '', contact_phone: '', contact_email: '',
     bank_logo_url: '', products: [], contacts: []
   });
@@ -224,7 +224,7 @@ export const Banks = () => {
     }
     setFormData({
       name: bank.name, type: bank.type, country: bank.country,
-      rif: bank.rif || '', bank_code: bank.bank_code || '',
+      legal_name: bank.legal_name || '', rif: bank.rif || '', bank_code: bank.bank_code || '',
       procesador: bank.procesador || 'Procesador Independiente',
       contact_name: bank.contact_name || '', contact_phone: bank.contact_phone || '',
       contact_email: bank.contact_email || '', bank_logo_url: bank.bank_logo_url || '',
@@ -237,7 +237,7 @@ export const Banks = () => {
   const resetForm = () => {
     setFormData({
       name: '', type: 'Banco', country: 'Venezuela',
-      rif: '', bank_code: '', procesador: 'Procesador Independiente',
+      legal_name: '', rif: '', bank_code: '', procesador: 'Procesador Independiente',
       contact_name: '', contact_phone: '', contact_email: '',
       bank_logo_url: '', products: [], contacts: []
     });
@@ -292,11 +292,11 @@ export const Banks = () => {
   };
 
   const exportToCSV = () => {
-    const headers = ['Nombre', 'Tipo', 'País', 'RIF', 'Código', 'Contacto', 'Teléfono', 'Email', 'Productos'];
+    const headers = ['Nombre', 'Nombre Jurídico', 'Tipo', 'País', 'RIF', 'Código', 'Contacto', 'Teléfono', 'Email', 'Productos'];
     const csvContent = [
       headers.join(','),
       ...banks.map(b => [
-        `"${b.name}"`, `"${b.type}"`, `"${b.country}"`, `"${b.rif || ''}"`, `"${b.bank_code || ''}"`,
+        `"${b.name}"`, `"${b.legal_name || ''}"`, `"${b.type}"`, `"${b.country}"`, `"${b.rif || ''}"`, `"${b.bank_code || ''}"`,
         `"${b.contact_name || ''}"`, `"${b.contact_phone || ''}"`, `"${b.contact_email || ''}"`,
         `"${(b.products || []).map(p => p.product_name).join('; ')}"`
       ].join(','))
@@ -472,6 +472,10 @@ export const Banks = () => {
                         <Building2 size={16} />Información Fiscal
                       </h3>
                       <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2">
+                          <Label htmlFor="legal_name">Nombre Jurídico</Label>
+                          <Input id="legal_name" data-testid="bank-legal-name-input" placeholder="Ej: Banco Mercantil, C.A. Banco Universal" value={formData.legal_name} onChange={(e) => setFormData({ ...formData, legal_name: e.target.value })} />
+                        </div>
                         <div>
                           <Label htmlFor="rif">RIF</Label>
                           <Input id="rif" data-testid="bank-rif-input" placeholder="J-00000000-0" value={formData.rif} onChange={(e) => setFormData({ ...formData, rif: e.target.value })} />
@@ -788,6 +792,7 @@ export const Banks = () => {
                         </span>
                       )}
                     </div>
+                    {bank.legal_name && <p className="text-xs text-slate-600 mt-0.5 truncate" title={bank.legal_name} data-testid={`bank-legal-name-${bank.bank_id}`}>{bank.legal_name}</p>}
                     {bank.rif && <p className="text-xs text-slate-500 mt-0.5">{bank.rif}</p>}
                   </div>
 

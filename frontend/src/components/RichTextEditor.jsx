@@ -164,6 +164,7 @@ const DEFAULT_EXAMPLE_VALUES = {
   fecha_entrega: '31/03/2026',
   banco: 'Banco Mercantil',
   banco_nombre: 'Banco Demo, C.A.',
+  banco_razon_social: 'Banco Demo Banco Universal, C.A.',
   banco_rif: 'J-00000000-0',
   banco_codigo: '0105',
   banco_tipo: 'Banco',

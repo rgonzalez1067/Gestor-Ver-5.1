@@ -319,7 +319,7 @@ const INTEGRATOR_VARIABLE_GROUPS = [
     { key: 'aplicativo', label: 'Aplicativo' }, { key: 'fase', label: 'Fase' },
   ] },
   { title: 'Bancos y Entes', note: 'un correo por Banco/Ente (BCC)', tone: 'bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50', vars: [
-    { key: 'banco_nombre', label: 'Nombre del Banco/Ente' }, { key: 'banco_rif', label: 'RIF del Banco/Ente' },
+    { key: 'banco_nombre', label: 'Nombre del Banco/Ente' }, { key: 'banco_razon_social', label: 'Nombre Jurídico' }, { key: 'banco_rif', label: 'RIF del Banco/Ente' },
     { key: 'banco_codigo', label: 'Código bancario' }, { key: 'banco_tipo', label: 'Tipo (Banco/Ente)' },
     { key: 'banco_pais', label: 'País' }, { key: 'banco_procesador', label: 'Procesador' },
   ] },
