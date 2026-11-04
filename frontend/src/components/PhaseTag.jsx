@@ -1,9 +1,8 @@
 const PRE_PROD = 'bg-orange-100 text-orange-800 border-orange-300';
-const PROD = 'bg-emerald-100 text-emerald-800 border-emerald-300';
 
 export const PhaseTag = ({ status, testId, className = '' }) => {
-  if (!status) return null;
-  const tone = status === 'Producción' ? PROD : PRE_PROD;
+  if (!status || status === 'Producción') return null;
+  const tone = PRE_PROD;
   return (
     <span
       data-testid={testId}

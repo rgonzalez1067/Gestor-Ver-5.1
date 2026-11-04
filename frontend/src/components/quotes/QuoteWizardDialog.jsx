@@ -20,6 +20,7 @@ import { integratorModalityMatch, shouldShowIntegrationBadge, integrationTypesFo
 import { toast } from 'sonner';
 import { ProjectFeaturesField } from '../ProjectFeaturesField';
 import { PhaseTag } from '../PhaseTag';
+import { ExpressServiceToggle } from './ExpressServiceToggle';
 
 export const QuoteWizardDialog = ({ ctx }) => {
   const {
@@ -53,6 +54,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
     pgIsNewClient, setPgIsNewClient,
     pgAccumulatedProducts, setPgAccumulatedProducts,
     pgEffectiveProductCount,
+    expressService,
     // Functions
     initializeSetupConcepts, initializeRecurringBasicConcepts, initializeRecurringOtherConcepts,
     findServicePrice, findServicePriceWithModel, handleBankSelect,
@@ -857,6 +859,9 @@ export const QuoteWizardDialog = ({ ctx }) => {
                         </p>
                       )}
                     </div>
+                    )}
+                    {(isVPOS || isMPOS || isPaymentGateway) && (
+                      <ExpressServiceToggle quoteData={quoteData} setQuoteData={setQuoteData} expressService={expressService} />
                     )}
                   </div>
                 </div>

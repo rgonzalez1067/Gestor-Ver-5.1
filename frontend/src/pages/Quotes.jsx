@@ -190,6 +190,7 @@ export const Quotes = () => {
     sponsoring_processor_name: '',
     // Cliente exento de IVA (radio Sí/No)
     iva_exempt: false,
+    servicio_express: false,
   });
   
   // Estado para agregar nuevo medio de pago
@@ -422,6 +423,58 @@ export const Quotes = () => {
     }, 300);
     return () => { if (clientSearchTimer.current) clearTimeout(clientSearchTimer.current); };
   }, [clientSearchQuery, clients]);
+
+  // Servicio Express: monto = max(Convencional, cajas × Outsourcing) del catálogo
+  const expressService = useMemo(
+    () => serviceCatalog.find(s => (s.name || '').trim().toLowerCase() === 'servicio express'),
+    [serviceCatalog]
+  );
+  const calcExpressAmount = (cajas) => Math.max(
+    expressService?.setup_cost_conventional || 0,
+    (parseInt(cajas) || 1) * (expressService?.setup_cost_outsourcing || 0)
+  );
+  const isPgQuoteType = ['GATEWAY', 'LINK_PAGO'].includes(quoteData.quote_type);
+
+  useEffect(() => {
+    if (isLoadingEdit || isPgQuoteType) return;
+    const items = quoteData.setup_items || [];
+    const row = items.find(i => i.express);
+    if (!quoteData.servicio_express) {
+      if (row) setQuoteData(q => ({ ...q, setup_items: q.setup_items.filter(i => !i.express) }));
+      return;
+    }
+    if (!expressService) return;
+    const amount = calcExpressAmount(quoteData.cantidad_cajas);
+    if (!row) {
+      setQuoteData(q => ({ ...q, setup_items: [...q.setup_items, {
+        id: 'servicio_express', name: 'Servicio Express', medio_pago_name: 'Servicio Express',
+        express: true, expressManual: false, cantidad_cajas: 1, cantidad_bancos: 1, lockBancos: true,
+        tarifa: amount, isDefault: false,
+      }] }));
+    } else if (!row.expressManual && row.tarifa !== amount) {
+      setQuoteData(q => ({ ...q, setup_items: q.setup_items.map(i => (i.express ? { ...i, tarifa: amount } : i)) }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteData.servicio_express, quoteData.cantidad_cajas, quoteData.setup_items, isPgQuoteType, expressService, isLoadingEdit]);
+
+  useEffect(() => {
+    if (isLoadingEdit || !isPgQuoteType) return;
+    const row = pgSetupItems.find(i => i.express);
+    if (!quoteData.servicio_express) {
+      if (row) setPgSetupItems(p => p.filter(i => !i.express));
+      return;
+    }
+    if (!expressService || pgSetupItems.length === 0) return;
+    const amount = calcExpressAmount(1);
+    if (!row) {
+      const pos = pgSetupItems.reduce((acc, i, k) => (i.fixed ? k + 1 : acc), 0);
+      const expressRow = { concepto: 'Servicio Express', costo: amount, banco: 'N/A', observacion: '', express: true, expressManual: false };
+      setPgSetupItems(p => [...p.slice(0, pos), expressRow, ...p.slice(pos)]);
+    } else if (!row.expressManual && row.costo !== amount) {
+      setPgSetupItems(p => p.map(i => (i.express ? { ...i, costo: amount } : i)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteData.servicio_express, pgSetupItems, isPgQuoteType, expressService, isLoadingEdit]);
 
   // Auto-calcular campo "Bancos" para conceptos con autoBancos: true
   useEffect(() => {
@@ -1088,6 +1141,7 @@ export const Quotes = () => {
       sponsoring_processor_id: '',
       sponsoring_processor_name: '',
       iva_exempt: false,
+    servicio_express: false,
     });
     setSelectedBankId('');
     setSelectedMedioPagoId('');
@@ -1331,6 +1385,7 @@ export const Quotes = () => {
       ? (value === '' ? '' : parseFloat(value))
       : value;
     updatedItems[index] = { ...updatedItems[index], [field]: parsed };
+    if (updatedItems[index].express && field === 'tarifa') updatedItems[index].expressManual = true;
     const patch = { ...quoteData, setup_items: updatedItems };
     if (field === 'cantidad_cajas' && parsed !== '' && Number.isFinite(parsed) && parsed > 0) {
       patch.recurring_basic_items = propagateBoxesToRecurring(quoteData.recurring_basic_items, updatedItems[index], parsed);
@@ -1368,7 +1423,8 @@ export const Quotes = () => {
     
     setQuoteData({
       ...quoteData,
-      setup_items: quoteData.setup_items.filter((_, i) => i !== index)
+      setup_items: quoteData.setup_items.filter((_, i) => i !== index),
+      ...(quoteData.setup_items[index]?.express ? { servicio_express: false } : {}),
     });
     toast.success('Concepto eliminado. Los totales han sido recalculados.');
   };
@@ -1669,6 +1725,7 @@ export const Quotes = () => {
   const updatePgSetupItem = (index, field, value) => {
     const updated = [...pgSetupItems];
     updated[index] = { ...updated[index], [field]: field === 'costo' ? (parseFloat(value) || 0) : value };
+    if (updated[index].express && field === 'costo') updated[index].expressManual = true;
     setPgSetupItems(updated);
   };
 
@@ -1678,6 +1735,11 @@ export const Quotes = () => {
       toast.error('Este concepto es fijo y no puede ser eliminado');
       return;
     }
+    if (pgSetupItems[index]?.express) {
+      setQuoteData(q => ({ ...q, servicio_express: false }));
+      setPgSetupItems(pgSetupItems.filter((_, i) => i !== index));
+      return;
+    }
     setPgSetupItems(pgSetupItems.filter((_, i) => i !== index));
     setPgShowRecurringTable(false); // Reset recurring table when items change
   };
@@ -1685,7 +1747,7 @@ export const Quotes = () => {
   const pgSetupTotal = pgSetupItems.reduce((sum, item) => sum + (item.costo || 0), 0);
 
   // Count only medios de pago (exclude Persona Jurídica which is fixed)
-  const pgMediosPagoCount = pgSetupItems.filter(item => !item.fixed).length;
+  const pgMediosPagoCount = pgSetupItems.filter(item => !item.fixed && !item.express).length;
 
   // Cantidad efectiva de productos para la escala de recurrentes:
   // - Cliente nuevo → cantidad del lote actual (pgMediosPagoCount).
@@ -1980,7 +2042,9 @@ export const Quotes = () => {
           lockBancos: item.lockBancos || false,
           autoBancos: item.autoBancos || false,
           bancosOverride: item.bancosOverride || null,
-          totalOverride: item.totalOverride || null
+          totalOverride: item.totalOverride || null,
+          express: !!item.express,
+          expressManual: !!item.expressManual
         })),
         ...quoteData.recurring_basic_items.map(item => ({
           item_type: 'recurring_basic',
@@ -2195,6 +2259,7 @@ export const Quotes = () => {
         sponsoring_processor_name: quoteData.sponsored_implementation ? (quoteData.sponsoring_processor_name || '') : '',
         // Cliente exento de IVA
         iva_exempt: !!quoteData.iva_exempt,
+        servicio_express: !!quoteData.servicio_express,
         // Total USD = Total Setup Neto + Equipment (calculado por el wizard)
         override_total_usd: totalNetoSetup + ftHardwareSubtotal,
         descuento_setup: quoteData.descuento_setup || 0,
@@ -3707,10 +3772,8 @@ export const Quotes = () => {
                itemLower.includes(conceptLower) || 
                conceptLower.includes(itemLower);
       });
-      return mapService(s, concept, false);
+      return { ...mapService(s, concept, false), express: !!s.express, expressManual: !!s.expressManual };
     });
-    
-    // Mapear recurrentes básicos preservando lockBancos
     // Matching más preciso: primero intentar coincidencia exacta, luego parcial
     const recurringBasicItems = services.filter(s => getCategory(s) === 'recurring_basic').map(s => {
       const itemName = s.item_name || '';
@@ -3810,6 +3873,7 @@ export const Quotes = () => {
       sponsoring_processor_id: quote.sponsoring_processor_id || '',
       sponsoring_processor_name: quote.sponsoring_processor_name || '',
       iva_exempt: !!quote.iva_exempt,
+      servicio_express: !!quote.servicio_express,
     });
     
     // Load PG data if it's a Payment Gateway / Link de Pago quote
@@ -3901,7 +3965,9 @@ export const Quotes = () => {
           lockBancos: item.lockBancos || false,
           autoBancos: item.autoBancos || false,
           bancosOverride: item.bancosOverride || null,
-          totalOverride: item.totalOverride || null
+          totalOverride: item.totalOverride || null,
+          express: !!item.express,
+          expressManual: !!item.expressManual
         })),
         ...quoteData.recurring_basic_items.map(item => ({ 
           item_type: 'recurring_basic',
@@ -4022,6 +4088,7 @@ export const Quotes = () => {
         sponsoring_processor_name: quoteData.sponsored_implementation ? (quoteData.sponsoring_processor_name || '') : '',
         // Cliente exento de IVA
         iva_exempt: !!quoteData.iva_exempt,
+        servicio_express: !!quoteData.servicio_express,
       });
       
       toast.success(`Nueva versión ${duplicateResponse.data.new_quote_number} creada exitosamente`);
@@ -4484,6 +4551,7 @@ export const Quotes = () => {
             pgIsNewClient, setPgIsNewClient,
             pgAccumulatedProducts, setPgAccumulatedProducts,
             pgEffectiveProductCount,
+            expressService,
             initializeSetupConcepts, initializeRecurringBasicConcepts, initializeRecurringOtherConcepts,
             findServicePrice, findServicePriceWithModel, handleBankSelect,
             addMedioPagoItem, addMultipleMediosPago, duplicateSetupItem, handleSubmitQuote,

@@ -105,6 +105,7 @@ async def create_quote(quote_data: QuoteCreate, authorization: Optional[str] = H
         sponsor_processor_name=quote_data.sponsor_processor_name,
         cantidad_cajas=quote_data.cantidad_cajas,
         cantidad_bancos=quote_data.cantidad_bancos,
+        servicio_express=bool(quote_data.servicio_express),
         pg_setup_items=quote_data.pg_setup_items,
         pg_recurring_cost=quote_data.pg_recurring_cost,
         pg_transaction_range=quote_data.pg_transaction_range,
@@ -170,6 +171,7 @@ class QuoteCreateWithPDF(BaseModel):
     sponsoring_processor_name: Optional[str] = None
     # Cliente exento de IVA — suprime impuesto en cálculos y facturación
     iva_exempt: Optional[bool] = False
+    servicio_express: Optional[bool] = False
     cantidad_cajas: Optional[int] = None
     cantidad_bancos: Optional[int] = None
     # Datos para el PDF (diccionario flexible)
@@ -448,6 +450,7 @@ async def create_quote_with_pdf(data: QuoteCreateWithPDF, authorization: Optiona
             sponsoring_processor_id=data.sponsoring_processor_id if data.sponsored_implementation else None,
             sponsoring_processor_name=data.sponsoring_processor_name if data.sponsored_implementation else None,
             iva_exempt=bool(data.iva_exempt),
+            servicio_express=bool(data.servicio_express),
             cantidad_cajas=data.cantidad_cajas,
             cantidad_bancos=data.cantidad_bancos,
             pg_setup_items=data.pg_setup_items,
@@ -1078,6 +1081,7 @@ class QuoteUpdate(BaseModel):
     sponsoring_processor_name: Optional[str] = None
     # Cliente exento de IVA
     iva_exempt: Optional[bool] = None
+    servicio_express: Optional[bool] = None
     subtotal_usd: Optional[float] = None
     total_usd: Optional[float] = None
     recurring_total_usd: Optional[float] = None

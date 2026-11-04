@@ -584,6 +584,8 @@ class QuoteItem(BaseModel):
     totalOverride: Optional[float] = None
     isAutoLinked: Optional[bool] = None
     operational_status: Optional[str] = None  # Fase del medio de pago al cotizar
+    express: Optional[bool] = None  # Fila "Servicio Express" del Setup
+    expressManual: Optional[bool] = None
 
 # Modelo para items de cotización de equipos
 class EquipmentQuoteItem(BaseModel):
@@ -686,6 +688,7 @@ class QuoteCreate(BaseModel):
     sponsoring_processor_name: Optional[str] = None
     # Cliente exento de IVA (impacta cálculo de impuestos en cotización y facturación)
     iva_exempt: Optional[bool] = False
+    servicio_express: Optional[bool] = False
     # Campos de cantidades a nivel de cotización
     cantidad_cajas: Optional[int] = None
     cantidad_bancos: Optional[int] = None
@@ -800,6 +803,7 @@ class Quote(BaseModel):
     sponsoring_processor_name: Optional[str] = None
     # Cliente exento de IVA (heredado al proyecto/facturación)
     iva_exempt: Optional[bool] = False
+    servicio_express: Optional[bool] = False
     # Campos de cantidades a nivel de cotización
     cantidad_cajas: Optional[int] = None
     cantidad_bancos: Optional[int] = None
@@ -962,6 +966,7 @@ class Project(BaseModel):
     patrocinador_label: Optional[str] = None
     # Cliente exento de IVA (heredado desde la cotización)
     iva_exempt: Optional[bool] = False
+    servicio_express: Optional[bool] = False
     total_usd: float = 0
     total_bs: float = 0
     # Estado y asignación
@@ -983,8 +988,8 @@ class Project(BaseModel):
 
 # Modelo para generar PDF desde frontend
 def with_phase_tag(name: str, status: Optional[str]) -> str:
-    """Agrega '[Fase]' al nombre del medio de pago (idempotente)."""
-    tag = f" [{status}]" if status else ""
+    """Agrega '[Fase]' al nombre del medio de pago (idempotente; Producción no lleva etiqueta)."""
+    tag = f" [{status}]" if status and status != "Producción" else ""
     if not tag or (name or "").endswith(tag):
         return name
     return f"{name}{tag}"
