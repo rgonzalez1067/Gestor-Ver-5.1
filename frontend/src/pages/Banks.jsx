@@ -608,7 +608,7 @@ export const Banks = () => {
                               <SelectValue placeholder="Seleccione..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {mediosPago.map((m) => (<SelectItem key={m.service_id} value={m.service_id}>{m.name}</SelectItem>))}
+                              {mediosPago.filter((m) => !formData.products.some((p) => (p.product_name || '').trim().toLowerCase() === (m.name || '').trim().toLowerCase())).map((m) => (<SelectItem key={m.service_id} value={m.service_id}>{m.name}</SelectItem>))}
                             </SelectContent>
                           </Select>
                           <Button type="button" onClick={addProduct} disabled={!newProduct.service_id} className="bg-sky-600 hover:bg-sky-700 text-white">

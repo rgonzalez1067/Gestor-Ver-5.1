@@ -1,0 +1,30 @@
+{
+  "summary": "Probado el reemplazo del switch 'Fase Previa a Producción' por un selector de estatus operativo (DESA/SQA/Imple/Primer Prod/Producción) en Bancos. Backend: la migración está aplicada (164 productos: 146 en Producción y 18 en Imple; pre_production siempre coincide con operational_status != 'Producción'). Con PUT se guardan SQA y Primer Prod con pre_production=true y Producción con pre_production=false. El estatus manda aunque el pre_production enviado no coincida. Los registros antiguos sin estatus se normalizan (true pasa a Imple, false a Producción). Un valor no válido devuelve 422. medios-pago?bank_id= deja fuera las fases previas. UI: product-status-select-{i} tiene las 5 opciones con sus testids y ya no existe preprod-switch. Un medio de pago recién agregado inicia en DESA. Al cambiar a Primer Prod y guardar, el chip de la grilla pasa a naranja con reloj y etiqueta 'PRIMER PROD'. En BankDetail, vpos-product aparece naranja con vpos-status y el producto de Banesco que es solo PG está en rojo con pg-status 'IMPLE'. Los productos en Producción mantienen el azul/verde estándar y no llevan etiqueta. Se restauraron todos los estatus modificados: los conteos quedaron en 146/18 y Banco del Tesoro y 100% Banco tienen sus valores originales.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Banks.jsx Agregar Medio de Pago", "issue": "Ya existía antes de este cambio: se puede agregar un medio de pago que el banco ya tiene (probé con 'Tarjetas de Crédito/Débito liquidación en Bs' en Banco del Tesoro). El duplicado entra con DESA y el GET lo elimina con dedupe_bank_products, que conserva la primera aparición, así que el estatus del duplicado se pierde sin aviso. Conviene excluir del select los medios de pago ya asociados.", "selector": "[data-testid='select-medio-pago-bank']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "BankDetail", "issues": ["La etiqueta de estatus (sobre todo 'PRIMER PROD') le quita ancho a la tarjeta y trunca más el nombre del producto, por ejemplo 'Verificación ...'. Se puede agregar un title/tooltip con el nombre completo.", "Los contadores 'medios activos' (VPOS/MPOS, PG/Link) incluyen productos en fase previa. Ya era así antes del cambio."]},
+      {"screen": "Banks grilla", "issues": ["data-testid bank-chip-{i} se repite en cada fila de banco; habría que hacerlo único, por ejemplo bank-chip-{bank_id}-{i}."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_bank_product_status.py", "/app/test_reports/pytest/pytest_bank_status.xml"],
+  "action_items": [
+    "(Opcional) Excluir del selector 'Agregar Medio de Pago' los productos ya asociados al banco",
+    "(Opcional) Agregar un title con el nombre completo en las tarjetas de BankDetail y hacer únicos los testids bank-chip por banco"
+  ],
+  "critical_code_review_comments": [
+    "BankProduct._sync_operational_status: correcto. operational_status es la fuente de verdad y pre_production se deriva. Quotes.jsx y bank_payment_conditions siguen filtrando por pre_production, que el validador siempre mantiene sincronizado.",
+    "migrate_bank_product_status es idempotente: se salta los bancos cuyos productos ya tienen estatus.",
+    "No existe GET /api/banks/{id}. La única lectura individual es /api/banks/{id}/detail."
+  ],
+  "updated_files": ["/app/backend/tests/test_bank_product_status.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Ninguno. Se cambiaron temporalmente 100% Banco (producto 0, vía pytest) y Banco del Tesoro (producto 1 a Primer Prod, vía UI). Ambos están restaurados; conteo final: Producción 146, Imple 18.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Login con rgonzalez@megasoft.com.ve / Mega2026* (admin123 da 401). El token es session_token; en la UI se inyecta en localStorage ('session_token' y 'user'). En el preview, el PUT de bancos desde el navegador a veces tarda más de 3 s; hay que esperar más antes de afirmar que no se guardó. Bancos útiles: bnk_91d0cba04375 (Banco del Tesoro, 3 productos) y bnk_8c250000a996 (Banesco, con un Imple solo PG en rojo)."
+}

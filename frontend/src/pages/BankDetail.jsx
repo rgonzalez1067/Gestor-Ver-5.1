@@ -305,7 +305,7 @@ export const BankDetail = () => {
                   const card = (
                     <div data-testid={`vpos-product-${i}`} className={`flex items-center gap-2 p-2.5 rounded-lg border ${isPreProduction(p) ? 'bg-orange-100 border-orange-300' : 'bg-blue-50 border-blue-100'}`}>
                       {isPreProduction(p) ? <Clock size={14} className="text-orange-600 shrink-0" /> : <Package size={14} className="text-blue-600 shrink-0" />}
-                      <span className={`text-sm font-medium truncate ${isPreProduction(p) ? 'text-orange-800' : 'text-blue-800'}`}>{p.product_name}</span>
+                      <span title={p.product_name} className={`text-sm font-medium truncate ${isPreProduction(p) ? 'text-orange-800' : 'text-blue-800'}`}>{p.product_name}</span>
                       {hasComment && <span className="text-sky-500 font-bold shrink-0" data-testid={`vpos-comment-dot-${i}`}>•</span>}
                       {isPreProduction(p) && <span className="px-1 py-0.5 text-[9px] font-bold rounded bg-white/70 text-orange-700 uppercase shrink-0" data-testid={`vpos-status-${i}`}>{getProductStatus(p)}</span>}
                       <div className="flex gap-1 ml-auto shrink-0">
@@ -339,7 +339,7 @@ export const BankDetail = () => {
                   const card = (
                     <div data-testid={`pg-product-${i}`} className={`flex items-center gap-2 p-2.5 rounded-lg border ${isPreProduction(p) ? 'bg-red-100 border-red-300' : 'bg-green-50 border-green-100'}`}>
                       {isPreProduction(p) ? <Clock size={14} className="text-red-600 shrink-0" /> : <Package size={14} className="text-green-600 shrink-0" />}
-                      <span className={`text-sm font-medium truncate ${isPreProduction(p) ? 'text-red-800' : 'text-green-800'}`}>{p.product_name}</span>
+                      <span title={p.product_name} className={`text-sm font-medium truncate ${isPreProduction(p) ? 'text-red-800' : 'text-green-800'}`}>{p.product_name}</span>
                       {hasComment && <span className="text-sky-500 font-bold shrink-0" data-testid={`pg-comment-dot-${i}`}>•</span>}
                       {isPreProduction(p) && <span className="px-1 py-0.5 text-[9px] font-bold rounded bg-white/70 text-red-700 uppercase shrink-0" data-testid={`pg-status-${i}`}>{getProductStatus(p)}</span>}
                       <div className="flex gap-1 ml-auto shrink-0">

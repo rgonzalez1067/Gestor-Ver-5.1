@@ -1851,3 +1851,9 @@ Antes, usuarios con permisos limitados no cargaban catálogos en el frontend →
 - Frontend: RepairDeliveryDialog.jsx (alerta de bloqueo, aviso ámbar de despacho sin pago, modal de advertencia con texto literal '⚠️ Atención: Se está realizando la entrega de los equipos sin estar pagados. ¿Desea continuar con la generación de la Nota de Entrega?', flag confirm_unpaid_delivery, manejo 428); Quotes.jsx (checkIrregularAndProceed: deliver de reparación es regular si Reparada/Pagada/validado); TallerEquipos.jsx (opción/badge 'Reparado').
 - QA (testing_agent iter338): 6/6 escenarios PASS — modos prep, bloqueo 400, warning 428→200 con leyenda verificada en PDF vía pdfplumber, normal sin leyenda, válvula irregular con leyenda, guard no-repair 400. Fixtures de prueba eliminados tras QA.
 - Nota: el modal/alertas de frontend compilan y consumen campos verificados; validación visual del modal queda pendiente en ambiente del usuario.
+
+## 2026-06 — Estatus operativo en Medios de Pago (Bancos)
+- `pre_production` (bool) → `operational_status` (DESA/SQA/Imple/Primer Prod/Producción); pre_production se deriva (≠ Producción).
+- Migración automática al arranque: false→Producción, true→Imple. Nuevos medios inician en DESA.
+- Selector en edición de banco; chips/tarjetas en fase previa conservan color naranja/rojo + etiqueta de estatus.
+- Selector "Agregar Medio de Pago" excluye los ya asociados. Testing: iteration_351 (100%).
