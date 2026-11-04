@@ -78,6 +78,25 @@ class StoreProductsOverride(BaseModel):
     banks_products: List[BankProductsOverride] = []
 
 
+class BranchMedio(BaseModel):
+    bank_name: str
+    product_name: str
+
+
+class BranchOverride(BaseModel):
+    store_id: Optional[str] = None  # None = sucursal nueva
+    name: str
+    client_id: Optional[str] = None  # RIF (cliente) de la ficha o su Grupo Económico
+    box_count: int = 0
+    medios: List[BranchMedio] = []
+
+
+class MedioReplacement(BaseModel):
+    bank_name: str
+    from_product: str  # medio cotizado
+    to_product: str  # medio que lo reemplaza (hereda su tope)
+
+
 class MasterOverridePayload(BaseModel):
     # Campos escalares (texto libre)
     project_number: Optional[str] = None
@@ -105,6 +124,8 @@ class MasterOverridePayload(BaseModel):
     # Estructura relacional
     banks_products: Optional[List[BankProductsOverride]] = None  # proyectos single
     stores_products: Optional[List[StoreProductsOverride]] = None  # multitienda
+    branches: Optional[List[BranchOverride]] = None  # gestión de sucursales con topes
+    medio_replacements: Optional[List[MedioReplacement]] = None
     hardware: Optional[List[dict]] = None
 
 
@@ -620,6 +641,10 @@ def _build_override_matrix(banks_products, existing_matrix):
     existentes cuando el par banco/producto no cambia (evita perder avance)."""
     m = {}
     existing_matrix = existing_matrix or {}
+    norm = {
+        ((b or "").strip(), (p or "").strip()): data
+        for b, prods in existing_matrix.items() for p, data in (prods or {}).items()
+    }
     for bp in banks_products:
         bn = (bp.bank_name or "").strip()
         if not bn:
@@ -629,7 +654,7 @@ def _build_override_matrix(banks_products, existing_matrix):
             prod = (prod or "").strip()
             if not prod:
                 continue
-            m[bn][prod] = (existing_matrix.get(bn, {}) or {}).get(prod, {})
+            m[bn][prod] = norm.get((bn, prod), {})
     return m
 
 
@@ -715,17 +740,41 @@ def _master_diff(old_project, update, is_multistore):
 
     if is_multistore and "stores" in update:
         old_stores = {s.get("store_id"): s for s in (old_project.get("stores") or [])}
+        new_ids = {s.get("store_id") for s in update.get("stores") or []}
+        for sid, st in old_stores.items():
+            if sid not in new_ids:
+                changes.append({"field": f"store:{sid}", "label": f"Sucursal eliminada «{st.get('name', sid)}»",
+                                "old": f"{st.get('box_count', 0)} cajas", "new": "—"})
         for st in update.get("stores") or []:
             sid = st.get("store_id")
-            o_sum = _summarize_matrix((old_stores.get(sid) or {}).get("implementation_matrix"))
-            n_sum = _summarize_matrix(st.get("implementation_matrix"))
-            if o_sum != n_sum:
+            old = old_stores.get(sid) or {}
+            o_desc = f"{old.get('box_count', 0)} cajas · RIF {old.get('rif') or '—'} · {_summarize_matrix(old.get('implementation_matrix'))}" if old else "—"
+            n_desc = f"{st.get('box_count', 0)} cajas · RIF {st.get('rif') or '—'} · {_summarize_matrix(st.get('implementation_matrix'))}"
+            if o_desc != n_desc or old.get("name") != st.get("name"):
                 changes.append({
                     "field": f"store:{sid}",
-                    "label": f"Tienda «{st.get('name', sid)}»",
-                    "old": o_sum, "new": n_sum,
+                    "label": f"Sucursal «{st.get('name', sid)}»" if old else f"Sucursal nueva «{st.get('name', sid)}»",
+                    "old": o_desc, "new": n_desc,
                 })
     return changes
+
+
+@router.get("/projects/{project_id}/master-branches-context")
+async def master_branches_context(project_id: str, authorization: Optional[str] = Header(None)):
+    """Topes contratados, sucursales certificadas y RIFs elegibles para la Edición Maestra."""
+    current_user = await get_current_user(authorization)
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Acceso denegado: la Edición Maestra es exclusiva para Administradores.")
+    project = await db.projects.find_one({"project_id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    from services.master_branches import compute_baseline, is_store_certified, eligible_rif_clients
+    return {
+        "baseline": compute_baseline(project),
+        "certified_store_ids": [s.get("store_id") for s in project.get("stores") or [] if is_store_certified(s)],
+        "eligible_clients": await eligible_rif_clients(project),
+        "medio_replacements": project.get("medio_replacements") or [],
+    }
 
 
 @router.put("/projects/{project_id}/master-override")
@@ -801,8 +850,17 @@ async def master_override_project(project_id: str, payload: MasterOverridePayloa
         update["hardware"] = payload.hardware
 
     # --- Estructura relacional (Banco ↔ Productos) ---
-    is_multistore = project.get("project_type") == "multistore"
-    if is_multistore and payload.stores_products is not None:
+    is_multistore = project.get("project_type") in ("multistore", "multirif")
+    if is_multistore and payload.branches is not None:
+        from services.master_branches import apply_branches
+        res = await apply_branches(project, payload.branches, payload.medio_replacements, _build_override_matrix)
+        union = res.pop("union")
+        update.update(res)
+        principal = [BankProductsOverride(bank_name=bn, products=sorted(prods)) for bn, prods in union.items() if bn]
+        update["implementation_matrix"] = _build_override_matrix(principal, project.get("implementation_matrix", {}))
+        update["banks"] = [{"bank_name": bn} for bn in union.keys() if bn]
+        update["services"] = _build_override_services(principal, project.get("services", []), project.get("box_count"))
+    elif is_multistore and payload.stores_products is not None:
         sp_map = {s.store_id: s.banks_products for s in payload.stores_products}
         union = {}  # banco -> set(productos)
         new_stores = []

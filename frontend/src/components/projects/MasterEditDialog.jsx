@@ -9,6 +9,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { toast } from 'sonner';
 import { ProcessorLinkBankModal } from '../shared/ProcessorLinkBankModal';
+import { BranchesEditor } from './BranchesEditor';
 import { Pencil, Plus, Trash2, Landmark, Cpu, Store, AlertTriangle, Search } from 'lucide-react';
 
 // Combobox de cliente con búsqueda predictiva por RIF, Razón Social,
@@ -172,6 +173,9 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
   const [sponsorProcessorModal, setSponsorProcessorModal] = useState({ open: false, processor: null });
 
   const isMultistore = project?.project_type === 'multistore';
+  const isBranchProject = ['multistore', 'multirif'].includes(project?.project_type);
+  const [branchesCtx, setBranchesCtx] = useState(null);
+  const [serversList, setServersList] = useState([]);
 
   const matrixToRows = (matrix) =>
     Object.entries(matrix || {}).map(([bank_name, prods]) => ({ bank_name, products: Object.keys(prods || {}) }));
@@ -203,6 +207,15 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
       banks_products: matrixToRows(s.implementation_matrix),
     })),
     hardware: (p.hardware || []).map(h => ({ hardware_id: h.hardware_id, name: h.name, type: h.type })),
+    branches: (p.stores || []).map(s => ({
+      store_id: s.store_id,
+      name: s.name || '',
+      client_id: ((p.rifs || []).find(r => r.rif_id === s.rif_id) || {}).client_id || p.client_id || '',
+      box_count: s.box_count ?? 0,
+      medios: Object.entries(s.implementation_matrix || {}).flatMap(([bank_name, prods]) =>
+        Object.keys(prods || {}).map(product_name => ({ bank_name, product_name }))),
+    })),
+    medio_replacements: p.medio_replacements || [],
   }), []);
 
   useEffect(() => {
@@ -220,6 +233,12 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
         setHardwareCatalog(h.data || []);
         setClientsList(Array.from(new Map((cl.data || []).map(c => [c.client_id, c])).values()));
         setIntegratorsList(intg.data || []);
+        const srv = await api.get('/servers').catch(() => ({ data: [] }));
+        setServersList(srv.data || []);
+        if (['multistore', 'multirif'].includes(project.project_type)) {
+          const ctx = await api.get(`/projects/${project.project_id}/master-branches-context`).catch(() => ({ data: null }));
+          setBranchesCtx(ctx.data);
+        }
         const u = await api.get('/auth/users').catch(() => ({ data: [] }));
         const sorted = (u.data || []).slice().sort((a, c) =>
           (a.full_name || a.email || '').localeCompare(c.full_name || c.email || '', 'es', { sensitivity: 'base' })
@@ -318,7 +337,10 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
         generador_user_id: form.generador_user_id || '__none__',
         hardware: form.hardware,
       };
-      if (isMultistore) {
+      if (isBranchProject) {
+        payload.branches = form.branches.map(b => ({ ...b, box_count: parseInt(b.box_count) || 0 }));
+        payload.medio_replacements = form.medio_replacements;
+      } else if (isMultistore) {
         payload.stores_products = form.stores_products.map(s => ({ store_id: s.store_id, banks_products: s.banks_products }));
       } else {
         payload.banks_products = form.banks_products;
@@ -368,7 +390,6 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
                 ['ticket_number', 'Nro de Ticket'],
                 ['client_rif', 'RIF'],
                 ['client_sede', 'Sede'],
-                ['server_name', 'Servidor'],
                 ['pinpad_model', 'Modelo Pinpad'],
               ].map(([key, label]) => (
                 <div key={key}>
@@ -377,6 +398,21 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
                     className="mt-1 h-8 text-sm" data-testid={`master-field-${key}`} />
                 </div>
               ))}
+              <div>
+                <Label className="text-xs">Servidor de Instalación</Label>
+                <Select value={form.server_name || '__none__'} onValueChange={v => set({ server_name: v === '__none__' ? '' : v })}>
+                  <SelectTrigger className="mt-1 h-8 text-sm" data-testid="master-server-select"><SelectValue placeholder="Seleccionar servidor..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Sin servidor —</SelectItem>
+                    {form.server_name && !serversList.some(sv => sv.descripcion === form.server_name) && (
+                      <SelectItem value={form.server_name} data-testid="master-server-legacy">{form.server_name} (valor anterior)</SelectItem>
+                    )}
+                    {serversList.map(sv => (
+                      <SelectItem key={sv.server_id} value={sv.descripcion} data-testid={`master-server-opt-${sv.server_id}`}>{sv.descripcion} · {sv.tipo}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               {/* Integrador → Aplicativo (cascada con filtrado dinámico) */}
               <div>
                 <Label className="text-xs">Integrador</Label>
@@ -484,10 +520,20 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
           <section>
             <h3 className="text-sm font-semibold text-slate-800 mb-1 flex items-center gap-2">
               Banco(s) de Implementación y Productos
-              {isMultistore && <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded"><Store size={10} />Multitienda</span>}
+              {isBranchProject && <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded"><Store size={10} />Multitienda</span>}
             </h3>
             <p className="text-xs text-slate-400 mb-2">Los productos se filtran por el Tipo de Proyecto seleccionado.</p>
-            {isMultistore ? (
+            {isBranchProject ? (
+              <BranchesEditor
+                branches={form.branches}
+                onChange={(next) => set({ branches: next })}
+                context={branchesCtx}
+                replacements={form.medio_replacements}
+                onReplacementsChange={(next) => set({ medio_replacements: next })}
+                banksCatalog={banksCatalog}
+                quoteType={form.quote_type}
+              />
+            ) : isMultistore ? (
               form.stores_products.length === 0 ? (
                 <p className="text-xs text-slate-400 italic">Este proyecto multitienda no tiene tiendas registradas.</p>
               ) : (
