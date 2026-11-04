@@ -23,7 +23,8 @@ import uuid
 import zipfile
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional
+from pydantic import BaseModel
 
 from bson.json_util import dumps as bson_dumps, loads as bson_loads
 from fastapi import APIRouter, Header, HTTPException, UploadFile, File, Form, Body
@@ -1362,56 +1363,122 @@ async def quotes_bundle_import_data(
 
     for cfg in QUOTES_BUNDLE_COLLECTIONS:
         docs = cols.get(cfg["collection"], []) or []
-        collection = db[cfg["collection"]]
-        key = cfg["key"]
-        inserted = updated = skipped = 0
-        errors = []
+        results.append(await _upsert_bundle_docs(cfg, docs, user, now_iso))
+    return await _finalize_bundle_import(results, payload.get("exported_at"), payload.get("exported_by"), user, now_iso)
 
-        valid_keys = [d[key] for d in docs if isinstance(d, dict) and d.get(key)]
-        existing = await collection.find({key: {"$in": valid_keys}}, {"_id": 0}).to_list(None)
-        existing_map = {e[key]: e for e in existing}
 
-        for d in docs:
-            if not isinstance(d, dict) or not d.get(key):
-                skipped += 1
-                errors.append({"reason": "missing_key", "key_field": key})
-                continue
-            try:
-                doc = {k: v for k, v in d.items() if k != "_id"}
-                kv = doc[key]
-                if kv in existing_map:
-                    original_created = existing_map[kv].get("created_at")
-                    if original_created and not doc.get("created_at"):
-                        doc["created_at"] = original_created
-                    doc["updated_at"] = now_iso
-                    doc["updated_by"] = user.get("email")
-                    await collection.update_one({key: kv}, {"$set": doc})
-                    updated += 1
-                else:
-                    if not doc.get("created_at"):
-                        doc["created_at"] = now_iso
-                    doc["imported_at"] = now_iso
-                    doc["imported_by"] = user.get("email")
-                    await collection.insert_one(doc)
-                    inserted += 1
-            except Exception as e:
-                skipped += 1
-                errors.append({"key": d.get(key), "error": str(e)})
+_BUNDLE_CFG = {cfg["collection"]: cfg for cfg in QUOTES_BUNDLE_COLLECTIONS}
 
-        results.append({
-            "collection": cfg["collection"],
-            "label": cfg["label"],
-            "inserted": inserted,
-            "updated": updated,
-            "skipped": skipped,
-            "errors": errors[:10],
+
+async def _upsert_bundle_docs(cfg: dict, docs: list, user: dict, now_iso: str) -> dict:
+    collection = db[cfg["collection"]]
+    key = cfg["key"]
+    inserted = updated = skipped = 0
+    errors = []
+    valid_keys = [d[key] for d in docs if isinstance(d, dict) and d.get(key)]
+    existing = await collection.find({key: {"$in": valid_keys}}, {"_id": 0, key: 1, "created_at": 1}).to_list(None)
+    existing_map = {e[key]: e for e in existing}
+
+    for d in docs:
+        if not isinstance(d, dict) or not d.get(key):
+            skipped += 1
+            errors.append({"reason": "missing_key", "key_field": key})
+            continue
+        try:
+            doc = {k: v for k, v in d.items() if k != "_id"}
+            kv = doc[key]
+            if kv in existing_map:
+                original_created = existing_map[kv].get("created_at")
+                if original_created and not doc.get("created_at"):
+                    doc["created_at"] = original_created
+                doc["updated_at"] = now_iso
+                doc["updated_by"] = user.get("email")
+                await collection.update_one({key: kv}, {"$set": doc})
+                updated += 1
+            else:
+                if not doc.get("created_at"):
+                    doc["created_at"] = now_iso
+                doc["imported_at"] = now_iso
+                doc["imported_by"] = user.get("email")
+                await collection.insert_one(doc)
+                inserted += 1
+        except Exception as e:
+            skipped += 1
+            errors.append({"key": d.get(key), "error": str(e)})
+
+    return {
+        "collection": cfg["collection"],
+        "label": cfg["label"],
+        "inserted": inserted,
+        "updated": updated,
+        "skipped": skipped,
+        "errors": errors[:10],
+    }
+
+
+class _BundlePreviewKeys(BaseModel):
+    exported_at: Optional[str] = None
+    exported_by: Optional[str] = None
+    keys: Dict[str, List[str]] = {}
+    invalid: Dict[str, int] = {}
+
+
+@router.post("/admin/quotes-bundle-migration/preview-keys")
+async def quotes_bundle_preview_keys(body: _BundlePreviewKeys, authorization: Optional[str] = Header(None)):
+    """Vista previa liviana: el navegador lee el JSON y envía solo los ids (evita subir archivos grandes)."""
+    await _require_admin(authorization)
+    summary = []
+    for cfg in QUOTES_BUNDLE_COLLECTIONS:
+        keys = [k for k in (body.keys.get(cfg["collection"]) or []) if k]
+        existing = set()
+        for i in range(0, len(keys), 5000):
+            part = keys[i:i + 5000]
+            async for e in db[cfg["collection"]].find({cfg["key"]: {"$in": part}}, {"_id": 0, cfg["key"]: 1}):
+                existing.add(e[cfg["key"]])
+        invalid = int(body.invalid.get(cfg["collection"], 0) or 0)
+        to_update = sum(1 for k in keys if k in existing)
+        summary.append({
+            "collection": cfg["collection"], "label": cfg["label"],
+            "total_in_file": len(keys) + invalid, "valid": len(keys), "invalid": invalid,
+            "to_create": len(keys) - to_update, "to_update": to_update,
         })
+    return {"module": "quotes-bundle", "exported_at": body.exported_at, "exported_by": body.exported_by, "summary": summary}
 
+
+class _BundleBatch(BaseModel):
+    collection: str
+    documents: List[dict]
+
+
+@router.post("/admin/quotes-bundle-migration/import-batch")
+async def quotes_bundle_import_batch(body: _BundleBatch, authorization: Optional[str] = Header(None)):
+    """Upsert de un lote pequeño de documentos (el navegador trocea archivos grandes)."""
+    user = await _require_admin(authorization)
+    cfg = _BUNDLE_CFG.get(body.collection)
+    if not cfg:
+        raise HTTPException(status_code=400, detail=f"Colección no permitida: {body.collection}")
+    return await _upsert_bundle_docs(cfg, body.documents, user, datetime.now(timezone.utc).isoformat())
+
+
+class _BundleFinalize(BaseModel):
+    results: List[dict]
+    exported_at: Optional[str] = None
+    exported_by: Optional[str] = None
+
+
+@router.post("/admin/quotes-bundle-migration/import-finalize")
+async def quotes_bundle_import_finalize(body: _BundleFinalize, authorization: Optional[str] = Header(None)):
+    user = await _require_admin(authorization)
+    return await _finalize_bundle_import(body.results, body.exported_at, body.exported_by, user,
+                                         datetime.now(timezone.utc).isoformat())
+
+
+async def _finalize_bundle_import(results, exported_at, exported_by, user, now_iso):
     await db.bitacora.insert_one({
         "action": "quotes_bundle_import_data",
         "results": results,
-        "source_exported_at": payload.get("exported_at"),
-        "source_exported_by": payload.get("exported_by"),
+        "source_exported_at": exported_at,
+        "source_exported_by": exported_by,
         "executed_by": user.get("email"),
         "executed_by_name": f"{user.get('first_name','')} {user.get('last_name','')}".strip(),
         "executed_at": now_iso,

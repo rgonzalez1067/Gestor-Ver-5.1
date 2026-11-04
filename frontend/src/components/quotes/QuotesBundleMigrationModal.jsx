@@ -194,6 +194,19 @@ export function QuotesBundleMigrationModal({ open, onClose }) {
   const removeDataFile = (idx) => setDataFiles((prev) => prev.filter((_, i) => i !== idx));
   const clearDataFiles = () => setDataFiles([]);
 
+  // Lee y valida el JSON en el navegador (evita subir archivos grandes por el proxy).
+  const readBundleFile = async (f) => {
+    let payload;
+    try { payload = JSON.parse(await f.text()); } catch (err) { throw new Error(`Archivo JSON inválido (${err.message})`); }
+    if (!payload || payload.module !== 'quotes-bundle') {
+      throw new Error(`El archivo es del módulo '${payload?.module}'. Esperado: 'quotes-bundle'.`);
+    }
+    if (!payload.collections || typeof payload.collections !== 'object') throw new Error("Campo 'collections' faltante o inválido");
+    return payload;
+  };
+  const BUNDLE_KEYS = { quotes: 'quote_id', quote_history: 'history_id', projects: 'project_id' };
+  const BATCH_BYTES = 4 * 1024 * 1024;
+
   const handlePreview = async () => {
     const f = previewFileRef.current?.files?.[0];
     if (!f) {
@@ -202,19 +215,53 @@ export function QuotesBundleMigrationModal({ open, onClose }) {
     }
     setPreviewing(true);
     try {
-      const fd = new FormData();
-      fd.append('file', f);
-      const res = await api.post('/admin/quotes-bundle-migration/import-preview', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const payload = await readBundleFile(f);
+      const keys = {}; const invalid = {};
+      Object.entries(payload.collections).forEach(([col, docs]) => {
+        const k = BUNDLE_KEYS[col] || 'id';
+        keys[col] = []; invalid[col] = 0;
+        (docs || []).forEach((d) => (d && d[k] ? keys[col].push(String(d[k])) : (invalid[col] += 1)));
+      });
+      const res = await api.post('/admin/quotes-bundle-migration/preview-keys', {
+        exported_at: payload.exported_at, exported_by: payload.exported_by, keys, invalid,
       });
       setPreviewSummary(res.data);
       toast.success('Vista previa generada');
     } catch (e) {
-      toast.error(e.response?.data?.detail || 'Error en vista previa');
+      toast.error(e.response?.data?.detail || e.message || 'Error en vista previa');
       setPreviewSummary(null);
     } finally {
       setPreviewing(false);
     }
+  };
+
+  // Sube los documentos en lotes (~4 MB) y devuelve resultados agregados por colección.
+  const importBundleInBatches = async (payload, onProgress) => {
+    const results = [];
+    for (const [col, docs] of Object.entries(payload.collections)) {
+      if (!BUNDLE_KEYS[col]) continue;
+      const agg = { collection: col, label: col, inserted: 0, updated: 0, skipped: 0, errors: [] };
+      let batch = []; let size = 0; let done = 0;
+      const flush = async () => {
+        if (!batch.length) return;
+        const r = await api.post('/admin/quotes-bundle-migration/import-batch', { collection: col, documents: batch });
+        agg.label = r.data.label; agg.inserted += r.data.inserted; agg.updated += r.data.updated; agg.skipped += r.data.skipped;
+        agg.errors = agg.errors.concat(r.data.errors || []).slice(0, 10);
+        done += batch.length; batch = []; size = 0;
+        onProgress?.(col, done, (docs || []).length);
+      };
+      for (const d of (docs || [])) {
+        const s = JSON.stringify(d).length;
+        if (size + s > BATCH_BYTES) await flush();
+        batch.push(d); size += s;
+      }
+      await flush();
+      results.push(agg);
+    }
+    await api.post('/admin/quotes-bundle-migration/import-finalize', {
+      results, exported_at: payload.exported_at, exported_by: payload.exported_by,
+    });
+    return results;
   };
 
   const handleImportData = async () => {
@@ -246,13 +293,11 @@ export function QuotesBundleMigrationModal({ open, onClose }) {
         const f = ordered[i];
         setImportProgress({ current: i + 1, total: ordered.length, fileName: f.name });
         try {
-          const fd = new FormData();
-          fd.append('file', f);
-          const res = await api.post('/admin/quotes-bundle-migration/import-data', fd, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          });
+          const payload = await readBundleFile(f);
+          const fileResults = await importBundleInBatches(payload, (col, done, tot) =>
+            setImportProgress({ current: i + 1, total: ordered.length, fileName: `${f.name} · ${col} ${done}/${tot}` }));
           okFiles += 1;
-          for (const r of (res.data?.results || [])) {
+          for (const r of fileResults) {
             const cur = aggMap[r.collection] || { label: r.label, collection: r.collection, inserted: 0, updated: 0, skipped: 0 };
             cur.inserted += r.inserted || 0;
             cur.updated += r.updated || 0;
