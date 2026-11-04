@@ -40,7 +40,7 @@ const ReplacementsPanel = ({ caps, replacements, onChange, banksCatalog, quoteTy
     if (!fromObj) return [];
     const bank = banksCatalog.find(b => b.name === fromObj.bank_name) || banksCatalog.find(b => normBank(b.name) === normBank(fromObj.bank_name));
     const flag = FLAG[(quoteType || 'VPOS').toUpperCase()] || 'vpos_available';
-    return (bank?.products || []).filter(p => p[flag] && caps[keyOf(fromObj.bank_name, p.product_name)] === undefined).map(p => p.product_name);
+    return (bank?.products || []).filter(p => p[flag] && caps[keyOf(fromObj.bank_name, p.product_name)] === undefined).map(p => p.product_name.trim());
   }, [fromObj, banksCatalog, quoteType, caps]);
 
   const add = () => {
@@ -111,13 +111,18 @@ const BranchCard = ({ b, idx, certified, clients, options, onPatch, onRemove }) 
         </div>
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 pl-1">
-        {options.map(k => (
-          <label key={k} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-            <Checkbox checked={b.medios.some(m => keyOf(m.bank_name, m.product_name) === k)} onCheckedChange={() => toggle(k)}
+        {options.map(k => {
+          const checked = b.medios.some(m => keyOf(m.bank_name, m.product_name) === k);
+          const locked = certified && checked;
+          return (
+          <label key={k} className={`flex items-center gap-2 text-xs text-slate-700 ${locked ? 'cursor-not-allowed' : 'cursor-pointer'}`} title={locked ? 'Sucursal certificada: medio bloqueado' : undefined}>
+            <Checkbox checked={checked} disabled={locked} onCheckedChange={() => toggle(k)}
               data-testid={`master-branch-medio-${idx}-${slugKey(k)}`} />
-            <span className="truncate">{splitKey(k).product_name} <span className="text-slate-400">· {splitKey(k).bank_name}</span></span>
+            <span className="truncate">{splitKey(k).product_name.trim()} <span className="text-slate-400">· {splitKey(k).bank_name}</span></span>
+            {locked && <Lock size={11} className="text-slate-400 shrink-0" />}
           </label>
-        ))}
+          );
+        })}
         {invalid.map(k => (
           <label key={k} className="flex items-center gap-2 text-xs text-rose-700 cursor-pointer" title="No contratado: desmárcalo para poder guardar">
             <Checkbox checked onCheckedChange={() => onPatch({ medios: b.medios.filter(m => keyOf(m.bank_name, m.product_name) !== k) })}
@@ -145,7 +150,7 @@ export const BranchesEditor = ({ branches, onChange, context, replacements, onRe
         </span>
         {Object.keys(caps).map(g => (
           <span key={g} className={`px-2 py-1 rounded border ${(used[g] || 0) > caps[g] ? 'bg-rose-50 border-rose-300 text-rose-700' : 'bg-white border-slate-200 text-slate-600'}`} data-testid={`master-medio-usage-${slugKey(g)}`}>
-            {splitKey(g).product_name} <span className="text-slate-400">({splitKey(g).bank_name})</span>: {used[g] || 0}/{caps[g]}
+            {splitKey(g).product_name} <span className="text-slate-400">· {splitKey(g).bank_name}</span>: {used[g] || 0}/{caps[g]}
             {options.filter(k => k !== g && groupOf[k] === g).map(k => <span key={k} className="text-violet-600"> + {splitKey(k).product_name}</span>)}
           </span>
         ))}

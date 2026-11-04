@@ -1,0 +1,34 @@
+{
+  "summary": "Volví a probar las correcciones de la Edición Maestra. Regresión iter355: 19/19 pasan. Pytest nuevo test_master_branches_iter356.py: 8 de 9 pasan. Con Playwright verifiqué en la UI: (1) el reemplazo BNC en prj_4903ac85c83d ofrece 5 alternativas (Debito Inmediato, Tarjetas..., Pago C2P, Verificación de Transferencias, Verificación P2C). El reemplazo BFC en prj_9b08ebe9a4ef ofrece 3 (Cambio Pago Movil, Tarjetas..., Verificación P2C). En ambos casos el reemplazo se agrega, el chip muestra '+ Pago C2P' / '+ Verificación P2C' y aparece el checkbox del medio nuevo. (2) Después de Agregar, from y to vuelven al placeholder y 'to' queda deshabilitado. (3) Los testids incluyen el banco y no hay duplicados. Los chips muestran (Banco). (4) Inyecté temporalmente un medio legacy 'TEST_Legacy' en la BD. Apareció como master-branch-medio-invalid-0-banco-mercantil--test_legacy, tachado y con 'no contratado'. Lo desmarqué y el guardado funcionó. (5) Al guardar el multistore por la UI sin tocar el RIF no se creó rifs[] y las sucursales quedaron con rif_id None. Por API pasa lo mismo, tanto con client_id vacío como con el client_id del propio cliente. (6) En el multirif certificado, cajas y botón de eliminar están deshabilitados en las 3 sucursales y el checkbox del medio certificado no se desmarca. El backend devuelve 400 'está certificada' si se cambian cajas o se quitan medios. Renombrar una sucursal certificada sí se permite. (7) Bitácora: el multirif guardado sin cambios registra 'guardó sin cambios efectivos'. Ya no aparecen 'Generador' ni 'Bancos/Productos'. Queda un caso de ruido en el multistore, descrito abajo. Respaldé y restauré con replace_one los 2 proyectos y verifiqué que los documentos quedaron idénticos.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/projects/{id}/master-override (_master_diff)", "issue": "Sigue el ruido en la bitácora al guardar sin cambios el multistore prj_4903ac85c83d. La sucursal st_b0ea80d9 se llama 'Sucursal Sambil La Candelaria ' (con espacio final). apply_branches guarda name.strip(), y _master_diff compara old.get('name') != st.get('name') sin strip. Resultado: se registra '1 campo(s) modificado(s): Sucursal «...»: <descripción idéntica> → <descripción idéntica>' y changes_count=1. Solución: comparar (old.get('name') or '').strip() o incluir el nombre en o_desc/n_desc y mostrarlo, para que el cambio sea visible si es real."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BranchCard (sucursal certificada)", "issue": "El checkbox de un medio certificado se ve habilitado. Al hacer clic no pasa nada (el toggle hace return en silencio) y no hay ninguna indicación. Conviene deshabilitarlo o mostrar un candado o un tooltip.", "selector": "[data-testid^='master-branch-medio-0-banco-fondo-común-(bfc)--']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Edición Maestra - chips de uso", "issues": ["Doble paréntesis: 'Cambio Pago Movil (Banco Nacional de Crédito (BNC)): 2/2'. Sería mejor usar '·' o quitar el sufijo", "Las opciones de reemplazo muestran 'Cambio Pago Movil ' con espacio final, que viene del catálogo /api/banks (cosmético)"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_master_branches_iter356.py", "/app/backend/tests/test_master_branches_iter355.py", "/app/test_reports/pytest/pytest_iter356.xml", "/app/test_reports/pytest/pytest_iter356_regr.xml"],
+  "action_items": [
+    "En _master_diff, comparar los nombres de sucursal con strip(), para no registrar cambios fantasma cuando el nombre guardado tiene espacio final",
+    "(LOW) Deshabilitar visualmente los checkboxes de medios ya asignados en sucursales certificadas"
+  ],
+  "critical_code_review_comments": [
+    "BranchesEditor: candidates usa p.product_name del catálogo sin trim. El to_product se envía con espacio final ('Cambio Pago Movil '). El backend lo normaliza con _key, pero medio_replacements se persiste tal cual con el espacio.",
+    "master_branches.py: el import de BankProductsOverride sigue dentro del loop",
+    "projects.py sigue con más de 4700 líneas"
+  ],
+  "updated_files": ["/app/backend/tests/test_master_branches_iter356.py"],
+  "success_rate": {"backend": "96% (27/28)", "frontend": "100% de los fixes verificados (1 detalle LOW de UX)"},
+  "seed_data_creation": "Ninguna. Inyecté temporalmente un medio TEST_Legacy en st_b0ea80d9 para la prueba de medio inválido y luego restauré todo con replace_one desde un backup completo (verifiqué que los documentos quedaron idénticos).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login: rgonzalez@megasoft.com.ve / Mega2026*. Para la UI, inyectar session_token y user en localStorage. En /projects, elegir 'Todos los estados' y buscar PRY-2026-05-021-PRI (multistore) o PRY-2026-06-063-PRI (multirif, 3 sucursales certificadas). test_master_branches_iter356::TestAuditNoise::test_multistore_no_changes falla hasta que se corrija el strip del nombre en _master_diff."
+}

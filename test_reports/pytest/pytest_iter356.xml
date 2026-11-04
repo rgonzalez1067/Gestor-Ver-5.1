@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="9" time="1.357" timestamp="2026-11-04T22:48:12.878450+00:00" hostname="agent-env-9ba0d22c-4d60-4c1c-a526-13a9b63dbfe4"><testcase classname="tests.test_master_branches_iter356.TestMultistoreNoRifs" name="test_save_with_empty_client_no_rifs" time="0.440" /><testcase classname="tests.test_master_branches_iter356.TestMultistoreNoRifs" name="test_save_with_own_client_no_rifs" time="0.075" /><testcase classname="tests.test_master_branches_iter356.TestAuditNoise" name="test_multistore_no_changes" time="0.057"><failure message="AssertionError: [Edición Maestra] 1 campo(s) modificado(s) por Rafael González: Sucursal «Sucursal Sambil La Candelaria»: '1 cajas · RIF — · Banco Mercantil: Cambio Pago Movil, Verificación Pago Movil | Banco Nacional de Crédito (BNC): Cambio Pago Movil, Verificación Pago Movil' → '1 cajas · RIF — · Banco Mercantil: Cambio Pago Movil, Verificación Pago Movil | Banco Nacional de Crédito (BNC): Cambio Pago Movil, Verificación Pago Movil'&#10;assert 1 == 0">self = &lt;test_master_branches_iter356.TestAuditNoise object at 0x7e5f5b60a990&gt;
+s = &lt;requests.sessions.Session object at 0x7e5f5c9a33d0&gt;
+originals = {'prj_4903ac85c83d': {'_id': ObjectId('6a15bdaa51a9f977dc98d905'), 'assigned_at': '2026-07-21T20:32:38.317830+00:00', ...-07-08T21:36:30.729531+00:00', 'assigned_by_name': 'Kevin Malaguera', 'assigned_by_user_id': 'user_4c93c294f08a', ...}}
+
+    def test_multistore_no_changes(self, s, originals):
+        p = proj(MS)
+        r = put(s, MS, ui_payload(p, branches_of(p)))
+        assert r.status_code == 200
+        e = self._last_entry(MS)
+        print('MS changes:', e['changes'])
+        labels = [c['label'] for c in e['changes']]
+        assert 'Generador' not in labels
+        assert 'Bancos/Productos' not in labels
+&gt;       assert r.json()['changes_count'] == 0, e['text']
+E       AssertionError: [Edición Maestra] 1 campo(s) modificado(s) por Rafael González: Sucursal «Sucursal Sambil La Candelaria»: '1 cajas · RIF — · Banco Mercantil: Cambio Pago Movil, Verificación Pago Movil | Banco Nacional de Crédito (BNC): Cambio Pago Movil, Verificación Pago Movil' → '1 cajas · RIF — · Banco Mercantil: Cambio Pago Movil, Verificación Pago Movil | Banco Nacional de Crédito (BNC): Cambio Pago Movil, Verificación Pago Movil'
+E       assert 1 == 0
+
+tests/test_master_branches_iter356.py:117: AssertionError</failure></testcase><testcase classname="tests.test_master_branches_iter356.TestAuditNoise" name="test_multirif_no_changes" time="0.080" /><testcase classname="tests.test_master_branches_iter356.TestCertifiedLock" name="test_change_boxes_certified_400" time="0.085" /><testcase classname="tests.test_master_branches_iter356.TestCertifiedLock" name="test_remove_medio_certified_400" time="0.051" /><testcase classname="tests.test_master_branches_iter356.TestCertifiedLock" name="test_certified_rename_ok" time="0.058" /><testcase classname="tests.test_master_branches_iter356.TestBankCatalogMatch" name="test_catalog_has_alternatives[Banco Nacional de Cr\xe9dito (BNC)]" time="0.071" /><testcase classname="tests.test_master_branches_iter356.TestBankCatalogMatch" name="test_catalog_has_alternatives[Banco Fondo Com\xfan (BFC)]" time="0.062" /></testsuite></testsuites>

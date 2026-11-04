@@ -754,7 +754,7 @@ def _master_diff(old_project, update, is_multistore):
             old = old_stores.get(sid) or {}
             o_desc = f"{old.get('box_count', 0)} cajas · RIF {old.get('rif') or '—'} · {_summarize_matrix(old.get('implementation_matrix'))}" if old else "—"
             n_desc = f"{st.get('box_count', 0)} cajas · RIF {st.get('rif') or '—'} · {_summarize_matrix(st.get('implementation_matrix'))}"
-            if o_desc != n_desc or old.get("name") != st.get("name"):
+            if o_desc != n_desc or (old.get("name") or "").strip() != (st.get("name") or "").strip():
                 changes.append({
                     "field": f"store:{sid}",
                     "label": f"Sucursal «{st.get('name', sid)}»" if old else f"Sucursal nueva «{st.get('name', sid)}»",

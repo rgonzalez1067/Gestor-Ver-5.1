@@ -1877,6 +1877,13 @@ Antes, usuarios con permisos limitados no cargaban catálogos en el frontend →
 - Testing: iteration_354 (100%).
 - Productos por Banco: dentro de cada banco, subgrupos "Productos VPOS / MPOS" y "Productos Payment / Link" (nombre termina en "(PG)"), alfabéticos, ambos subtítulos siempre visibles.
 
+## 2026-06 — Edición Maestra: sucursales, RIFs, medios con topes y selector de Servidor
+- `services/master_branches.py`: contract_baseline (total cajas + tope por banco|producto, congelado al primer guardado), reemplazos (medio no cotizado hereda/comparte tope), RIF de cliente o Grupo Económico, bloqueo de eliminar/cambiar cajas/quitar medios en sucursal certificada (todos sus medios con 'En Producción').
+- GET /api/projects/{id}/master-branches-context; PUT master-override acepta `branches` y `medio_replacements` (multistore y multirif, incluye Proyectos Directos).
+- `BranchesEditor.jsx` en MasterEditDialog; Servidor de Instalación = Select de /api/servers con "(valor anterior)".
+- Testing: iteration_355/356; tests/test_master_branches_iter355.py + iter356.py (28/28).
+
+
 
 
 
