@@ -682,10 +682,12 @@ async def _mass_dispatch(recipients: List[str], template_id: str, internal_doc_i
     mass_sender = await resolve_sender_for_area("integradores")
     batches = batches or [{"to": recipients, "bcc": True, "vars": {}}]
     statuses, errors = [], []
-    for i, bt in enumerate(batches):
+    rec_lower = {r.lower() for r in recipients}
+    pending_copy = [c for c in (copy_emails or []) if c.lower() not in rec_lower]
+    for bt in batches:
         b_subject = _render_vars(subject, bt.get("vars") or {})
         b_html = _render_vars(html, bt.get("vars") or {})
-        bcc_list = (bt["to"] if bt.get("bcc") else []) + (copy_emails or [] if i == 0 else [])
+        bcc_list = (bt["to"] if bt.get("bcc") else []) + pending_copy
         try:
             r = await send_email(
                 to=bt["to"] if not bt.get("bcc") else [mass_sender or SENDER_EMAIL],
@@ -695,6 +697,7 @@ async def _mass_dispatch(recipients: List[str], template_id: str, internal_doc_i
                 sender=mass_sender,
             )
             statuses.append(r.get("status"))
+            pending_copy = []
         except Exception as e:  # noqa: BLE001
             statuses.append("error"); errors.append(f"{', '.join(bt['to'])}: {e}")
     result = {"status": statuses[0] if len(set(statuses)) == 1 else "partial"}

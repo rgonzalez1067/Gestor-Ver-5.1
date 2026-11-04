@@ -1,0 +1,32 @@
+{
+  "summary": "Tested the 'Enviar copia a' (copy_emails, BCC) field for mass communications to Integradores and Bancos/Entes, on backend and frontend. Backend: new pytest test_iter346 passed 11/11. Invalid email returns 400 'Correo en copia inválido: X' on both endpoints. More than 10 returns 400 'Máximo 10 destinatarios en copia'. Requests rejected with 400 send no email. Duplicates are removed case-insensitively and ',;space' separators all work. With the copies, integrators single BCC has bcc_count = recipients + copies, and banks single_bcc does too. In per_contact mode (3 contacts, 2 copies) bcc_count is [2,0,0] in send order. In per_bank mode only the first bank's email gets the extra copy. The bitácora stores copy_emails. Without copy_emails, or with whitespace only, the result is [] and behaviour is unchanged. Regression: iter343 and iter274 pass 15/15 (3 non-admin skips), run with the password updated to Mega2026*. Frontend: mass-copy-emails and bank-mass-copy-emails are visible with an optional hint. An invalid email shows *-error ('Correo inválido: ...') and clicking send shows the toast 'Revise los correos de \"Enviar copia a\"' without calling the API. More than 10 shows the backend toast. Real UI sends worked. Integrator: email_logs bcc_count=3 (1 integrator + 2 copies), and the bitácora has copy_emails. Bank per_contact with a duplicated copy: first email bcc=1, second bcc=0, and the bitácora has the deduped copy_emails. All fixtures, templates, bitácora entries and email_logs I created were deleted (verified 0 remaining).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "_mass_dispatch", "issue": "The copy is attached only to batch index 0. If that first send fails (exception), the copy recipients never get any email, even when the later batches succeed."},
+      {"endpoint": "_mass_dispatch", "issue": "A copy email is not deduped against the recipients. If a copy address is also a selected contact or integrator, it gets the email twice, or appears twice in the BCC in single mode."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "CopyEmailsField", "issues": ["The hint count does not remove duplicates: 'a@x.com a@x.com' shows '2 destinatario(s)', but the backend sends to 1.", "No client-side check for the 10-email limit. It relies on the backend 400 toast, which works."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter346_mass_copy_emails.py", "/app/backend/tests/ui_fixtures_iter346.py", "/app/test_reports/pytest/pytest_iter346.xml"],
+  "action_items": [
+    "Optional: dedupe the hint count in CopyEmailsField (case-insensitive) and add a client-side max-10 check.",
+    "Optional: remove copy emails that are already recipients, and consider moving the copy to the first successful batch."
+  ],
+  "critical_code_review_comments": [
+    "entity_communications.py is 957 lines; consider splitting the mass-communication logic into its own module.",
+    "Older tests test_iter343 and test_iter274 still hardcode admin password 'admin123'; the current password is 'Mega2026*', so those tests fail to log in unless updated."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter346_mass_copy_emails.py", "/app/backend/tests/ui_fixtures_iter346.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporary bnk_TEST_*/int_TEST_*/tpl_TEST_* fixtures with @example.com emails; all removed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Admin login is rgonzalez@megasoft.com.ve / Mega2026* (admin123 no longer works). Run with -p no:xdist. email_logs keep only bcc_count, not the BCC list, so check BCC behaviour through the bcc_count values sorted by created_at. UI fixtures: python /app/backend/tests/ui_fixtures_iter346.py setup|logs|teardown. A UI bank send through SMTP can take more than 6s before the toast shows."
+}

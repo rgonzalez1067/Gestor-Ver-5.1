@@ -4,8 +4,18 @@ import { MailPlus } from 'lucide-react';
 
 const EMAIL_RE = /^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$/;
 
-export const parseCopyEmails = (raw) => (raw || '').split(/[,;\s]+/).map((e) => e.trim()).filter(Boolean);
-export const invalidCopyEmails = (raw) => parseCopyEmails(raw).filter((e) => !EMAIL_RE.test(e));
+export const parseCopyEmails = (raw) => {
+  const seen = new Set();
+  return (raw || '').split(/[,;\s]+/).map((e) => e.trim()).filter((e) => {
+    if (!e || seen.has(e.toLowerCase())) return false;
+    seen.add(e.toLowerCase()); return true;
+  });
+};
+export const invalidCopyEmails = (raw) => {
+  const list = parseCopyEmails(raw);
+  const bad = list.filter((e) => !EMAIL_RE.test(e));
+  return list.length > 10 ? [...bad, 'máximo 10 destinatarios'] : bad;
+};
 
 // Destinatarios que reciben una copia (BCC) de la comunicación masiva.
 export const CopyEmailsField = ({ value, onChange, testid = 'mass-copy-emails' }) => {
