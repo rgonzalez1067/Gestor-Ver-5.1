@@ -8,6 +8,7 @@ import { Send, Landmark, Search, Paperclip, Users, FileText, Eye, Download } fro
 import { toast } from 'sonner';
 import api from '../utils/api';
 import { DocumentViewerModal, downloadEntityDocument } from './DocumentViewerModal';
+import { CopyEmailsField, invalidCopyEmails } from './CopyEmailsField';
 
 const checkState = (keys, selected) => {
   const n = keys.filter(k => selected.has(k)).length;
@@ -55,10 +56,11 @@ export const BankMassCommunicationDialog = ({ open, onOpenChange }) => {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [viewerDoc, setViewerDoc] = useState(null);
+  const [copyEmails, setCopyEmails] = useState('');
 
   useEffect(() => {
     if (!open) return;
-    setSelected(new Set()); setTemplateId(''); setSelectedDocs(new Set()); setLocalFiles([]); setSearch('');
+    setSelected(new Set()); setTemplateId(''); setSelectedDocs(new Set()); setLocalFiles([]); setSearch(''); setCopyEmails('');
     setLoading(true);
     api.get('/banks/mass/recipients').then(r => setBanks(r.data?.banks || [])).catch(() => setBanks([])).finally(() => setLoading(false));
     api.get('/email-templates?context=INTEGRADORES').then(r => setTemplates(r.data || [])).catch(() => setTemplates([]));
@@ -100,12 +102,14 @@ export const BankMassCommunicationDialog = ({ open, onOpenChange }) => {
   const handleSend = async () => {
     if (!templateId) { toast.error('Seleccione una plantilla'); return; }
     if (selected.size === 0) { toast.error('Seleccione al menos un contacto con correo'); return; }
+    if (invalidCopyEmails(copyEmails).length) { toast.error('Revise los correos de "Enviar copia a"'); return; }
     setSending(true);
     try {
       const fd = new FormData();
       fd.append('template_id', templateId);
       fd.append('contact_keys', JSON.stringify(Array.from(selected)));
       fd.append('internal_doc_ids', JSON.stringify(Array.from(selectedDocs)));
+      fd.append('copy_emails', copyEmails);
       localFiles.forEach(f => fd.append('files', f));
       const res = await api.post('/banks/mass/communication', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       toast.success(res.data?.message || 'Comunicación masiva enviada');
@@ -195,6 +199,7 @@ export const BankMassCommunicationDialog = ({ open, onOpenChange }) => {
                 ))}
               </div>
             </div>
+            <CopyEmailsField value={copyEmails} onChange={setCopyEmails} testid="bank-mass-copy-emails" />
             <div>
               <Label className="text-sm font-medium flex items-center gap-1"><Paperclip size={14} />Anexo local adicional</Label>
               <input type="file" multiple onChange={e => setLocalFiles(Array.from(e.target.files || []))}

@@ -8,6 +8,7 @@ import { Send, Mail, Search, Paperclip, Users, FileText, Eye, Download } from 'l
 import { toast } from 'sonner';
 import api from '../utils/api';
 import { DocumentViewerModal, downloadEntityDocument } from './DocumentViewerModal';
+import { CopyEmailsField, invalidCopyEmails } from './CopyEmailsField';
 
 const TYPE_OPTIONS = [
   { code: 'ALL', label: 'Todos los tipos' },
@@ -32,10 +33,11 @@ export const MassCommunicationDialog = ({ open, onOpenChange }) => {
   const [sending, setSending] = useState(false);
   const [viewerDoc, setViewerDoc] = useState(null);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [copyEmails, setCopyEmails] = useState('');
 
   useEffect(() => {
     if (!open) return;
-    setSelectedIds(new Set()); setTemplateId(''); setSelectedDocs(new Set()); setLocalFiles([]); setSearch(''); setFilterType('ALL');
+    setSelectedIds(new Set()); setTemplateId(''); setSelectedDocs(new Set()); setLocalFiles([]); setSearch(''); setFilterType('ALL'); setCopyEmails('');
     api.get('/email-templates?context=INTEGRADORES').then(r => setTemplates(r.data || [])).catch(() => setTemplates([]));
     api.get('/entity-documents?context=INTEGRADORES').then(r => setDocs(r.data || [])).catch(() => setDocs([]));
   }, [open]);
@@ -81,12 +83,14 @@ export const MassCommunicationDialog = ({ open, onOpenChange }) => {
   const handleSend = async () => {
     if (!templateId) { toast.error('Seleccione una plantilla institucional'); return; }
     if (selectedIds.size === 0) { toast.error('Seleccione al menos un integrador con correo'); return; }
+    if (invalidCopyEmails(copyEmails).length) { toast.error('Revise los correos de "Enviar copia a"'); return; }
     setSending(true);
     try {
       const fd = new FormData();
       fd.append('template_id', templateId);
       fd.append('integrator_ids', JSON.stringify(Array.from(selectedIds)));
       fd.append('internal_doc_ids', JSON.stringify(Array.from(selectedDocs)));
+      fd.append('copy_emails', copyEmails);
       localFiles.forEach(f => fd.append('files', f));
       const res = await api.post('/integrators/mass/communication', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       toast.success(res.data?.message || 'Comunicación masiva enviada');
@@ -178,6 +182,7 @@ export const MassCommunicationDialog = ({ open, onOpenChange }) => {
                   ))}
               </div>
             </div>
+            <CopyEmailsField value={copyEmails} onChange={setCopyEmails} testid="mass-copy-emails" />
             <div>
               <Label className="text-sm font-medium flex items-center gap-1"><Paperclip size={14} />Anexo local adicional</Label>
               <input type="file" multiple onChange={e => setLocalFiles(Array.from(e.target.files || []))}

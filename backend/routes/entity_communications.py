@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel
 import uuid
 import json
+import re
 import os
 import logging
 
@@ -561,6 +562,7 @@ async def send_mass_communication(
     template_id: str = Form(...),
     integrator_ids: str = Form(...),
     internal_doc_ids: str = Form(default="[]"),
+    copy_emails: str = Form(default=""),
     files: List[UploadFile] = File(default=[]),
     authorization: Optional[str] = Header(None),
 ):
@@ -589,23 +591,46 @@ async def send_mass_communication(
     if not recipients:
         raise HTTPException(status_code=400, detail="Ninguno de los integradores seleccionados tiene un correo válido")
 
+    copies = _parse_copy_emails(copy_emails)
     meta = await _mass_dispatch(
         recipients, template_id, internal_doc_ids, files, current_user,
         folder="integradores_masivo", action="integrator_mass_communication", target_label="integrador(es)",
+        copy_emails=copies,
     )
     return {
         "status": meta["status"],
         "recipients_count": len(recipients),
+        "copy_emails": copies,
         "attachments_count": meta["attachments_count"],
         "subject": meta["subject"],
         "message": f"Comunicación masiva enviada en BCC a {len(recipients)} integrador(es).",
     }
 
 
+_EMAIL_RE = re.compile(r"^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$")
+
+
+def _parse_copy_emails(raw: str) -> List[str]:
+    """Destinatarios en copia (BCC): separados por coma/punto y coma; valida formato."""
+    out, seen = [], set()
+    for e in re.split(r"[,;\s]+", raw or ""):
+        e = e.strip()
+        if not e:
+            continue
+        if not _EMAIL_RE.match(e):
+            raise HTTPException(status_code=400, detail=f"Correo en copia inválido: {e}")
+        if e.lower() not in seen:
+            seen.add(e.lower()); out.append(e)
+    if len(out) > 10:
+        raise HTTPException(status_code=400, detail="Máximo 10 destinatarios en copia")
+    return out
+
+
 async def _mass_dispatch(recipients: List[str], template_id: str, internal_doc_ids: str,
                          files: List[UploadFile], current_user: dict, folder: str,
                          action: str, target_label: str, extra_log: Optional[dict] = None,
-                         batches: Optional[List[dict]] = None, tpl: Optional[dict] = None) -> dict:
+                         batches: Optional[List[dict]] = None, tpl: Optional[dict] = None,
+                         copy_emails: Optional[List[str]] = None) -> dict:
     """Envío masivo BCC con plantilla INTEGRADORES + adjuntos + bitácora (compartido).
     `batches` = [{"to": [...], "bcc": bool, "vars": {...}}] para envíos personalizados."""
     tpl = tpl or await db.email_templates.find_one({"template_id": template_id}, {"_id": 0})
@@ -657,15 +682,16 @@ async def _mass_dispatch(recipients: List[str], template_id: str, internal_doc_i
     mass_sender = await resolve_sender_for_area("integradores")
     batches = batches or [{"to": recipients, "bcc": True, "vars": {}}]
     statuses, errors = [], []
-    for bt in batches:
+    for i, bt in enumerate(batches):
         b_subject = _render_vars(subject, bt.get("vars") or {})
         b_html = _render_vars(html, bt.get("vars") or {})
+        bcc_list = (bt["to"] if bt.get("bcc") else []) + (copy_emails or [] if i == 0 else [])
         try:
             r = await send_email(
                 to=bt["to"] if not bt.get("bcc") else [mass_sender or SENDER_EMAIL],
                 subject=b_subject, html=b_html, action=action,
                 attachments=email_attachments or None,
-                bcc=bt["to"] if bt.get("bcc") else None,
+                bcc=bcc_list or None,
                 sender=mass_sender,
             )
             statuses.append(r.get("status"))
@@ -687,7 +713,7 @@ async def _mass_dispatch(recipients: List[str], template_id: str, internal_doc_i
         "created_by": current_user.get("email", ""), "created_by_name": user_name,
         "recipients_count": len(recipients), "template_id": template_id,
         "attachments": attachment_names, "email_status": result.get("status"),
-        "batches_count": len(batches), "batch_errors": errors,
+        "batches_count": len(batches), "batch_errors": errors, "copy_emails": copy_emails or [],
         **(extra_log or {}),
     })
     return {"status": result.get("status"), "subject": subject, "attachments_count": len(attachment_names),
@@ -755,6 +781,7 @@ async def send_bank_mass_communication(
     template_id: str = Form(...),
     contact_keys: str = Form(...),
     internal_doc_ids: str = Form(default="[]"),
+    copy_emails: str = Form(default=""),
     files: List[UploadFile] = File(default=[]),
     authorization: Optional[str] = Header(None),
 ):
@@ -799,11 +826,12 @@ async def send_bank_mass_communication(
     else:
         mode, batches = "single_bcc", None
 
+    copies = _parse_copy_emails(copy_emails)
     meta = await _mass_dispatch(
         recipients, template_id, internal_doc_ids, files, current_user,
         folder="bancos_masivo", action="bank_mass_communication", target_label="contacto(s) de Bancos/Entes",
         extra_log={"recipients": recipients, "bank_ids": sorted(banks_hit), "send_mode": mode},
-        batches=batches, tpl=tpl,
+        batches=batches, tpl=tpl, copy_emails=copies,
     )
     mode_msg = {"per_contact": f"en {meta['batches_count']} correo(s) individuales",
                 "per_bank": f"en {meta['batches_count']} correo(s) por Banco/Ente (BCC)",
@@ -811,6 +839,7 @@ async def send_bank_mass_communication(
     return {
         "status": meta["status"],
         "send_mode": mode,
+        "copy_emails": copies,
         "batches_count": meta["batches_count"],
         "batch_errors": meta["batch_errors"],
         "recipients_count": len(recipients),
