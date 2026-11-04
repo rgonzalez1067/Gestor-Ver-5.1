@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { toast } from 'sonner';
 import { ProcessorLinkBankModal } from '../shared/ProcessorLinkBankModal';
 import { BranchesEditor } from './BranchesEditor';
+import { ConvertToMultistoreButton } from './ConvertToMultistoreButton';
 import { Pencil, Plus, Trash2, Landmark, Cpu, Store, AlertTriangle, Search } from 'lucide-react';
 
 // Combobox de cliente con búsqueda predictiva por RIF, Razón Social,
@@ -173,8 +174,24 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
   const [sponsorProcessorModal, setSponsorProcessorModal] = useState({ open: false, processor: null });
 
   const isMultistore = project?.project_type === 'multistore';
-  const isBranchProject = ['multistore', 'multirif'].includes(project?.project_type);
+  const [converting, setConverting] = useState(false);
+  const isBranchProject = ['multistore', 'multirif'].includes(project?.project_type) || converting;
   const [branchesCtx, setBranchesCtx] = useState(null);
+
+  // Sede única → multitienda: la sede actual pasa a ser la Sucursal 1 (hereda cajas, medios y avance).
+  const startConversion = async () => {
+    const ctx = await api.get(`/projects/${project.project_id}/master-branches-context`).catch(() => ({ data: null }));
+    setBranchesCtx(ctx.data);
+    const medios = form.banks_products.flatMap(r => r.products.map(product_name => ({ bank_name: r.bank_name, product_name })));
+    setForm(prev => ({
+      ...prev,
+      branches: [
+        { store_id: null, inherit_main: true, name: prev.client_sede || prev.client_name || 'Sucursal 1', client_id: prev.client_id || '', box_count: ctx.data?.baseline?.total_boxes ?? project.box_count ?? 0, medios },
+        { store_id: null, name: '', client_id: prev.client_id || '', box_count: 0, medios: [] },
+      ],
+    }));
+    setConverting(true);
+  };
   const [serversList, setServersList] = useState([]);
 
   const matrixToRows = (matrix) =>
@@ -221,6 +238,7 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
   useEffect(() => {
     if (!open || !project) return;
     setForm(initForm(project));
+    setConverting(false);
     (async () => {
       try {
         const [b, h, cl, intg] = await Promise.all([
@@ -340,6 +358,7 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
       if (isBranchProject) {
         payload.branches = form.branches.map(b => ({ ...b, box_count: parseInt(b.box_count) || 0 }));
         payload.medio_replacements = form.medio_replacements;
+        if (converting) payload.convert_to_multistore = true;
       } else if (isMultistore) {
         payload.stores_products = form.stores_products.map(s => ({ store_id: s.store_id, banks_products: s.banks_products }));
       } else {
@@ -562,6 +581,7 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
                 </Tabs>
               )
             ) : (
+              <>
               <BankProductsEditor
                 value={form.banks_products}
                 onChange={(next) => set({ banks_products: next })}
@@ -569,6 +589,8 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
                 quoteType={form.quote_type}
                 testidPrefix="master-single"
               />
+              <ConvertToMultistoreButton onConfirm={startConversion} />
+              </>
             )}
           </section>
 

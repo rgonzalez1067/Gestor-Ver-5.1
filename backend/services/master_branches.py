@@ -116,6 +116,8 @@ async def apply_branches(project: dict, branches: list, replacements: list, buil
                 _fail(f"La sucursal «{st.get('name')}» está certificada: no se pueden cambiar sus cajas ni quitar sus medios de pago.")
         if not st:
             st = {"store_id": f"st_{uuid.uuid4().hex[:8]}", "status": "Pendiente", "notes": []}
+            if b.inherit_main and not project.get("stores"):
+                st["implementation_matrix"] = project.get("implementation_matrix") or {}
         rif_id = None
         # Multitienda sin RIFs: el RIF del propio cliente no crea estructura multi-RIF,
         # salvo que otra sucursal use un comercio distinto (entonces todas quedan vinculadas).

@@ -89,6 +89,7 @@ class BranchOverride(BaseModel):
     client_id: Optional[str] = None  # RIF (cliente) de la ficha o su Grupo Económico
     box_count: int = 0
     medios: List[BranchMedio] = []
+    inherit_main: bool = False  # sede única convertida: hereda el avance de la matriz principal
 
 
 class MedioReplacement(BaseModel):
@@ -126,6 +127,7 @@ class MasterOverridePayload(BaseModel):
     stores_products: Optional[List[StoreProductsOverride]] = None  # multitienda
     branches: Optional[List[BranchOverride]] = None  # gestión de sucursales con topes
     medio_replacements: Optional[List[MedioReplacement]] = None
+    convert_to_multistore: bool = False  # sede única → multitienda (requiere branches)
     hardware: Optional[List[dict]] = None
 
 
@@ -715,7 +717,7 @@ def _master_diff(old_project, update, is_multistore):
         "integrator_name": "Integrador", "integrator_app_name": "App Integrador",
         "pinpad_model": "Modelo Pinpad", "server_name": "Servidor", "ticket_number": "Nro de Ticket",
         "status": "Estado", "quote_type": "Tipo de Proyecto", "sponsoring_bank_name": "Banco Patrocinador",
-        "created_by_name": "Generador",
+        "created_by_name": "Generador", "project_type": "Estructura",
     }
     changes = []
     for field, label in labels.items():
@@ -855,6 +857,11 @@ async def master_override_project(project_id: str, payload: MasterOverridePayloa
 
     # --- Estructura relacional (Banco ↔ Productos) ---
     is_multistore = project.get("project_type") in ("multistore", "multirif")
+    if payload.convert_to_multistore and not is_multistore:
+        if not payload.branches:
+            raise HTTPException(status_code=400, detail="Para convertir a multitienda debe enviar al menos una sucursal.")
+        is_multistore = True
+        update["project_type"] = "multistore"
     if is_multistore and payload.branches is not None:
         from services.master_branches import apply_branches
         res = await apply_branches(project, payload.branches, payload.medio_replacements, _build_override_matrix)
