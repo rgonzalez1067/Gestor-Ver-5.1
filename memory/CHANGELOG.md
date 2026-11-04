@@ -1865,3 +1865,10 @@ Antes, usuarios con permisos limitados no cargaban catálogos en el frontend →
 - PDF: `QuotePDFItem`/`pg_setup_items` agregan " [Fase]" al concepto (idempotente; truncado conserva la etiqueta).
 - Regenerar PDF tolera nulos en cantidad_cajas/bancos. Testing: test_quote_phase_tags.py 10/10 + UI (iteration 352).
 
+## 2026-06 — Servicio Express en Setup + tag Producción oculto
+- PhaseTag y PDF ya no muestran [Producción]; solo DESA/SQA/Imple/Primer Prod.
+- Pregunta "¿Este proyecto requerirá Servicio Express?" (VPOS/MPOS/PG) junto a IVA exento; `servicio_express` persistido en la cotización.
+- Fila "Servicio Express" en Setup: max(setup_cost_conventional, cajas × setup_cost_outsourcing) del ítem de catálogo "Servicio Express" (PG: N=1, después de Persona Jurídica). Editable (expressManual detiene recálculo), cajas fijas en 1, sin duplicar, eliminar → pregunta en No.
+- Testing: iteration_352/353 + tests/test_quote_express_service.py.
+
+

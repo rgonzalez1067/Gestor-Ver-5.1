@@ -1,0 +1,40 @@
+{
+  "summary": "Iter 353: se volvió a probar Servicio Express en VPOS, MPOS y PG (catálogo simulado 100/20 mediante interceptación de /api/services) y el tag [Producción]. FIX 1, FIX 2 y FIX 3 funcionan. Queda un punto del pedido sin cumplir: en PG, eliminar la fila express NO pide confirmación (no hay window.confirm), aunque sí la quita y pone la pregunta en No.",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "GET /api/quotes/{id}/pdf (PG)", "issue": "Observación de baja prioridad, posiblemente anterior a este cambio y fuera del alcance: para cotizaciones GATEWAY el PDF que devuelve este endpoint solo trae totales (376) y no las líneas de setup, así que no se pudo comprobar la fila Express en el PDF de PG por esta vía."}
+  ]},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "PG Setup – eliminar fila Servicio Express", "issue": "removePgSetupItem (Quotes.jsx ~l.1732-1742) elimina la fila express directamente, sin window.confirm. El pedido indica que debe pedir confirmación, como en VPOS/MPOS. Verificado en la UI: no se disparó ningún dialog al hacer clic en pg-remove-item-1; la fila se eliminó y express-service-no quedó en aria-checked=true.", "selector": "[data-testid=pg-remove-item-1]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "PG Setup", "issues": ["La fila Servicio Express en PG no muestra el badge 'Express' (en VPOS/MPOS sí). Es opcional, pero ayudaría a la consistencia."]}
+    ]
+  },
+  "passed_checks": [
+    "FIX 1 VPOS: 3 cajas + Sí → fila con cajas 1 (setup-express-cajas), tarifa 100 y total $100. Cambio a 8 cajas → tarifa 160 y total $160 (no 1280); las 4 filas normales pasan a 8 cajas. Tarifa manual 125 y luego 3 cajas → total $125, filas normales a 3 cajas.",
+    "VPOS guardado (COT-2026-11-041): en BD servicio_express=true y services 'Servicio Express' con cantidad_cajas=1, unit_price=125, total_usd=125, express=true, expressManual=true, lockBancos=true. El PDF muestra 'Servicio Express | 1 | $125.00 | $125.00' y no contiene '[Producción]'.",
+    "VPOS reabierta con Modificar: la pregunta está en Sí, la fila tiene badge Express, Bancos N/A (lockBancos) y cajas fijas en 1, tarifa 125, sin botón Duplicar y con setup-express-remove. Cambiar el header a 6 cajas mantiene 125 y las filas normales pasan a 6. Eliminar pide confirmación, quita la fila y pone la pregunta en No.",
+    "FIX 1 MPOS (Outsourcing fijo): 3 cajas → $100, 8 cajas → $160 (filas normales en 8), manual 125 y 3 cajas → $125, sin botón Duplicar; eliminar pide confirmación y deja la pregunta en No.",
+    "FIX 2 PG: el payload de create-with-pdf envía servicio_express=true y pg_setup_items con Servicio Express (costo 100, express=true) justo después de Persona Jurídica. En BD servicio_express=true y total 376. Al reabrir con Modificar la pregunta está en Sí y la fila express permanece con costo 100; se edita con pg-setup-cost-1 (130) y al eliminarla la pregunta pasa a No.",
+    "Regresión [Producción]: en MultiProductSelector VPOS, 'Tarjetas…' sin tag y 'Cambio Pago Movil' con Imple; en PG, solo 'Verificación de Depositos (PG)' con Imple. El PDF VPOS no contiene '[Producción]'.",
+    "pytest test_quote_express_service.py y test_quote_phase_tags.py: 14/14 pasan."
+  ],
+  "test_report_links": ["/app/backend/tests/test_quote_express_service.py", "/app/backend/tests/test_quote_phase_tags.py", "/app/backend/tests/_helper_iter354.py", "/app/test_reports/pytest/pytest_iter354.xml"],
+  "action_items": [
+    "Quotes.jsx removePgSetupItem: en la rama item.express agregar if (!window.confirm('¿Está seguro de eliminar este concepto? Los totales se recalcularán automáticamente.')) return; antes de setQuoteData/setPgSetupItems.",
+    "Opcional: mostrar el badge 'Express' en la fila express de la tabla PG."
+  ],
+  "critical_code_review_comments": [
+    "Quotes.jsx (~4850 líneas) y QuoteWizardDialog.jsx (~2650) siguen muy por encima de 700 líneas; conviene extraer la lógica express a un hook.",
+    "La búsqueda del ítem del catálogo por nombre exacto 'servicio express' sigue siendo frágil."
+  ],
+  "updated_files": ["/app/backend/tests/_helper_iter354.py"],
+  "success_rate": {"backend": "100% (14/14 pytest)", "frontend": "~93% (13/14 verificaciones; falla la confirmación al eliminar en PG)"},
+  "seed_data_creation": "No se creó ni se modificó el ítem real 'Servicio Express' del catálogo (srv_18d71a96d087 sigue en 200/5); los valores 100/20 se simularon interceptando /api/services. Las cotizaciones de prueba quo_0e367a66d5e6 (COT-2026-11-041, VPOS) y quo_4caa094d1bd7 (COT-2026-11-042, PG) se eliminaron por id (200). En Modificar se avanzó la justificación pero no se guardó (siguen en versión 1). Estatus de bancos sin cambios: 146 Producción / 18 Imple.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login por API (rgonzalez@megasoft.com.ve / Mega2026*) e inyectar session_token/user en localStorage. VPOS: select-quote-type 'VPOS (Cajas)' → select-client → select-pricing-model → cantidad-cajas-input → select-integrator 'Sin integrador' → select-bank Tesoro → multi-product-trigger/item/add-btn → express-service-yes → submit-quote-button. MPOS: no tiene pricing model (Outsourcing fijo); requiere select-pinpad. PG: primero select-integrator, después pg-select-bank Banesco, multi-product, pg-submit-quote-button. Modificar: quote-actions-{id} → modify-quote-btn-{id} → modify-choice-in-place → impl-justification-input → impl-confirm-save-btn, y luego se abre el wizard. La fila express de VPOS se ubica con tr:has([data-testid=setup-express-badge]).",
+  "rca of the issue": "PG sin confirmación: removePgSetupItem en Quotes.jsx no llama a window.confirm en ninguna rama (ni express ni normal), a diferencia de removeSetupItem de VPOS. Reproducción: PG → Sí → pg-remove-item-1 → la fila desaparece sin dialog. Solución: agregar window.confirm en la rama express."
+}

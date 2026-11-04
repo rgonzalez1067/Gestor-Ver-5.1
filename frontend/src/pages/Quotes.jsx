@@ -1736,6 +1736,7 @@ export const Quotes = () => {
       return;
     }
     if (pgSetupItems[index]?.express) {
+      if (!window.confirm('¿Eliminar el concepto Servicio Express? Los totales se recalcularán.')) return;
       setQuoteData(q => ({ ...q, servicio_express: false }));
       setPgSetupItems(pgSetupItems.filter((_, i) => i !== index));
       return;

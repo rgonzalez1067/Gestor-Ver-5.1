@@ -1334,6 +1334,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                               <td className="border p-2 text-sm font-medium">
                                 {item.concepto}
                                 <PhaseTag status={item.operational_status} testId={`pg-setup-phase-${index}`} className="ml-2" />
+                                {item.express && <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded" data-testid="pg-express-badge">Express</span>}
                                 {item.fixed && <span className="ml-2 text-xs bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded">Fijo</span>}
                               </td>
                               <td className="border p-2">
