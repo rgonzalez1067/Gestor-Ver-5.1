@@ -987,6 +987,24 @@ class Project(BaseModel):
     completed_at: Optional[str] = None
 
 # Modelo para generar PDF desde frontend
+def product_phase(p: dict) -> str:
+    """Fase operativa de un producto de banco (compatibilidad con pre_production legado)."""
+    return p.get("operational_status") or ("Imple" if p.get("pre_production") else "Producción")
+
+
+def report_phase_tag_html(status: str) -> str:
+    if not status or status == "Producción":
+        return ""
+    return (f' <span style="display:inline-block;padding:0 5px;margin-left:4px;border-radius:3px;'
+            f'background:#ffedd5;color:#9a3412;border:1px solid #fdba74;font-size:8px;font-weight:700;">[{status}]</span>')
+
+
+def report_filters_html(include_processors: bool, include_pre_production: bool) -> str:
+    ent = "Bancos/Entes y Procesadores" if include_processors else "Solo Bancos/Entes (sin Procesadores)"
+    ph = "Incluye fases no productivas" if include_pre_production else "Solo productos en Producción"
+    return f"<p>Filtros: <b>{ent}</b> · <b>{ph}</b></p>"
+
+
 def with_phase_tag(name: str, status: Optional[str]) -> str:
     """Agrega '[Fase]' al nombre del medio de pago (idempotente; Producción no lleva etiqueta)."""
     tag = f" [{status}]" if status and status != "Producción" else ""

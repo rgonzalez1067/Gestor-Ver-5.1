@@ -16,6 +16,7 @@ const SERVICE_TYPES = [
   { id: 'Servicio', name: 'Servicio', icon: Wrench, description: 'Intangible o configuración (Mantenimiento, Licencia, etc.)' }
 ];
 import api from '../utils/api';
+import { ReportParamsDialog } from '../components/ReportParamsDialog';
 import { toast } from 'sonner';
 import { usePermission } from '../hooks/usePermission';
 
@@ -333,10 +334,11 @@ export const MediosPago = () => {
     }
   };
 
-  const downloadBanksByProductReport = async () => {
+  const [reportParamsOpen, setReportParamsOpen] = useState(false);
+  const downloadBanksByProductReport = async (params) => {
     setReportLoading(true);
     try {
-      const res = await api.get('/services/report/banks-by-product/pdf', { responseType: 'blob' });
+      const res = await api.get('/services/report/banks-by-product/pdf', { params, responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const a = document.createElement('a');
       a.href = url;
@@ -347,6 +349,7 @@ export const MediosPago = () => {
       a.remove();
       window.URL.revokeObjectURL(url);
       toast.success('Reporte "Bancos por Producto" descargado');
+      setReportParamsOpen(false);
     } catch (err) {
       toast.error(`Error al generar reporte: ${err.response?.data?.detail || err.message}`);
     } finally {
@@ -458,7 +461,7 @@ export const MediosPago = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={downloadBanksByProductReport}
+                onClick={() => setReportParamsOpen(true)}
                 disabled={reportLoading}
                 data-testid="banks-by-product-report-btn"
                 className="border-indigo-600 text-indigo-700 hover:bg-indigo-50"
@@ -466,6 +469,13 @@ export const MediosPago = () => {
                 <FileBarChart size={18} className="mr-2" />
                 {reportLoading ? 'Generando...' : 'Bancos por Producto'}
               </Button>
+              <ReportParamsDialog
+                open={reportParamsOpen}
+                onOpenChange={setReportParamsOpen}
+                reportName="Bancos por Producto"
+                loading={reportLoading}
+                onGenerate={downloadBanksByProductReport}
+              />
               {canEdit && <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
                 <DialogTrigger asChild>
                   <Button

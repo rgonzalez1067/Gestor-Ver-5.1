@@ -742,13 +742,18 @@ async def export_banks_pdf(authorization: Optional[str] = Header(None)):
 # ==================== REPORTE: PRODUCTOS POR BANCO ====================
 
 @router.get("/banks/report/products-by-bank/pdf")
-async def report_products_by_bank_pdf(authorization: Optional[str] = Header(None)):
+async def report_products_by_bank_pdf(
+    include_processors: bool = False,
+    include_pre_production: bool = False,
+    authorization: Optional[str] = Header(None),
+):
     """Reporte 'Productos por Banco': PDF elegante con cada banco y sus productos asociados.
     Mismo look & feel que /services/report/banks-by-product/pdf."""
     user = await get_current_user(authorization)
     import weasyprint
 
-    banks = await db.banks.find({}, {"_id": 0}).sort("name", 1).to_list(None)
+    bank_query = {} if include_processors else {"type": {"$ne": "Procesador"}}
+    banks = await db.banks.find(bank_query, {"_id": 0}).sort("name", 1).to_list(None)
 
     # KPIs
     banks_with_products = 0
@@ -757,7 +762,10 @@ async def report_products_by_bank_pdf(authorization: Optional[str] = Header(None
 
     sections_html = []
     for b in banks:
-        products = b.get("products") or []
+        products = [
+            p for p in (b.get("products") or [])
+            if include_pre_production or product_phase(p) == "Producción"
+        ]
         # Ordenar productos alfabéticamente
         products = sorted(products, key=lambda p: (p.get("product_name") or "").strip().lower())
         if products:
@@ -782,7 +790,7 @@ async def report_products_by_bank_pdf(authorization: Optional[str] = Header(None
                 rows += (
                     f'<tr>'
                     f'<td class="num">{i}</td>'
-                    f'<td class="bank">{(p.get("product_name") or "—").strip()}</td>'
+                    f'<td class="bank">{(p.get("product_name") or "—").strip()}{report_phase_tag_html(product_phase(p))}</td>'
                     f'<td class="comps">{comps_html}</td>'
                     f'</tr>'
                 )
@@ -845,6 +853,7 @@ async def report_products_by_bank_pdf(authorization: Optional[str] = Header(None
   <div class="cover">
     <h1>Productos por Banco</h1>
     <p>Reporte de productos configurados por cada entidad bancaria, con sus componentes habilitados.</p>
+    {report_filters_html(include_processors, include_pre_production)}
     <p>Generado el <b>{now_str}</b> · Por <b>{user_name}</b></p>
   </div>
 

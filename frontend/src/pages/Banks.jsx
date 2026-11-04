@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../com
 import { Textarea } from '../components/ui/textarea';
 import api from '../utils/api';
 import { PRODUCT_STATUSES, getProductStatus, isPreProduction } from '../utils/bankProductStatus';
+import { ReportParamsDialog } from '../components/ReportParamsDialog';
 import { toast } from 'sonner';
 import { usePermission } from '../hooks/usePermission';
 
@@ -331,10 +332,11 @@ export const Banks = () => {
   const [productsByBankLoading, setProductsByBankLoading] = useState(false);
   // Modo de visualización del listado: 'list' (default) | 'by-processor' (agrupado).
   const [viewMode, setViewMode] = useState('list');
-  const downloadProductsByBankReport = async () => {
+  const [reportParamsOpen, setReportParamsOpen] = useState(false);
+  const downloadProductsByBankReport = async (params) => {
     setProductsByBankLoading(true);
     try {
-      const res = await api.get('/banks/report/products-by-bank/pdf', { responseType: 'blob' });
+      const res = await api.get('/banks/report/products-by-bank/pdf', { params, responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const a = document.createElement('a');
       a.href = url;
@@ -345,6 +347,7 @@ export const Banks = () => {
       a.remove();
       window.URL.revokeObjectURL(url);
       toast.success('Reporte "Productos por Banco" descargado');
+      setReportParamsOpen(false);
     } catch (err) {
       toast.error(`Error: ${err.response?.data?.detail || err.message}`);
     } finally {
@@ -396,7 +399,7 @@ export const Banks = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={downloadProductsByBankReport}
+                onClick={() => setReportParamsOpen(true)}
                 disabled={productsByBankLoading}
                 data-testid="products-by-bank-report-btn"
                 className="border-indigo-600 text-indigo-700 hover:bg-indigo-50"
@@ -404,6 +407,13 @@ export const Banks = () => {
                 <FileBarChart size={18} className="mr-2" />
                 {productsByBankLoading ? 'Generando...' : 'Productos por Banco'}
               </Button>
+              <ReportParamsDialog
+                open={reportParamsOpen}
+                onOpenChange={setReportParamsOpen}
+                reportName="Productos por Banco"
+                loading={productsByBankLoading}
+                onGenerate={downloadProductsByBankReport}
+              />
               {canEdit && <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
                 <DialogTrigger asChild>
                   <Button data-testid="add-bank-button" className="bg-brand-green-600 hover:bg-brand-green-700 text-white">

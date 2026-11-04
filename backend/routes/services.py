@@ -521,7 +521,11 @@ async def get_banks_for_service(service_id: str, authorization: Optional[str] = 
 
 
 @router.get("/services/report/banks-by-product/pdf")
-async def report_banks_by_product_pdf(authorization: Optional[str] = Header(None)):
+async def report_banks_by_product_pdf(
+    include_processors: bool = False,
+    include_pre_production: bool = False,
+    authorization: Optional[str] = Header(None),
+):
     """Reporte 'Bancos por Producto': PDF elegante con cada producto y los bancos asociados."""
     user = await get_current_user(authorization)
     import weasyprint
@@ -532,7 +536,8 @@ async def report_banks_by_product_pdf(authorization: Optional[str] = Header(None
     ).sort("name", 1).to_list(None)
 
     # Pre-construir mapa de bancos para todos los productos (1 sola lectura de banks)
-    all_banks = await db.banks.find({}, {"_id": 0}).to_list(None)
+    bank_query = {} if include_processors else {"type": {"$ne": "Procesador"}}
+    all_banks = await db.banks.find(bank_query, {"_id": 0}).to_list(None)
 
     def banks_for(svc):
         target = _normalize(svc.get("name", ""))
@@ -543,6 +548,9 @@ async def report_banks_by_product_pdf(authorization: Optional[str] = Header(None
                 if (p.get("service_id") and p["service_id"] == sid) or (
                     _normalize(p.get("product_name", "")) == target
                 ):
+                    phase = product_phase(p)
+                    if not include_pre_production and phase != "Producción":
+                        break
                     comps = []
                     if p.get("vpos_available"):
                         comps.append("VPOS")
@@ -555,6 +563,7 @@ async def report_banks_by_product_pdf(authorization: Optional[str] = Header(None
                     out.append({
                         "name": b.get("name", "—"),
                         "code": b.get("bank_code", "") or "—",
+                        "phase": phase,
                         "components": comps or ["—"],
                     })
                     break
@@ -584,7 +593,7 @@ async def report_banks_by_product_pdf(authorization: Optional[str] = Header(None
                 rows += (
                     f'<tr>'
                     f'<td class="num">{i}</td>'
-                    f'<td class="bank">{b["name"]}</td>'
+                    f'<td class="bank">{b["name"]}{report_phase_tag_html(b["phase"])}</td>'
                     f'<td class="code">{b["code"]}</td>'
                     f'<td class="comps">{comps}</td>'
                     f'</tr>'
@@ -648,6 +657,7 @@ async def report_banks_by_product_pdf(authorization: Optional[str] = Header(None
   <div class="cover">
     <h1>Bancos por Producto</h1>
     <p>Reporte de asociaciones entre productos del catálogo (categoría Producto · tipo Setup) y las entidades bancarias.</p>
+    {report_filters_html(include_processors, include_pre_production)}
     <p>Generado el <b>{now_str}</b> · Por <b>{user_name}</b></p>
   </div>
 
