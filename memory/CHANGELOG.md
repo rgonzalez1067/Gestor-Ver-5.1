@@ -1875,6 +1875,8 @@ Antes, usuarios con permisos limitados no cargaban catálogos en el frontend →
 - `ReportParamsDialog`: Alcance (Solo Bancos/Entes | + Procesadores) y fases no productivas (Sí/No); defaults Solo Bancos/Entes + No.
 - Endpoints aceptan `include_processors` e `include_pre_production`; etiqueta [Fase] en PDF (sin [Producción]); línea "Filtros" en portada.
 - Testing: iteration_354 (100%).
+- Productos por Banco: dentro de cada banco, subgrupos "Productos VPOS / MPOS" y "Productos Payment / Link" (nombre termina en "(PG)"), alfabéticos, ambos subtítulos siempre visibles.
+
 
 
 

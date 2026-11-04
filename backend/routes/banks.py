@@ -774,28 +774,44 @@ async def report_products_by_bank_pdf(
         else:
             banks_without_products += 1
 
+        def _row(i, p):
+            comps = []
+            if p.get("vpos_available"):
+                comps.append("VPOS")
+            if p.get("gateway_available"):
+                comps.append("Gateway")
+            if p.get("mpos_available"):
+                comps.append("mPOS")
+            if p.get("link_available"):
+                comps.append("Link")
+            comps_html = " ".join(f'<span class="chip">{c}</span>' for c in comps) if comps else '<span class="chip-muted">—</span>'
+            return (
+                f'<tr>'
+                f'<td class="num">{i}</td>'
+                f'<td class="bank">{(p.get("product_name") or "—").strip()}{report_phase_tag_html(product_phase(p))}</td>'
+                f'<td class="comps">{comps_html}</td>'
+                f'</tr>'
+            )
+
+        def _is_pg(p):
+            return (p.get("product_name") or "").strip().upper().endswith("(PG)")
+
+        def _sorted(items):
+            return sorted(items, key=lambda p: (p.get("product_name") or "").strip().lower())
+
+        groups = [
+            ("Productos VPOS / MPOS", _sorted([p for p in products if not _is_pg(p)])),
+            ("Productos Payment / Link", _sorted([p for p in products if _is_pg(p)])),
+        ]
         rows = ""
-        if products:
-            for i, p in enumerate(products, 1):
-                comps = []
-                if p.get("vpos_available"):
-                    comps.append("VPOS")
-                if p.get("gateway_available"):
-                    comps.append("Gateway")
-                if p.get("mpos_available"):
-                    comps.append("mPOS")
-                if p.get("link_available"):
-                    comps.append("Link")
-                comps_html = " ".join(f'<span class="chip">{c}</span>' for c in comps) if comps else '<span class="chip-muted">—</span>'
-                rows += (
-                    f'<tr>'
-                    f'<td class="num">{i}</td>'
-                    f'<td class="bank">{(p.get("product_name") or "—").strip()}{report_phase_tag_html(product_phase(p))}</td>'
-                    f'<td class="comps">{comps_html}</td>'
-                    f'</tr>'
-                )
-        else:
-            rows = '<tr><td colspan="3" class="empty">— Sin productos asociados —</td></tr>'
+        n = 0
+        for title, items in groups:
+            rows += f'<tr><td colspan="3" class="group">{title} ({len(items)})</td></tr>'
+            if not items:
+                rows += '<tr><td colspan="3" class="empty">— Sin productos —</td></tr>'
+            for p in items:
+                n += 1
+                rows += _row(n, p)
 
         bank_type = b.get("type") or "—"
         bank_code = b.get("bank_code") or "—"
@@ -843,6 +859,7 @@ async def report_products_by_bank_pdf(
   thead th.num {{ text-align: center; }}
   tbody td {{ padding: 5px 8px; border-bottom: 1px solid #e2e8f0; font-size: 10px; vertical-align: middle; }}
   td.num {{ text-align: center; color: #64748b; width: 28px; }}
+  td.group {{ background: #e0f2fe; color: #0c4a6e; font-weight: 700; font-size: 9.5px; text-transform: uppercase; letter-spacing: .4px; padding: 4px 8px; }}
   td.bank {{ font-weight: 600; color: #0f172a; }}
   td.empty {{ text-align: center; color: #94a3b8; font-style: italic; padding: 10px; }}
   .chip {{ display: inline-block; padding: 1px 6px; margin-right: 3px; border-radius: 10px; background: #ecfeff; color: #0e7490; font-size: 8.5px; border: 1px solid #a5f3fc; }}
