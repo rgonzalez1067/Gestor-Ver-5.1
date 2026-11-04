@@ -245,6 +245,23 @@ def ensure_bank_contacts(bank: dict) -> dict:
         }]
     return bank
 
+async def migrate_bank_product_status():
+    """Migra pre_production (bool) → operational_status: False→Producción, True→Imple."""
+    updated = 0
+    async for bank in db.banks.find({"products.0": {"$exists": True}}, {"_id": 0, "bank_id": 1, "products": 1}):
+        products = bank.get("products") or []
+        if all(p.get("operational_status") for p in products):
+            continue
+        for p in products:
+            if not p.get("operational_status"):
+                p["operational_status"] = "Imple" if p.get("pre_production") else "Producción"
+            p["pre_production"] = p["operational_status"] != "Producción"
+        await db.banks.update_one({"bank_id": bank["bank_id"]}, {"$set": {"products": products}})
+        updated += 1
+    if updated:
+        logging.info(f"[migration] operational_status aplicado en {updated} bancos")
+
+
 def dedupe_bank_products(bank: dict) -> dict:
     """Elimina productos duplicados (mismo product_name) dentro de un banco,
     fusionando las banderas de disponibilidad (VPOS/Gateway/mPOS/Link) y

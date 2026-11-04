@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ArrowLeft, Building2, Monitor, Globe, Smartphone, Link, Plus, Trash2, ChevronRight, User, Phone, Mail, Hash, Rocket, Package, FileText, Pencil, Lock, FlaskConical, Clock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import api from '../utils/api';
+import { getProductStatus, isPreProduction } from '../utils/bankProductStatus';
 import { toast } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -302,10 +303,11 @@ export const BankDetail = () => {
                 {vposMpos.map((p, i) => {
                   const hasComment = p.comment && p.comment.trim();
                   const card = (
-                    <div data-testid={`vpos-product-${i}`} className={`flex items-center gap-2 p-2.5 rounded-lg border ${p.pre_production ? 'bg-orange-100 border-orange-300' : 'bg-blue-50 border-blue-100'}`}>
-                      {p.pre_production ? <Clock size={14} className="text-orange-600 shrink-0" /> : <Package size={14} className="text-blue-600 shrink-0" />}
-                      <span className={`text-sm font-medium truncate ${p.pre_production ? 'text-orange-800' : 'text-blue-800'}`}>{p.product_name}</span>
+                    <div data-testid={`vpos-product-${i}`} className={`flex items-center gap-2 p-2.5 rounded-lg border ${isPreProduction(p) ? 'bg-orange-100 border-orange-300' : 'bg-blue-50 border-blue-100'}`}>
+                      {isPreProduction(p) ? <Clock size={14} className="text-orange-600 shrink-0" /> : <Package size={14} className="text-blue-600 shrink-0" />}
+                      <span className={`text-sm font-medium truncate ${isPreProduction(p) ? 'text-orange-800' : 'text-blue-800'}`}>{p.product_name}</span>
                       {hasComment && <span className="text-sky-500 font-bold shrink-0" data-testid={`vpos-comment-dot-${i}`}>•</span>}
+                      {isPreProduction(p) && <span className="px-1 py-0.5 text-[9px] font-bold rounded bg-white/70 text-orange-700 uppercase shrink-0" data-testid={`vpos-status-${i}`}>{getProductStatus(p)}</span>}
                       <div className="flex gap-1 ml-auto shrink-0">
                         {p.vpos_available && <span className="px-1 py-0.5 text-[9px] font-bold rounded bg-blue-200 text-blue-700">VPOS</span>}
                         {p.mpos_available && <span className="px-1 py-0.5 text-[9px] font-bold rounded bg-indigo-200 text-indigo-700">MPOS</span>}
@@ -335,10 +337,11 @@ export const BankDetail = () => {
                 {pgLink.map((p, i) => {
                   const hasComment = p.comment && p.comment.trim();
                   const card = (
-                    <div data-testid={`pg-product-${i}`} className={`flex items-center gap-2 p-2.5 rounded-lg border ${p.pre_production ? 'bg-red-100 border-red-300' : 'bg-green-50 border-green-100'}`}>
-                      {p.pre_production ? <Clock size={14} className="text-red-600 shrink-0" /> : <Package size={14} className="text-green-600 shrink-0" />}
-                      <span className={`text-sm font-medium truncate ${p.pre_production ? 'text-red-800' : 'text-green-800'}`}>{p.product_name}</span>
+                    <div data-testid={`pg-product-${i}`} className={`flex items-center gap-2 p-2.5 rounded-lg border ${isPreProduction(p) ? 'bg-red-100 border-red-300' : 'bg-green-50 border-green-100'}`}>
+                      {isPreProduction(p) ? <Clock size={14} className="text-red-600 shrink-0" /> : <Package size={14} className="text-green-600 shrink-0" />}
+                      <span className={`text-sm font-medium truncate ${isPreProduction(p) ? 'text-red-800' : 'text-green-800'}`}>{p.product_name}</span>
                       {hasComment && <span className="text-sky-500 font-bold shrink-0" data-testid={`pg-comment-dot-${i}`}>•</span>}
+                      {isPreProduction(p) && <span className="px-1 py-0.5 text-[9px] font-bold rounded bg-white/70 text-red-700 uppercase shrink-0" data-testid={`pg-status-${i}`}>{getProductStatus(p)}</span>}
                       <div className="flex gap-1 ml-auto shrink-0">
                         {p.gateway_available && <span className="px-1 py-0.5 text-[9px] font-bold rounded bg-green-200 text-green-700">PG</span>}
                         {p.link_available && <span className="px-1 py-0.5 text-[9px] font-bold rounded bg-teal-200 text-teal-700">Link</span>}

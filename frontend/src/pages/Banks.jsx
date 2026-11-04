@@ -13,6 +13,7 @@ import { Switch } from '../components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import { Textarea } from '../components/ui/textarea';
 import api from '../utils/api';
+import { PRODUCT_STATUSES, getProductStatus, isPreProduction } from '../utils/bankProductStatus';
 import { toast } from 'sonner';
 import { usePermission } from '../hooks/usePermission';
 
@@ -166,7 +167,7 @@ export const Banks = () => {
     const sel = mediosPago.find(m => m.service_id === serviceId);
     if (sel) {
       setNewProduct({
-        ...newProduct, service_id: serviceId, product_name: sel.name,
+        ...newProduct, service_id: serviceId, product_name: sel.name, operational_status: 'DESA',
         description: sel.description || '',
         vpos_available: sel.vpos_enabled !== false, gateway_available: sel.gateway_enabled !== false,
         mpos_available: sel.mpos_enabled !== false, link_available: sel.link_enabled !== false
@@ -183,6 +184,12 @@ export const Banks = () => {
   const toggleProductComponent = (index, field) => {
     const updated = [...formData.products];
     updated[index] = { ...updated[index], [field]: !updated[index][field] };
+    setFormData({ ...formData, products: updated });
+  };
+
+  const updateProductStatus = (index, status) => {
+    const updated = [...formData.products];
+    updated[index] = { ...updated[index], operational_status: status, pre_production: status !== 'Producción' };
     setFormData({ ...formData, products: updated });
   };
 
@@ -544,7 +551,7 @@ export const Banks = () => {
                       </h3>
                       <div className="space-y-2 mb-4">
                         {formData.products.map((product, index) => (
-                          <div key={index} className={`p-2.5 rounded-lg border ${product.pre_production ? 'bg-amber-50 border-amber-300' : 'bg-slate-50'}`}>
+                          <div key={index} className={`p-2.5 rounded-lg border ${isPreProduction(product) ? 'bg-amber-50 border-amber-300' : 'bg-slate-50'}`}>
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium text-slate-800 truncate min-w-0 flex-shrink mr-3 flex items-center gap-1.5">
                                 {product.product_name}
@@ -576,10 +583,19 @@ export const Banks = () => {
                               </div>
                             </div>
                             <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-200/70">
-                              <Switch checked={!!product.pre_production} onCheckedChange={() => toggleProductComponent(index, 'pre_production')} data-testid={`preprod-switch-${index}`} className="scale-90" />
-                              <span className={`text-[11px] font-medium flex items-center gap-1 ${product.pre_production ? 'text-amber-700' : 'text-slate-400'}`}>
-                                <Clock size={12} /> Fase Previa a Producción
+                              <span className={`text-[11px] font-medium flex items-center gap-1 ${isPreProduction(product) ? 'text-amber-700' : 'text-emerald-700'}`}>
+                                <Clock size={12} /> Estatus
                               </span>
+                              <Select value={getProductStatus(product)} onValueChange={(v) => updateProductStatus(index, v)}>
+                                <SelectTrigger className="h-7 w-36 text-xs bg-white" data-testid={`product-status-select-${index}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {PRODUCT_STATUSES.map((st) => (
+                                    <SelectItem key={st} value={st} data-testid={`product-status-option-${index}-${st.replace(/\s/g, '-')}`}>{st}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                           </div>
                         ))}
@@ -805,7 +821,8 @@ export const Banks = () => {
                           const isVposMpos = p.vpos_available || p.mpos_available;
                           const isPgLink = p.gateway_available || p.link_available;
                           // Fase Previa a Producción: VPOS→Naranja claro, Payment Gateway→Rojo claro.
-                          const colorClass = p.pre_production
+                          const preProd = isPreProduction(p);
+                          const colorClass = preProd
                             ? (isPgLink && !isVposMpos
                                 ? 'bg-red-100 text-red-800 border-red-300'
                                 : 'bg-orange-100 text-orange-800 border-orange-300')
@@ -819,8 +836,9 @@ export const Banks = () => {
                           const hasComment = p.comment && p.comment.trim();
                           const chip = (
                             <span data-testid={`bank-chip-${i}`} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border whitespace-nowrap ${colorClass}`}>
-                              {p.pre_production && <Clock size={11} />}
+                              {preProd && <Clock size={11} />}
                               {p.product_name}
+                              {preProd && <span className="ml-0.5 px-1 rounded bg-white/70 text-[9px] font-bold uppercase" data-testid={`bank-chip-status-${i}`}>{getProductStatus(p)}</span>}
                               {hasComment && <span className="text-sky-500 font-bold" data-testid={`bank-chip-comment-dot-${i}`}>•</span>}
                             </span>
                           );

@@ -94,6 +94,11 @@ async def _on_startup():
     except Exception as e:
         logging.warning(f"[startup] migrate_integration_modalities failed: {e}")
     try:
+        from routes.banks import migrate_bank_product_status
+        await migrate_bank_product_status()
+    except Exception as e:
+        logging.warning(f"[startup] migrate_bank_product_status failed: {e}")
+    try:
         # Precargar snapshot de feriados para el fallback síncrono del generador de PDF.
         from services.business_calendar import get_holiday_sets
         await get_holiday_sets()

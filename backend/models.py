@@ -1,7 +1,7 @@
 """
 Modelos Pydantic y constantes de la aplicación.
 """
-from pydantic import BaseModel, Field, EmailStr, field_validator
+from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
 from typing import List, Optional, Literal
 from datetime import datetime, timezone
 import uuid
@@ -175,8 +175,20 @@ class BankProduct(BaseModel):
     # Fase Previa a Producción: el producto está desarrollado en core pero NO
     # disponible comercial/técnicamente para este banco → se oculta en Cotizaciones.
     pre_production: bool = False
+    # Estatus operativo; pre_production se deriva (todo != 'Producción' es fase previa).
+    operational_status: Literal["DESA", "SQA", "Imple", "Primer Prod", "Producción"] = "Producción"
     # Comentario libre de la relación producto↔banco (visible como tooltip en el resumen).
     comment: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _sync_operational_status(cls, data):
+        if isinstance(data, dict):
+            data = dict(data)
+            if not data.get("operational_status"):
+                data["operational_status"] = "Imple" if data.get("pre_production") else "Producción"
+            data["pre_production"] = data["operational_status"] != "Producción"
+        return data
 
 class BankIntegration(BaseModel):
     """Integración en curso con un banco"""
