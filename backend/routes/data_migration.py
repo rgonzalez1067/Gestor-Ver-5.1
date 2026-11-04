@@ -23,7 +23,7 @@ import uuid
 import zipfile
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 from bson.json_util import dumps as bson_dumps, loads as bson_loads
@@ -1401,6 +1401,7 @@ async def _upsert_bundle_docs(cfg: dict, docs: list, user: dict, now_iso: str) -
                 doc["imported_at"] = now_iso
                 doc["imported_by"] = user.get("email")
                 await collection.insert_one(doc)
+                existing_map[kv] = {key: kv, "created_at": doc.get("created_at")}
                 inserted += 1
         except Exception as e:
             skipped += 1
@@ -1447,7 +1448,7 @@ async def quotes_bundle_preview_keys(body: _BundlePreviewKeys, authorization: Op
 
 class _BundleBatch(BaseModel):
     collection: str
-    documents: List[dict]
+    documents: List[Any]
 
 
 @router.post("/admin/quotes-bundle-migration/import-batch")
@@ -1460,8 +1461,17 @@ async def quotes_bundle_import_batch(body: _BundleBatch, authorization: Optional
     return await _upsert_bundle_docs(cfg, body.documents, user, datetime.now(timezone.utc).isoformat())
 
 
+class _BundleResult(BaseModel):
+    collection: str
+    label: str = ""
+    inserted: int = 0
+    updated: int = 0
+    skipped: int = 0
+    errors: List[Any] = []
+
+
 class _BundleFinalize(BaseModel):
-    results: List[dict]
+    results: List[_BundleResult]
     exported_at: Optional[str] = None
     exported_by: Optional[str] = None
 
@@ -1469,7 +1479,7 @@ class _BundleFinalize(BaseModel):
 @router.post("/admin/quotes-bundle-migration/import-finalize")
 async def quotes_bundle_import_finalize(body: _BundleFinalize, authorization: Optional[str] = Header(None)):
     user = await _require_admin(authorization)
-    return await _finalize_bundle_import(body.results, body.exported_at, body.exported_by, user,
+    return await _finalize_bundle_import([r.model_dump() for r in body.results], body.exported_at, body.exported_by, user,
                                          datetime.now(timezone.utc).isoformat())
 
 

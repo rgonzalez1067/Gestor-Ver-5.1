@@ -1,0 +1,37 @@
+{
+  "summary": "Verified fix for infinite spinner on Quotes-bundle migration preview/import. Backend: preview-keys, import-batch, import-finalize + legacy import-preview/import-data tested via pytest (10 passed, 3 skipped because non-admin creds in test_credentials.md are stale; RBAC re-verified manually with a temporary TEST_ non-admin session → 403, no auth → 401). UI: 74MB /tmp/bundle68.json preview rendered in 1.2s with exact expected table (Cotizaciones 5: 0/5, Históricas 6: 0/6, Proyectos 1146: 764 crear/382 actualizar); NOT applied. Invalid files (other module, plain text, missing collections) → proper error toasts, button returns to 'Analizar', no spinner. Apply with /tmp/bundle.json (24MB) → 8 import-batch requests (all ≤ ~4.2MB) + 1 import-finalize, progress 'projects 161/382' shown, finished in 9.4s: 0 creados, 393 actualizados (5+6+382), 0 omitidos. DB after: quotes 5, quote_history 6, projects 382, zzfake_* 0, no duplicate keys; bitácora action=quotes_bundle_import_data entry with correct per-collection results.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/admin/quotes-bundle-migration/import-finalize", "issue": "Trusts client-provided results; inserts bitácora BEFORE computing totals with r['inserted'] etc. A malformed results item (missing keys) yields 500 AFTER a garbage bitácora row is written. Validate results with a Pydantic model (collection/label/inserted/updated/skipped ints) or compute totals before insert."},
+      {"endpoint": "POST /api/admin/quotes-bundle-migration/import-batch", "issue": "documents: List[dict] → a single null/non-dict element 422s the entire batch, whereas frontend preview counts such entries as 'invalid' and legacy path skips them. Consider List[Any] and let _upsert_bundle_docs count them as skipped."},
+      {"endpoint": "import-batch (_upsert_bundle_docs)", "issue": "Duplicate keys within the same batch are both inserted (existing_map computed once before loop). Pre-existing legacy behavior; could use upsert=True update_one to be fully idempotent."},
+      {"endpoint": "import-batch flow", "issue": "If the browser aborts mid-import (tab closed/network), batches already upserted are not audited because bitácora is written only in import-finalize."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Import progress (bundle-import-progress)", "issues": ["Progress text shows raw collection key ('projects 161/382') instead of the label ('Proyectos'); minor cosmetic."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_quotes_bundle_batch_import.py", "/app/test_reports/pytest/pytest_results_iter344.xml"],
+  "action_items": [
+    "Optional: validate import-finalize body (typed results model) and compute totals before inserting bitácora to avoid 500 + junk audit row",
+    "Optional: make import-batch tolerate non-dict docs (count as skipped) for parity with preview/legacy",
+    "Update /app/memory/test_credentials.md: kherrera@, ragg1008@, gteran@ with Test1234! all return 'Credenciales inválidas'"
+  ],
+  "critical_code_review_comments": [
+    "QuotesBundleMigrationModal.jsx is 1026 lines and data_migration.py is 3187 lines (>700) – consider splitting",
+    "readBundleFile + JSON.stringify per doc for batch sizing is fine for 74MB, but memory roughly doubles; acceptable",
+    "import-finalize relies on client-reported counts for the audit log; server could aggregate itself (e.g., batch import_id) for a trustworthy bitácora"
+  ],
+  "updated_files": ["/app/backend/tests/test_quotes_bundle_batch_import.py"],
+  "success_rate": {"backend": "100% (10/10 executed + manual RBAC 6/6)", "frontend": "100%"},
+  "test_credentials": "Admin rgonzalez@megasoft.com.ve / Mega2026* works. Non-admin creds listed (Test1234!) are stale.",
+  "seed_data_creation": "Temporary TEST_user_bundle_nonadmin user + session created directly in DB for RBAC check and deleted afterwards. Re-applied /tmp/bundle.json (idempotent, real export) via UI and quotes subset via legacy import-data (bitácora entry with source_exported_at='TEST'). /tmp/bundle68.json was NEVER applied; zzfake_* count = 0.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login UI is /login (Auth); easiest UI auth = POST /api/auth/login → session_token, set localStorage 'session_token', load '/', then navigate to /quotes. Modal: quotes-bundle-migration-btn → bundle-tab-import. Baseline DB: quotes 5, quote_history 6, projects 382. Never apply /tmp/bundle68.json."
+}

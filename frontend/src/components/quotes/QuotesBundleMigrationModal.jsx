@@ -205,6 +205,7 @@ export function QuotesBundleMigrationModal({ open, onClose }) {
     return payload;
   };
   const BUNDLE_KEYS = { quotes: 'quote_id', quote_history: 'history_id', projects: 'project_id' };
+  const BUNDLE_LABELS = { quotes: 'Cotizaciones', quote_history: 'Históricas', projects: 'Proyectos' };
   const BATCH_BYTES = 4 * 1024 * 1024;
 
   const handlePreview = async () => {
@@ -295,7 +296,7 @@ export function QuotesBundleMigrationModal({ open, onClose }) {
         try {
           const payload = await readBundleFile(f);
           const fileResults = await importBundleInBatches(payload, (col, done, tot) =>
-            setImportProgress({ current: i + 1, total: ordered.length, fileName: `${f.name} · ${col} ${done}/${tot}` }));
+            setImportProgress({ current: i + 1, total: ordered.length, fileName: `${f.name} · ${BUNDLE_LABELS[col] || col} ${done}/${tot}` }));
           okFiles += 1;
           for (const r of fileResults) {
             const cur = aggMap[r.collection] || { label: r.label, collection: r.collection, inserted: 0, updated: 0, skipped: 0 };
