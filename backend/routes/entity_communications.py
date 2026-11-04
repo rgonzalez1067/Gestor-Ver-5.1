@@ -610,6 +610,14 @@ async def send_mass_communication(
 _EMAIL_RE = re.compile(r"^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$")
 
 
+_TPL_VAR_RE = re.compile(r"\{\{\s*[A-Za-z_][A-Za-z0-9_]*\s*\}\}|\{[A-Za-z_][A-Za-z0-9_]*\}")
+
+
+def _blank_template_vars(text: str) -> str:
+    """Deja en blanco cualquier variable de plantilla sin resolver ({{x}} / {x})."""
+    return _TPL_VAR_RE.sub("", text or "")
+
+
 def _parse_copy_emails(raw: str) -> List[str]:
     """Destinatarios en copia (BCC): separados por coma/punto y coma; valida formato."""
     out, seen = [], set()
@@ -687,7 +695,7 @@ async def _mass_dispatch(recipients: List[str], template_id: str, internal_doc_i
     for bt in batches:
         b_subject = _render_vars(subject, bt.get("vars") or {})
         b_html = _render_vars(html, bt.get("vars") or {})
-        bcc_list = (bt["to"] if bt.get("bcc") else []) + pending_copy
+        bcc_list = bt["to"] if bt.get("bcc") else []
         try:
             r = await send_email(
                 to=bt["to"] if not bt.get("bcc") else [mass_sender or SENDER_EMAIL],
@@ -697,9 +705,18 @@ async def _mass_dispatch(recipients: List[str], template_id: str, internal_doc_i
                 sender=mass_sender,
             )
             statuses.append(r.get("status"))
-            pending_copy = []
         except Exception as e:  # noqa: BLE001
             statuses.append("error"); errors.append(f"{', '.join(bt['to'])}: {e}")
+    # Copia (BCC) aparte: una sola vez y con las variables de plantilla en blanco.
+    if pending_copy:
+        try:
+            await send_email(
+                to=[mass_sender or SENDER_EMAIL],
+                subject=_blank_template_vars(subject), html=_blank_template_vars(html), action=action,
+                attachments=email_attachments or None, bcc=pending_copy, sender=mass_sender,
+            )
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"copia {', '.join(pending_copy)}: {e}")
     result = {"status": statuses[0] if len(set(statuses)) == 1 else "partial"}
     mode_label = "en BCC" if len(batches) == 1 else f"en {len(batches)} envío(s) personalizados"
     if len(batches) > 1 or (batches[0].get("vars")):
