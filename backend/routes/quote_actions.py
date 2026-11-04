@@ -3475,7 +3475,9 @@ async def get_email_logs(
     authorization: Optional[str] = Header(None),
 ):
     """Historial de correos con filtros y paginación en servidor."""
-    await get_current_user(authorization)
+    user = await get_current_user(authorization)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores pueden consultar el historial de correos")
     global _EMAIL_LOG_IDX
     if not _EMAIL_LOG_IDX:
         await db.email_logs.create_index([("created_at", -1)])
@@ -3484,12 +3486,16 @@ async def get_email_logs(
     page = max(1, page)
     q: dict = {}
     if date_from or date_to:
-        rng = {}
-        if date_from:
-            rng["$gte"] = date_from[:10]
-        if date_to:
-            from datetime import date as _date, timedelta as _td
-            rng["$lt"] = (_date.fromisoformat(date_to[:10]) + _td(days=1)).isoformat()
+        # Días en hora de Venezuela (UTC-4) → rango UTC.
+        from datetime import date as _date, timedelta as _td
+        try:
+            rng = {}
+            if date_from:
+                rng["$gte"] = f"{_date.fromisoformat(date_from[:10]).isoformat()}T04:00:00"
+            if date_to:
+                rng["$lt"] = f"{(_date.fromisoformat(date_to[:10]) + _td(days=1)).isoformat()}T04:00:00"
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Fecha inválida (formato AAAA-MM-DD)")
         q["created_at"] = rng
     if to:
         q["to"] = {"$regex": re.escape(to.strip()), "$options": "i"}
@@ -3509,7 +3515,9 @@ async def get_email_logs(
 
 @router.get("/email-logs/actions")
 async def get_email_log_actions(authorization: Optional[str] = Header(None)):
-    await get_current_user(authorization)
+    user = await get_current_user(authorization)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores")
     acts = [a for a in await db.email_logs.distinct("action") if a]
     statuses = [s for s in await db.email_logs.distinct("status") if s]
     return {"actions": sorted(acts), "statuses": sorted(statuses)}

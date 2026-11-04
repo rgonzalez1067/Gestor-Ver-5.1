@@ -1,0 +1,38 @@
+{
+  "summary": "Configuración restructure tested end to end (backend pytest + Playwright as admin). (A) /settings: 'Configuración de Correos de Notificación', email-logs-section and contingency-attachments-section are gone. Configuración General (collapsible, persists state) shows 12 tiles including open-email-templates-btn and open-email-history-btn; Anexos Corporativos present; danger-zone hidden. (B) /settings/email-templates loads EmailTemplatesEditor (Sede Pyme 11, Sede Corp 11, Proyecto 4, Generales 1), expanding a sede and opening edit dialog works (not saved); back button works. /settings/email-history: Total registros en BD = 11.552 == db.email_logs.count; 25 rows/page, 463 pages, prev/next work; status filter (Fallido=416), action filter (101 events), combined, Destinatario (Enter key), Asunto, Desde/Hasta, Limpiar all work and total_db stays constant. (C) /settings/backup-center: contingency-attachments-section is first element after header with exactly 2 buttons + callout with exact text. JSON download -> quotes_bundle_data_paged_*.json module=quotes-bundle, counts 736/535/693 all collections complete. ZIP download (attachments-list intercepted to 4 real + 1 fake path to avoid 2894-file download) -> part_01_of_01.zip with files + manifest.json and manifest_global.json; missing files recorded; success toast.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/email-logs?date_to=not-a-date", "issue": "Returns 500 (date.fromisoformat ValueError not handled). Should return 400/422. (date_from=bad silently returns 0, OK-ish.)"},
+      {"endpoint": "GET /api/email-logs, /api/email-logs/actions", "issue": "Only get_current_user is required (no admin/permission check) and tiles are not adminOnly — any authenticated user can read full email audit (recipients/subjects of all sedes). Could not verify with non-admin: all non-admin credentials in test_credentials.md return 401 (Test1234!)."},
+      {"endpoint": "GET /api/email-logs date filter", "issue": "Compares UTC ISO string date prefix; Venezuela (UTC-4) emails sent after 20:00 local appear under the next day. Consider converting the local day range to UTC."},
+      {"endpoint": "GET /api/admin/quotes-bundle-migration/attachments-list", "issue": "Lists COT-2026-04-037-PYME_Cotizacion.pdf but /attachment returns 404 (file missing on disk) — data inconsistency, handled gracefully in manifest."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/settings/email-history", "issues": ["Desde/Hasta use native browser date inputs (type=date) instead of shadcn Calendar/Popover", "Tipo/Evento dropdown shows 101 raw internal keys (e.g. adhoc_project_email, approve_ft_cc) with no human-readable labels or search", "No validation/hint when Desde > Hasta (just shows 0 results)"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter350_email_history_contingency.py", "/app/test_reports/pytest/iter350.xml"],
+  "action_items": [
+    "Wrap date_from/date_to parsing in /api/email-logs in try/except -> HTTPException(400)",
+    "Decide whether Historial de Correos should be admin-only (backend + tile adminOnly)",
+    "Optional: replace native date inputs with shadcn Calendar; human-readable labels for action filter"
+  ],
+  "critical_code_review_comments": [
+    "quote_actions.py get_email_logs: ValueError on bad date_to -> 500",
+    "get_email_logs: no role check; exposes all email logs to any logged-in user",
+    "Settings.jsx is 1045 lines and BackupCenter.jsx is 1619 lines (>700) — consider splitting",
+    "total_db uses estimated_document_count (fine; matched exact count here)"
+  ],
+  "updated_files": ["/app/backend/tests/test_iter350_email_history_contingency.py"],
+  "success_rate": {"backend": "93% (14/15 pass, 2 skipped non-admin due to invalid creds)", "frontend": "100%"},
+  "test_credentials": "Admin rgonzalez@megasoft.com.ve / Mega2026* works. Non-admin accounts in test_credentials.md (kherrera, gteran, ablanco, ragg1008 with Test1234!) all return 401 — file is stale.",
+  "seed_data_creation": "None. Read-only; no templates/config modified.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && python -m pytest tests/test_iter350_email_history_contingency.py -p no:xdist. UI login via fetch('/api/auth/login') then set localStorage session_token+user. general-config section collapse state persists — click general-config-toggle if open-email-history-btn absent. For ZIP test intercept attachments-list (2894 items, 39 batches) with page.route to limit items."
+}

@@ -53,7 +53,12 @@ export default function EmailHistoryPage() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { api.get('/email-logs/actions').then(r => setMeta(r.data)).catch(() => {}); }, []);
 
-  const apply = () => { setPage(1); setApplied(filters); };
+  const apply = () => {
+    if (filters.date_from && filters.date_to && filters.date_from > filters.date_to) {
+      toast.error('La fecha "Desde" no puede ser posterior a "Hasta"'); return;
+    }
+    setPage(1); setApplied(filters);
+  };
   const clear = () => { setFilters(EMPTY); setPage(1); setApplied(EMPTY); };
   const set = (patch) => setFilters(f => ({ ...f, ...patch }));
   const filtered = Object.entries(applied).some(([, v]) => v && v !== 'all');
@@ -108,7 +113,7 @@ export default function EmailHistoryPage() {
                   <SelectTrigger data-testid="email-filter-action"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    {meta.actions.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                    {meta.actions.map(a => <SelectItem key={a} value={a}>{a.replace(/_/g, ' ')}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </Field>
