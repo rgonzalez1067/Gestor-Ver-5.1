@@ -528,6 +528,7 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
                 branches={form.branches}
                 onChange={(next) => set({ branches: next })}
                 context={branchesCtx}
+                clients={clientsList}
                 replacements={form.medio_replacements}
                 onReplacementsChange={(next) => set({ medio_replacements: next })}
                 banksCatalog={banksCatalog}

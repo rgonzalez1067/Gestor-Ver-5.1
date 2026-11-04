@@ -5,6 +5,7 @@ import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { Plus, Trash2, Store, Lock, Replace } from 'lucide-react';
+import { ClientCombobox } from './ClientCombobox';
 
 const keyOf = (bank, prod) => `${(bank || '').trim()}|${(prod || '').trim()}`;
 const splitKey = (k) => { const [bank_name, ...rest] = k.split('|'); return { bank_name, product_name: rest.join('|') }; };
@@ -90,11 +91,9 @@ const BranchCard = ({ b, idx, certified, clients, options, onPatch, onRemove }) 
           <Input value={b.name} onChange={e => onPatch({ name: e.target.value })} className="h-8 text-sm bg-white" data-testid={`master-branch-name-${idx}`} />
         </div>
         <div className="col-span-5">
-          <Label className="text-[11px]">RIF</Label>
-          <Select value={b.client_id || undefined} onValueChange={v => onPatch({ client_id: v })}>
-            <SelectTrigger className="h-8 text-xs bg-white" data-testid={`master-branch-rif-${idx}`}><SelectValue placeholder="Seleccionar RIF..." /></SelectTrigger>
-            <SelectContent>{clients.map(c => <SelectItem key={c.client_id} value={c.client_id}>{c.rif || 'sin RIF'} · {c.legal_name || c.fantasy_name}</SelectItem>)}</SelectContent>
-          </Select>
+          <Label className="text-[11px]">Comercio / RIF</Label>
+          <ClientCombobox clients={clients} value={b.client_id} compact
+            onSelect={(c) => onPatch({ client_id: c.client_id })} testid={`master-branch-rif-${idx}`} />
         </div>
         <div className="col-span-2">
           <Label className="text-[11px]">Cajas</Label>
@@ -135,11 +134,10 @@ const BranchCard = ({ b, idx, certified, clients, options, onPatch, onRemove }) 
   );
 };
 
-export const BranchesEditor = ({ branches, onChange, context, replacements, onReplacementsChange, banksCatalog, quoteType, defaultClientId = '' }) => {
+export const BranchesEditor = ({ branches, onChange, context, clients = [], replacements, onReplacementsChange, banksCatalog, quoteType, defaultClientId = '' }) => {
   const { caps, groupOf, used, total, options } = useBranchUsage(branches, context?.baseline, replacements);
   const cap = context?.baseline?.total_boxes || 0;
   const certified = new Set(context?.certified_store_ids || []);
-  const clients = context?.eligible_clients || [];
   const patch = (i, p) => onChange(branches.map((b, j) => (j === i ? { ...b, ...p } : b)));
 
   return (

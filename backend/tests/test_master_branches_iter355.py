@@ -128,9 +128,9 @@ class TestMultistoreValidation:
         assert r.status_code == 400, r.text
 
     def test_ineligible_rif(self, s):
-        b = branches_of(proj(MS)); b[0]['client_id'] = GROUP_CLIENT  # cliente de otro grupo
+        b = branches_of(proj(MS)); b[0]['client_id'] = 'cli_inexistente_xyz'  # cualquier comercio vale, pero debe existir
         r = put(s, MS, b)
-        assert r.status_code == 400 and 'Grupo Económico' in r.json()['detail']
+        assert r.status_code == 400 and 'no existe en Clientes' in r.json()['detail']
 
 
 # --- Flujos exitosos multistore ---

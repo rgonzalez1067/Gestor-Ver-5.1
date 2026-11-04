@@ -88,9 +88,12 @@ async def apply_branches(project: dict, branches: list, replacements: list, buil
             bank, prod = g.split("|", 1)
             _fail(f"Límite Excedido: el medio de pago «{prod}» ({bank}) tiene {n} cajas asignadas y su tope contratado es {caps[g]}.")
 
-    # RIFs: existentes del proyecto o clientes del mismo cliente/grupo económico.
+    # RIFs: cualquier comercio registrado en Clientes.
     rifs = {r.get("rif_id"): dict(r) for r in project.get("rifs") or []}
-    eligible = {c["client_id"]: c for c in await eligible_rif_clients(project)}
+    wanted = list({b.client_id for b in branches if b.client_id})
+    clients = {c["client_id"]: c for c in await db.clients.find(
+        {"client_id": {"$in": wanted}}, {"_id": 0, "client_id": 1, "rif": 1, "legal_name": 1, "fantasy_name": 1}
+    ).to_list(len(wanted) or 1)}
     by_client = {r.get("client_id"): rid for rid, r in rifs.items() if r.get("client_id")}
 
     old_stores = {s.get("store_id"): s for s in project.get("stores") or []}
@@ -116,11 +119,11 @@ async def apply_branches(project: dict, branches: list, replacements: list, buil
         # Multitienda sin RIFs: el RIF del propio cliente no crea estructura multi-RIF.
         own_client = not project.get("rifs") and b.client_id == project.get("client_id")
         if b.client_id and not own_client:
-            if b.client_id not in eligible:
-                _fail(f"El RIF seleccionado para «{name}» no pertenece al cliente ni a su Grupo Económico.")
+            if b.client_id not in clients:
+                _fail(f"El comercio seleccionado para «{name}» no existe en Clientes.")
             rif_id = by_client.get(b.client_id)
             if not rif_id:
-                c = eligible[b.client_id]
+                c = clients[b.client_id]
                 rif_id = f"rif_{uuid.uuid4().hex[:8]}"
                 rifs[rif_id] = {"rif_id": rif_id, "client_id": c["client_id"], "rif": c.get("rif") or "",
                                 "client_name": c.get("fantasy_name") or c.get("legal_name") or "", "box_count": 0, "status": "Pendiente"}
