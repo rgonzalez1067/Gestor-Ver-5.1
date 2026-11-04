@@ -1211,11 +1211,11 @@ async def regenerate_quote_pdf(quote_id: str, data: dict = {}, authorization: Op
             item_type = svc.get("item_type", "setup")
             pdf_item = {
                 "concepto": svc.get("item_name", ""),
-                "cantidad_cajas": svc.get("cantidad_cajas", 1),
-                "cantidad_bancos": svc.get("cantidad_bancos", 1),
+                "cantidad_cajas": (svc.get("cantidad_cajas") or 1),
+                "cantidad_bancos": (svc.get("cantidad_bancos") or 1),
                 "tarifa": svc.get("unit_price_usd", 0),
                 "bank_name": svc.get("bank_name") or None,
-                "tipo_corp": svc.get("tipo_corp", "")
+                "tipo_corp": (svc.get("tipo_corp") or "")
             }
             if item_type == "setup":
                 setup_items.append(pdf_item)
@@ -1227,21 +1227,21 @@ async def regenerate_quote_pdf(quote_id: str, data: dict = {}, authorization: Op
                 # Additional items go to BOTH setup_items (for cost table) AND additional_items (for bank/product matrix)
                 setup_items.append({
                     "concepto": f"{svc.get('item_name', '')} - {svc.get('bank_name', '')}".strip(' -'),
-                    "cantidad_cajas": svc.get("cantidad_cajas", 1),
-                    "cantidad_bancos": svc.get("cantidad_bancos", 1),
+                    "cantidad_cajas": (svc.get("cantidad_cajas") or 1),
+                    "cantidad_bancos": (svc.get("cantidad_bancos") or 1),
                     "tarifa": svc.get("tarifa_setup") or svc.get("unit_price_usd", 0),
                     "bank_name": svc.get("bank_name") or None,
-                    "tipo_corp": svc.get("tipo_corp", ""),
+                    "tipo_corp": (svc.get("tipo_corp") or ""),
                     "operational_status": svc.get("operational_status")
                 })
                 # Also add to additional_items for the Resumen Ejecutivo bank/product table
                 additional_items.append({
                     "concepto": svc.get("item_name", ""),
-                    "cantidad_cajas": svc.get("cantidad_cajas", 1),
-                    "cantidad_bancos": svc.get("cantidad_bancos", 1),
+                    "cantidad_cajas": (svc.get("cantidad_cajas") or 1),
+                    "cantidad_bancos": (svc.get("cantidad_bancos") or 1),
                     "tarifa": svc.get("tarifa_setup") or svc.get("unit_price_usd", 0),
                     "bank_name": svc.get("bank_name") or None,
-                    "tipo_corp": svc.get("tipo_corp", ""),
+                    "tipo_corp": (svc.get("tipo_corp") or ""),
                     "operational_status": svc.get("operational_status")
                 })
             elif item_type == "production_recurring":

@@ -1857,3 +1857,11 @@ Antes, usuarios con permisos limitados no cargaban catálogos en el frontend →
 - Migración automática al arranque: false→Producción, true→Imple. Nuevos medios inician en DESA.
 - Selector en edición de banco; chips/tarjetas en fase previa conservan color naranja/rojo + etiqueta de estatus.
 - Selector "Agregar Medio de Pago" excluye los ya asociados. Testing: iteration_351 (100%).
+
+## 2026-06 — Medios de pago en todas las fases + etiqueta de fase en Cotizaciones
+- Cotizaciones VPOS/MPOS/PG, Proyectos Directos (simple y Multi-RIF) y Condiciones Banco–Medio de Pago listan todos los medios del banco (cualquier fase).
+- `PhaseTag` (naranja fase previa / verde Producción) en selectores, tabla Set Up, matriz resumen, tabla PG y grillas de proyecto.
+- Snapshot: `operational_status` se guarda en cada item (`QuoteItem`, pg_setup_items, boxes_grid → services) al cotizar.
+- PDF: `QuotePDFItem`/`pg_setup_items` agregan " [Fase]" al concepto (idempotente; truncado conserva la etiqueta).
+- Regenerar PDF tolera nulos en cantidad_cajas/bancos. Testing: test_quote_phase_tags.py 10/10 + UI (iteration 352).
+

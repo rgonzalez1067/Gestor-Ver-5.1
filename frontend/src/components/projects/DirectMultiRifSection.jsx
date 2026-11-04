@@ -7,6 +7,8 @@ import { Checkbox } from '../ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { toast } from 'sonner';
 import { MultiRifDistributionPanel } from '../quotes/MultiRifDistributionPanel';
+import { PhaseTag } from '../PhaseTag';
+import { getProductStatus } from '../../utils/bankProductStatus';
 
 const AVAIL_BY_TYPE = {
   VPOS: 'vpos_available',
@@ -48,7 +50,7 @@ function RifMatrixBuilder({ rif, banks, quoteType, onChange }) {
     const existing = new Set(grid.map((g) => `${g.bank_name}||${g.product_name}`));
     const rows = chosen
       .filter((p) => !existing.has(`${bank}||${p.product_name}`))
-      .map((p) => ({ quantity: 1, bank_name: bank, product_name: p.product_name }));
+      .map((p) => ({ quantity: 1, bank_name: bank, product_name: p.product_name, operational_status: getProductStatus(p) }));
     onChange([...grid, ...rows]);
     setChecked({});
     toast.success(`${rows.length} producto(s) agregado(s) a ${rif.client_name || 'RIF'}`);
@@ -83,7 +85,8 @@ function RifMatrixBuilder({ rif, banks, quoteType, onChange }) {
               {products.map((p) => (
                 <label key={p.product_name} className="flex items-center gap-2 bg-white border border-slate-200 rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-indigo-50">
                   <Checkbox checked={!!checked[p.product_name]} onCheckedChange={() => setChecked((c) => ({ ...c, [p.product_name]: !c[p.product_name] }))} data-testid={`dp-rif-check-${rif.client_id || 'new'}-${p.product_name}`} />
-                  <span className="text-xs text-slate-700">{p.product_name}</span>
+                  <span className="text-xs text-slate-700 flex-1">{p.product_name}</span>
+                  <PhaseTag status={getProductStatus(p)} testId={`dp-rif-phase-${rif.client_id || 'new'}-${(p.product_name || '').trim()}`} />
                 </label>
               ))}
             </div>
@@ -110,7 +113,7 @@ function RifMatrixBuilder({ rif, banks, quoteType, onChange }) {
               {grid.map((g, i) => (
                 <tr key={i} className="border-b border-slate-100">
                   <td className="px-2 py-1 text-slate-700">{g.bank_name}</td>
-                  <td className="px-2 py-1 text-slate-700">{g.product_name}</td>
+                  <td className="px-2 py-1 text-slate-700"><span className="inline-flex items-center gap-2">{g.product_name}<PhaseTag status={g.operational_status} /></span></td>
                   <td className="px-2 py-1"><Button type="button" size="sm" variant="ghost" onClick={() => removeRow(i)} className="text-red-600 h-6 w-6 p-0"><Trash2 size={12} /></Button></td>
                 </tr>
               ))}
