@@ -95,6 +95,7 @@ async def apply_branches(project: dict, branches: list, replacements: list, buil
         {"client_id": {"$in": wanted}}, {"_id": 0, "client_id": 1, "rif": 1, "legal_name": 1, "fantasy_name": 1}
     ).to_list(len(wanted) or 1)}
     by_client = {r.get("client_id"): rid for rid, r in rifs.items() if r.get("client_id")}
+    needs_rifs = bool(project.get("rifs")) or any(c != project.get("client_id") for c in wanted)
 
     old_stores = {s.get("store_id"): s for s in project.get("stores") or []}
     kept_ids = {b.store_id for b in branches if b.store_id}
@@ -116,8 +117,9 @@ async def apply_branches(project: dict, branches: list, replacements: list, buil
         if not st:
             st = {"store_id": f"st_{uuid.uuid4().hex[:8]}", "status": "Pendiente", "notes": []}
         rif_id = None
-        # Multitienda sin RIFs: el RIF del propio cliente no crea estructura multi-RIF.
-        own_client = not project.get("rifs") and b.client_id == project.get("client_id")
+        # Multitienda sin RIFs: el RIF del propio cliente no crea estructura multi-RIF,
+        # salvo que otra sucursal use un comercio distinto (entonces todas quedan vinculadas).
+        own_client = not needs_rifs and b.client_id == project.get("client_id")
         if b.client_id and not own_client:
             if b.client_id not in clients:
                 _fail(f"El comercio seleccionado para «{name}» no existe en Clientes.")

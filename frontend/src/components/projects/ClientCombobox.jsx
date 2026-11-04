@@ -37,7 +37,7 @@ export const ClientCombobox = ({ clients, value, displayName, onSelect, testid =
       <button type="button" onClick={() => setOpen(v => !v)}
         className={`w-full h-8 px-2 border border-slate-200 rounded-md bg-white text-left ${compact ? 'text-xs' : 'text-sm'} hover:border-slate-300 focus:border-blue-500 focus:outline-none flex items-center justify-between`}
         data-testid={`${testid}-trigger`}>
-        <span className={label ? 'text-slate-900 truncate' : 'text-slate-400'}>{label || 'Seleccionar comercio...'}</span>
+        <span className={label ? 'text-slate-900 truncate' : 'text-slate-400'}>{label || (value && clients.length === 0 ? 'Cargando...' : 'Seleccionar comercio...')}</span>
         <Search size={14} className="text-slate-400 flex-shrink-0" />
       </button>
       {open && (
@@ -48,7 +48,9 @@ export const ClientCombobox = ({ clients, value, displayName, onSelect, testid =
               data-testid={`${testid}-search`} />
           </div>
           <div className="overflow-y-auto flex-1 py-1">
-            {filtered.length === 0 ? (
+            {clients.length === 0 ? (
+              <div className="px-3 py-4 text-xs text-slate-400 text-center" data-testid={`${testid}-loading`}>Cargando comercios...</div>
+            ) : filtered.length === 0 ? (
               <div className="px-3 py-4 text-xs text-slate-400 text-center">Sin resultados</div>
             ) : filtered.map((c, idx) => (
               <button key={`${c.client_id}-${idx}`} type="button"

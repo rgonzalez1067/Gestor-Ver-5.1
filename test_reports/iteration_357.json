@@ -1,0 +1,36 @@
+{
+  "summary": "Probé el campo 'Comercio / RIF' libre en Edición Maestra. Backend: la regresión iter355+iter356 pasa 28/28 y el pytest nuevo test_master_branches_iter357.py pasa 4/4. En multirif y en multistore, agregar una sucursal con el cliente externo cli_000ab967b9fc (J506385619) guarda bien y crea su entrada en rifs[]. Un client_id inexistente devuelve 400 'no existe en Clientes' y el proyecto no cambia. UI con Playwright: en prj_9b08ebe9a4ef las 3 tarjetas muestran 'RIF · Nombre' (J501546010 · Brasero El Marqúez, J507060810 · Barako, J506485842 · Carbon). Al abrir el combobox sin escribir aparecen 50 opciones (tope del slice). El filtro funciona por RIF, por razón social ('INVERSIONES CM') y por nombre comercial ('tamanaco', 2 resultados). Una búsqueda sin coincidencias muestra 'Sin resultados' y un clic fuera cierra el popover. Con master-add-branch y el cliente externo con 0 cajas: label 'J506385619 · INVERSIONES CM TAMANA...', toast 'Proyecto actualizado (Edición Maestra)' y rifs[] incluye cli_000ab967b9fc. En prj_4903ac85c83d el flujo es el mismo y funciona. master-client-trigger sigue funcionando: busca y lista cualquier cliente. Respaldé y restauré con replace_one los 2 proyectos tras cada prueba y comparé los documentos: quedaron idénticos.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/projects/{id}/master-override (multistore sin rifs)", "issue": "En el multistore prj_4903ac85c83d, al agregar una sucursal de un comercio ajeno, rifs[] queda solo con ese comercio (rif_4ffc4d37). Las 2 sucursales originales quedan con rif_id None y el RIF del cliente principal no se agrega a rifs[]. La estructura queda mixta: rifs[] no incluye el RIF principal aunque tiene sucursales. Cualquier vista o reporte que recorra rifs[] lo omitiría. Sugerencia: al crear el primer RIF ajeno en un multistore, incluir también el RIF del cliente principal y vincular las sucursales existentes a ese RIF."},
+      {"endpoint": "GET /api/clients", "issue": "Usa to_list(2000) y hoy hay 1141 clientes. Al pasar de 2000, el buscador dejará de mostrar comercios sin aviso. Conviene una búsqueda server-side (?q=) o subir o quitar el tope."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BranchCard / ClientCombobox (multistore sin rifs)", "issue": "En el multistore, las sucursales del cliente principal muestran 'Seleccionar comercio...' porque initForm asigna client_id '' cuando no hay rifs. Debería mostrar el RIF del cliente principal. defaultClientId tampoco se pasa a BranchesEditor, así que una sucursal nueva arranca vacía.", "selector": "[data-testid='master-branch-rif-0-trigger']", "priority": "LOW"},
+      {"component": "MasterEditDialog", "issue": "Condición de carrera: /clients se carga después de abrir el diálogo. En la primera prueba (sin esperar) los triggers mostraban 'Seleccionar comercio...' y el combobox 0 opciones, sin ningún indicador de carga. Tras unos 3 s se corrige solo.", "selector": "[data-testid^='master-branch-rif-']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_master_branches_iter357.py", "/app/backend/tests/test_master_branches_iter356.py", "/app/backend/tests/test_master_branches_iter355.py", "/app/test_reports/pytest/pytest_iter357.xml", "/app/test_reports/pytest/pytest_iter357_regr.xml"],
+  "action_items": [
+    "(MEDIUM) Multistore: al agregar el primer comercio ajeno, incluir también el RIF del cliente principal en rifs[] y vincular las sucursales existentes, o documentar que la estructura mixta es intencional",
+    "(LOW) Multistore: mostrar el RIF del cliente principal en las sucursales sin rif_id y pasar defaultClientId a BranchesEditor",
+    "(LOW) Mostrar un estado 'Cargando comercios...' en ClientCombobox mientras se carga /clients",
+    "(LOW) Quitar el ClientCombobox duplicado dentro de MasterEditDialog.jsx (líneas 17-75) y reutilizar components/projects/ClientCombobox.jsx (DRY)"
+  ],
+  "critical_code_review_comments": [
+    "MasterEditDialog.jsx mantiene su propia copia de ClientCombobox, casi idéntica a ClientCombobox.jsx: código duplicado",
+    "services/master_branches.py: eligible_rif_clients ya no la usa el frontend, pero se sigue calculando en master-branches-context (query extra innecesaria)",
+    "GET /clients con to_list(2000): tope silencioso"
+  ],
+  "updated_files": ["/app/backend/tests/test_master_branches_iter357.py"],
+  "success_rate": {"backend": "100% (32/32)", "frontend": "100% de los flujos pedidos (2 detalles LOW de UX)"},
+  "seed_data_creation": "Ninguna. Creé temporalmente sucursales TEST_Externa / TEST_Externa UI / TEST_Externa MS y las eliminé restaurando con replace_one el respaldo completo. Verifiqué que los documentos quedaron idénticos.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login: rgonzalez@megasoft.com.ve / Mega2026*. Para la UI, inyectar session_token y user en localStorage. En /projects, elegir 'Todos los estados' y buscar PRY-2026-06-063-PRI (multirif) o PRY-2026-05-021-PRI (multistore). Esperar unos 3 s tras abrir el diálogo para que cargue /clients. No usar Escape dentro del combobox porque cierra todo el diálogo; para cerrarlo, hacer clic fuera. Cliente externo de prueba: cli_000ab967b9fc (J506385619)."
+}
