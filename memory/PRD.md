@@ -4678,3 +4678,4 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-11 Bancos: campo 'Nombre Jurídico' (legal_name) en crear/editar, visible en lista, detalle y CSV; variable de plantilla {{banco_razon_social}}. Impresora fiscal 8cms: POSPUESTO por el usuario.
 - 2026-11 Proyectos Directos: Impresora Fiscal = Select desde /api/fiscal-printers; Servidor = Select desde /api/servers (descripcion) + 'Otra'. Cotizaciones CORP: '¿Requiere Configuración de PinPads?' por defecto No (PYME Sí). Testing iter345 100%.
 - 2026-11 Comunicación masiva (Integradores y Bancos): campo 'Enviar copia a' (copy_emails, máx 10, BCC); en envíos personalizados la copia va solo en el primer envío. Testing iter346.
+- 2026-11 Copias de comunicación masiva: envío aparte (1 sola vez, BCC) con variables de plantilla en blanco (_blank_template_vars). Testing iter347.

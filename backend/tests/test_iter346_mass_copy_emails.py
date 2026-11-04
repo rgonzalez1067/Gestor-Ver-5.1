@@ -1,6 +1,6 @@
-"""iter346 — 'Enviar copia a' (copy_emails, BCC) en comunicaciones masivas a Integradores y Bancos/Entes.
-Solo fixtures TEST_ con correos @example.com. Verifica parseo/dedupe, validaciones 400, BCC solo en el
-primer envío (per_contact/per_bank), bitácora y no-regresión sin copias. Correr con -p no:xdist."""
+"""iter346/347 — 'Enviar copia a' (copy_emails, BCC) en comunicaciones masivas a Integradores y Bancos/Entes.
+Solo fixtures TEST_ con correos @example.com. Verifica parseo/dedupe, validaciones 400, copia en ENVÍO SEPARADO
+(una vez, variables en blanco), bitácora y no-regresión sin copias. Correr con -p no:xdist."""
 import os
 import json
 import uuid
@@ -144,19 +144,20 @@ class TestValidation:
         assert _logs("General", START) == []  # las validaciones 400 no envían nada
 
 
-# Integradores — single BCC con copias
+# Integradores — single BCC; copia en envío separado (iter347)
 class TestIntegrators:
-    def test_int_copy_dedupe_and_bcc(self, H):
+    def test_int_copy_dedupe_separate_send(self, H):
         t0 = _now()
         r = _int(H, T_NONE, f"{CP1}; {CP2} {CP1.upper()},")
         assert r.status_code == 200, r.text
         b = r.json()
         assert b["copy_emails"] == [CP1, CP2]
         logs = _logs("General", t0)
-        assert len(logs) == 1
-        assert logs[0]["bcc_count"] == 4  # 2 integradores + 2 copias
+        assert len(logs) == 2, [(l["to"], l["bcc_count"]) for l in logs]
+        assert logs[0]["bcc_count"] == 2  # lote principal: solo integradores
+        assert logs[1]["bcc_count"] == 2  # copia aparte: 2 copias
         row = _bita("integrator_mass_communication", T_NONE)[0]
-        assert row["copy_emails"] == [CP1, CP2]
+        assert row["copy_emails"] == [CP1, CP2] and row["batches_count"] == 1
 
     def test_int_no_copy_regression(self, H):
         t0 = _now()
@@ -168,7 +169,7 @@ class TestIntegrators:
         assert _bita("integrator_mass_communication", T_NONE)[0]["copy_emails"] == []
 
 
-# Bancos — single / per_contact / per_bank: copia solo en el primer envío
+# Bancos — single / per_contact / per_bank: copia una sola vez, aparte y en blanco
 class TestBanks:
     def test_single_bcc_with_copy(self, H):
         t0 = _now()
@@ -176,9 +177,9 @@ class TestBanks:
         assert r.status_code == 200, r.text
         assert r.json()["send_mode"] == "single_bcc" and r.json()["copy_emails"] == [CP1]
         logs = _logs("General", t0)
-        assert len(logs) == 1 and logs[0]["bcc_count"] == 4
+        assert [l["bcc_count"] for l in logs] == [3, 1]
 
-    def test_per_contact_copy_only_first(self, H):
+    def test_per_contact_copy_once_blank(self, H):
         t0 = _now()
         r = _bank(H, T_CONTACT, f"{CP1},{CP2}")
         assert r.status_code == 200, r.text
@@ -186,25 +187,35 @@ class TestBanks:
         assert b["send_mode"] == "per_contact" and b["batches_count"] == 3
         assert b["copy_emails"] == [CP1, CP2]
         logs = _logs("Hola", t0)
-        assert len(logs) == 3
-        assert [l["bcc_count"] for l in logs] == [2, 0, 0], [(l["to"], l["bcc_count"]) for l in logs]
+        assert len(logs) == 4, [(l["to"], l["bcc_count"]) for l in logs]
+        assert [l["bcc_count"] for l in logs] == [0, 0, 0, 2]
+        copy = logs[-1]
+        assert "{" not in copy["subject"] and "TEST" not in copy["subject"].split("Hola", 1)[1]
+        assert "{contacto" not in copy["html_preview"] and "TEST Ana" not in copy["html_preview"]
+        assert any("TEST Ana" in l["subject"] for l in logs[:3])
         row = _bita("bank_mass_communication", T_CONTACT)[0]
         assert row["copy_emails"] == [CP1, CP2] and row["send_mode"] == "per_contact"
 
-    def test_per_bank_copy_only_first(self, H):
+    def test_per_bank_copy_once_blank(self, H):
         t0 = _now()
         r = _bank(H, T_BANK, CP1)
         assert r.status_code == 200, r.text
         b = r.json()
         assert b["send_mode"] == "per_bank" and b["batches_count"] == 2
         logs = _logs("Aviso", t0)
-        assert len(logs) == 2
-        # first batch: bank contacts + 1 copy; second batch: only bank contacts
-        first, second = logs
-        contacts_first = 2 if "BANCO_A" in first["subject"] else 1
-        contacts_second = 2 if "BANCO_A" in second["subject"] else 1
-        assert first["bcc_count"] == contacts_first + 1
-        assert second["bcc_count"] == contacts_second
+        assert len(logs) == 3
+        mains, copy = logs[:2], logs[2]
+        assert sorted(l["bcc_count"] for l in mains) == [1, 2]  # sin copias en lotes
+        assert copy["bcc_count"] == 1
+        assert "BANCO" not in copy["subject"] and "{" not in copy["subject"]
+        assert "BANCO" not in copy["html_preview"] and "{banco" not in copy["html_preview"]
+
+    def test_copy_equal_to_recipient_excluded(self, H):
+        t0 = _now()
+        r = _bank(H, T_NONE, f"ANA_{SUF}@example.com")  # coincide con contacto (case-insensitive)
+        assert r.status_code == 200, r.text
+        logs = _logs("General", t0)
+        assert [l["bcc_count"] for l in logs] == [3]  # no hay envío de copia
 
     def test_per_contact_no_copy_regression(self, H):
         t0 = _now()
@@ -217,3 +228,117 @@ class TestBanks:
     def test_empty_copy_string_ok(self, H):
         r = _bank(H, T_NONE, "   ")
         assert r.status_code == 200 and r.json()["copy_emails"] == []
+
+
+# Unit: _mass_dispatch con send_email mockeado (listas BCC exactas, CSS intacto)
+import sys
+sys.path.insert(0, "/app/backend")
+
+
+class _FakeColl:
+    def __init__(self):
+        self.docs = []
+
+    async def insert_one(self, d):
+        self.docs.append(d)
+
+    async def find_one(self, *a, **k):
+        return None
+
+
+class _FakeDB:
+    def __init__(self):
+        self.bitacora = _FakeColl()
+        self.email_templates = _FakeColl()
+        self.entity_documents = _FakeColl()
+
+
+@pytest.fixture
+def dispatch(monkeypatch):
+    import routes.entity_communications as m
+    calls = []
+
+    async def fake_send(**kw):
+        calls.append(kw)
+        return {"status": "sent"}
+
+    async def fake_sender(area):
+        return "sender@example.com"
+
+    async def fake_sig(u):
+        return "<b>FIRMA_OK</b>"
+
+    monkeypatch.setattr(m, "send_email", fake_send)
+    monkeypatch.setattr(m, "resolve_sender_for_area", fake_sender)
+    monkeypatch.setattr(m, "build_signature_html", fake_sig)
+    monkeypatch.setattr(m, "db", _FakeDB())
+
+    def run(recipients, tpl, batches=None, copies=None):
+        calls.clear()
+        _run(m._mass_dispatch(recipients, tpl["template_id"], "[]", [], {"email": "u@example.com"},
+                              folder="tmp_test_iter347", action="x", target_label="t",
+                              batches=batches, tpl=tpl, copy_emails=copies))
+        return calls
+    return run, m
+
+
+TPL_U = {"template_id": "tpl_unit", "subject": "Hola {contacto_nombre} {{banco_nombre}} {fecha_sistema}",
+         "body_html": "<style>p {margin:0} .a{color:red}</style><p>{contacto_nombre} de {banco_nombre}</p>{Firma_Notificacion_Global}"}
+
+
+class TestDispatchUnit:
+    def test_per_contact_copy_once_blank(self, dispatch):
+        run, _ = dispatch
+        bt = [{"to": [f"r{i}@example.com"], "bcc": False, "vars": {"contacto_nombre": f"NOMBRE{i}", "banco_nombre": "BANCOX"}}
+              for i in range(3)]
+        calls = run([f"r{i}@example.com" for i in range(3)], TPL_U, bt, ["c1@example.com", "R1@example.com", "c2@example.com"])
+        assert len(calls) == 4
+        for c in calls[:3]:
+            assert not c.get("bcc")  # sin copias en lotes
+        cp = calls[3]
+        assert cp["to"] == ["sender@example.com"] and cp["bcc"] == ["c1@example.com", "c2@example.com"]
+        assert "{" not in cp["subject"] and "NOMBRE" not in cp["subject"] and "BANCOX" not in cp["subject"]
+        assert "NOMBRE" not in cp["html"] and "BANCOX" not in cp["html"] and "{contacto" not in cp["html"]
+        assert "FIRMA_OK" in cp["html"] and "/" in cp["subject"]  # sistema renderizado (fecha)
+        assert "p {margin:0}" in cp["html"] and ".a{color:red}" in cp["html"]
+        assert "NOMBRE0" in calls[0]["subject"] and "p {margin:0}" in calls[0]["html"]
+
+    def test_single_bcc_copy_separate(self, dispatch):
+        run, _ = dispatch
+        rec = ["a@example.com", "b@example.com"]
+        calls = run(rec, TPL_U, None, ["c1@example.com"])
+        assert len(calls) == 2
+        assert calls[0]["bcc"] == rec
+        assert calls[1]["bcc"] == ["c1@example.com"] and "{" not in calls[1]["subject"]
+
+    def test_per_bank_copy_once(self, dispatch):
+        run, _ = dispatch
+        bt = [{"to": ["a@example.com", "b@example.com"], "bcc": True, "vars": {"banco_nombre": "BA"}},
+              {"to": ["c@example.com"], "bcc": True, "vars": {"banco_nombre": "BB"}}]
+        calls = run(["a@example.com", "b@example.com", "c@example.com"], TPL_U, bt, ["k@example.com"])
+        assert len(calls) == 3
+        assert calls[0]["bcc"] == ["a@example.com", "b@example.com"] and calls[1]["bcc"] == ["c@example.com"]
+        assert calls[2]["bcc"] == ["k@example.com"] and "BA" not in calls[2]["html"].replace("BANCO", "")
+
+    def test_no_copy_no_extra_send(self, dispatch):
+        run, _ = dispatch
+        assert len(run(["a@example.com"], TPL_U, None, [])) == 1
+        assert len(run(["a@example.com"], TPL_U, None, None)) == 1
+
+    def test_copy_all_recipients_no_extra(self, dispatch):
+        run, _ = dispatch
+        assert len(run(["a@example.com"], TPL_U, None, ["A@example.com"])) == 1
+
+    def test_copy_failure_reported(self, dispatch, monkeypatch):
+        run, m = dispatch
+        seen = []
+
+        async def flaky(**kw):
+            seen.append(kw)
+            if len(seen) == 2:
+                raise RuntimeError("smtp down")
+            return {"status": "sent"}
+        monkeypatch.setattr(m, "send_email", flaky)
+        _run(m._mass_dispatch(["a@example.com"], "t", "[]", [], {"email": "u@example.com"}, folder="tmp_test_iter347",
+                              action="x", target_label="t", tpl=TPL_U, copy_emails=["k@example.com"]))
+        assert len(seen) == 2

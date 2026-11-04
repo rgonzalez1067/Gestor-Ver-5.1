@@ -712,11 +712,12 @@ async def _mass_dispatch(recipients: List[str], template_id: str, internal_doc_i
         try:
             await send_email(
                 to=[mass_sender or SENDER_EMAIL],
-                subject=_blank_template_vars(subject), html=_blank_template_vars(html), action=action,
+                subject=" ".join(_blank_template_vars(subject).split()), html=_blank_template_vars(html), action=action,
                 attachments=email_attachments or None, bcc=pending_copy, sender=mass_sender,
             )
         except Exception as e:  # noqa: BLE001
             errors.append(f"copia {', '.join(pending_copy)}: {e}")
+            statuses.append("error")
     result = {"status": statuses[0] if len(set(statuses)) == 1 else "partial"}
     mode_label = "en BCC" if len(batches) == 1 else f"en {len(batches)} envío(s) personalizados"
     if len(batches) > 1 or (batches[0].get("vars")):

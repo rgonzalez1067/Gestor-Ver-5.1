@@ -1,0 +1,26 @@
+{
+  "summary": "Backend only. Updated backend/tests/test_iter346_mass_copy_emails.py to match the new design, where the copy goes in a SEPARATE send, once, with template variables blanked. 18/18 pass with -p no:xdist. There are two kinds of tests. HTTP tests check email_logs. Integrators: [2 main, 2 copy]. Bank single_bcc: [3, 1]. per_contact: [0,0,0,2]. per_bank: main batches {1,2} plus copy 1. In the copy, the subject and html_preview have no '{' and no bank or contact name. A copy address that matches a recipient (case-insensitive) is excluded, and no extra send happens. Without copy_emails, or with whitespace only, there is no extra send. Unit tests call _mass_dispatch with send_email, db, sender and signature mocked. They check the exact BCC lists: batches have no copies, and the copy goes to=[sender] with bcc=deduped copies minus recipients. The {x} and {{x}} variables are removed, while fecha_sistema and Firma are rendered. '<style>p {margin:0} .a{color:red}</style>' is unchanged, and normalize_email_html does not alter it either. If the copy send fails, it is caught and the main sends are not affected.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "_mass_dispatch", "issue": "Blanking leaves extra spaces, e.g. the copy subject 'TEST346 x Hola ' / 'Aviso ' (trailing or double space). Consider collapsing whitespace in the subject after _blank_template_vars."},
+      {"endpoint": "_mass_dispatch", "issue": "_TPL_VAR_RE will also strip legitimate literal tokens like '{token}' in the body text of the copy. Acceptable but undocumented."},
+      {"endpoint": "_mass_dispatch", "issue": "A failed copy send is added to batch_errors but does not change result.status, which is computed only from the main batches. The UI may show full success even though the copy failed."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_iter346_mass_copy_emails.py", "/app/test_reports/pytest/pytest_iter347.xml"],
+  "action_items": [
+    "Optional: collapse whitespace in the blanked copy subject.",
+    "Optional: show the copy-send failure in status/message."
+  ],
+  "critical_code_review_comments": [
+    "entity_communications.py is 978 lines (>700); split the mass-communication logic (_mass_dispatch, bank/integrator mass routes) into its own module."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter346_mass_copy_emails.py"],
+  "success_rate": {"backend": "100%", "frontend": "N/A (skipped)"},
+  "seed_data_creation": "Temporary bnk_TEST_*/int_TEST_*/tpl_TEST_* fixtures with @example.com emails, plus their email_logs and bitácora entries; all deleted (verified 0 remaining).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && python -m pytest tests/test_iter346_mass_copy_emails.py -p no:xdist. The copy log is the last one in created_at order. The TestDispatchUnit class monkeypatches routes.entity_communications (send_email/db/resolve_sender_for_area/build_signature_html) and never sends real email. Admin login: rgonzalez@megasoft.com.ve / Mega2026*."
+}
