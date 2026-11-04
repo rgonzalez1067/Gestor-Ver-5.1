@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
-import { Download, ShieldAlert, Loader2 } from 'lucide-react';
+import { Download, ShieldAlert, Loader2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../utils/api';
 import JSZip from 'jszip';
@@ -264,27 +264,21 @@ export const ContingencyAttachmentsExport = () => {
 
   return (
     <div
-      className="bg-amber-50 rounded-lg border border-amber-200 p-6 mb-6"
+      className="bg-amber-50 rounded-xl border border-amber-200 p-5 mb-6"
       data-testid="contingency-attachments-section"
     >
-      <h2 className="text-xl font-semibold text-amber-900 font-manrope mb-2 flex items-center gap-2">
-        <ShieldAlert size={24} />
-        Contingencia · Migración Cotizaciones
+      <h2 className="text-lg font-semibold text-amber-900 font-manrope mb-3 flex items-center gap-2">
+        <ShieldAlert size={22} />
+        Contingencia · Migración
       </h2>
-      <p className="text-amber-800 text-sm mb-4 leading-relaxed">
-        Modo alternativo de exportación del bundle de cotizaciones diseñado para
-        cuando el dataset es grande y el endpoint estándar falla por timeouts (504).
-        <br />
-        <strong className="text-emerald-800">JSON Paginado (Recomendado):</strong> descarga en
-        chunks pequeños (100 docs/pág) y arma el archivo final localmente. Inmune a
-        timeouts del ingress. Compatible con la importación estándar.
-        <br />
-        <strong className="text-cyan-800">ZIP paginado de Anexos:</strong> lista todos los
-        archivos, los descarga uno a uno y los empaqueta en lotes de ~75 archivos por ZIP
-        (memoria pico acotada, ~60MB por lote) + un <code>manifest_global.json</code> consolidado.
-        <br />
-        <span className="font-medium">Las opciones estándar de Cotizaciones permanecen sin cambios.</span>
-      </p>
+      <div className="flex items-start gap-2 rounded-lg bg-white/70 border border-amber-200 px-3 py-2.5 mb-4" data-testid="contingency-info-callout">
+        <Info size={16} className="text-amber-700 shrink-0 mt-0.5" />
+        <p className="text-sm text-amber-900 leading-relaxed">
+          <strong>Propósito del Respaldo de Contingencia:</strong> Esta opción permite generar y descargar una copia de
+          seguridad integral que comprende las <strong>Cotizaciones</strong>, el <strong>Histórico de cotizaciones</strong>,
+          los <strong>Proyectos</strong> y la totalidad de los <strong>Documentos anexos y adjuntos</strong> asociados a cada uno de ellos.
+        </p>
+      </div>
       <div className="flex flex-wrap gap-3">
         <Button
           onClick={handleDownloadPaged}
@@ -295,12 +289,12 @@ export const ContingencyAttachmentsExport = () => {
           {downloadingPaged ? (
             <>
               <Loader2 size={16} className="mr-2 animate-spin" />
-              {pagedProgress || 'Descargando paginado...'}
+              {pagedProgress || 'Descargando...'}
             </>
           ) : (
             <>
               <Download size={16} className="mr-2" />
-              Descargar JSON Paginado (Recomendado)
+              Descarga de JSON Página
             </>
           )}
         </Button>
@@ -313,16 +307,20 @@ export const ContingencyAttachmentsExport = () => {
           {downloadingPagedZip ? (
             <>
               <Loader2 size={16} className="mr-2 animate-spin" />
-              {pagedZipProgress || 'Descargando ZIP paginado...'}
+              {pagedZipProgress || 'Descargando...'}
             </>
           ) : (
             <>
               <Download size={16} className="mr-2" />
-              Descargar ZIP Paginado de Anexos (Recomendado)
+              Descarga de ZIP
             </>
           )}
         </Button>
       </div>
+      <p className="text-[11px] text-amber-700 mt-2">
+        JSON: datos de Cotizaciones, Histórico y Proyectos (paginado, compatible con la importación).
+        ZIP: documentos anexos en lotes + <code>manifest_global.json</code> con la metadata.
+      </p>
     </div>
   );
 };

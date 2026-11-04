@@ -6,8 +6,6 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Upload, Trash2, Image, FileText, Check, X, Download, Mail, Save, Building2, Warehouse, FileCode, Key, Eye, EyeOff, CheckCircle, AlertCircle, MapPin, TrendingUp, RefreshCw, Clock, Settings2, ChevronRight, ShieldCheck, ChevronDown, Wifi, DatabaseBackup, PenLine, CalendarDays, Bell, Gauge, Inbox } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
-import { EmailTemplatesEditor } from '../components/EmailTemplatesEditor';
-import { ContingencyAttachmentsExport } from '../components/ContingencyAttachmentsExport';
 import api from '../utils/api';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -113,8 +111,6 @@ export const Settings = () => {
   const [resendApiKeyMasked, setResendApiKeyMasked] = useState('');
   const [showResendKey, setShowResendKey] = useState(false);
   const [savingResendKey, setSavingResendKey] = useState(false);
-  const [emailLogs, setEmailLogs] = useState([]);
-  const [loadingLogs, setLoadingLogs] = useState(false);
   // Collapsible state para secciones de Correos por Sede (PYME / CORP) — inicia colapsado
   const [openSedes, setOpenSedes] = useState({ PYME: false, CORP: false });
   const fileInputRef = useRef(null);
@@ -126,7 +122,7 @@ export const Settings = () => {
     fetchNotifLogo();
     fetchTemplates();
     fetchSettings();
-    fetchEmailLogs();
+
   }, []);
 
   const fetchSettings = async () => {
@@ -156,15 +152,6 @@ export const Settings = () => {
     } catch (error) {
       console.error('Error fetching settings:', error);
     }
-  };
-
-  const fetchEmailLogs = async () => {
-    setLoadingLogs(true);
-    try {
-      const res = await api.get('/email-logs?limit=50');
-      setEmailLogs(res.data.email_logs || []);
-    } catch { /* silently fail */ }
-    finally { setLoadingLogs(false); }
   };
 
   const handleSaveResendKey = async () => {
@@ -594,196 +581,6 @@ export const Settings = () => {
             </div>
           </div>
 
-          {/* Contingencia: Export Streaming de Anexos (Admin) */}
-          <ContingencyAttachmentsExport />
-
-          {/* Configuración de Correos Section - POR SEDE */}
-          <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
-            <h2 className="text-xl font-semibold text-slate-900 font-manrope mb-4 flex items-center gap-2">
-              <Mail size={24} />
-              Configuración de Correos de Notificación
-            </h2>
-            <p className="text-slate-600 mb-6">
-              Configure los correos electrónicos para las notificaciones automáticas del sistema por sede.
-              Cada sede recibirá sus propias alertas según el flujo de trabajo de las cotizaciones.
-            </p>
-
-            <div className="space-y-3">
-              {/* Correos por Sede — botones desplegables independientes */}
-              {SEDES.map((sede) => {
-                const isOpen = !!openSedes[sede.id];
-                return (
-                <div key={sede.id} className="border border-slate-200 rounded-lg overflow-hidden" data-testid={`sede-block-${sede.id}`}>
-                  {/* Header colapsable */}
-                  <button
-                    type="button"
-                    onClick={() => setOpenSedes((p) => ({ ...p, [sede.id]: !p[sede.id] }))}
-                    aria-expanded={isOpen}
-                    data-testid={`sede-toggle-${sede.id}`}
-                    className="w-full flex items-center justify-between gap-2 bg-slate-100 hover:bg-slate-200 transition-colors px-4 py-3 border-b border-slate-200 text-left"
-                  >
-                    <div className="flex items-center gap-2">
-                      <MapPin size={18} className="text-slate-600" />
-                      <span className="font-semibold text-slate-800">Sede {sede.name} ({sede.shortName})</span>
-                    </div>
-                    <ChevronDown
-                      size={18}
-                      className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-
-                  {isOpen && (
-                  <div className="p-4 space-y-4" data-testid={`sede-content-${sede.id}`}>
-                    {/* Email de Administración - Sede */}
-                    <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Building2 size={16} className="text-purple-600" />
-                        <Label className="text-sm font-semibold text-purple-800">
-                          Correo de Administración - Sede {sede.shortName}
-                        </Label>
-                      </div>
-                      <p className="text-xs text-purple-700 mb-2">
-                        Recibe notificaciones cuando una cotización es <strong>Aprobada</strong> o <strong>Facturada</strong>.
-                      </p>
-                      <Input
-                        type="email"
-                        value={emailsBySede[sede.id]?.admin || ''}
-                        onChange={(e) => updateSedeEmail(sede.id, 'admin', e.target.value)}
-                        placeholder={`administracion.${sede.id.toLowerCase()}@empresa.com`}
-                        className="bg-white"
-                        data-testid={`admin-email-${sede.id}`}
-                      />
-                    </div>
-
-                    {/* Email de Almacén - Sede */}
-                    <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Warehouse size={16} className="text-amber-600" />
-                        <Label className="text-sm font-semibold text-amber-800">
-                          Correo de Almacén - Sede {sede.shortName}
-                        </Label>
-                      </div>
-                      <p className="text-xs text-amber-700 mb-2">
-                        Recibe notificaciones cuando una cotización de <strong>Equipos y Accesorios</strong> es marcada como <strong>Pagada</strong>.
-                      </p>
-                      <Input
-                        type="email"
-                        value={emailsBySede[sede.id]?.warehouse || ''}
-                        onChange={(e) => updateSedeEmail(sede.id, 'warehouse', e.target.value)}
-                        placeholder={`almacen.${sede.id.toLowerCase()}@empresa.com`}
-                        className="bg-white"
-                        data-testid={`warehouse-email-${sede.id}`}
-                      />
-                    </div>
-
-                    {/* Email de Ventas - Sede */}
-                    <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp size={16} className="text-green-600" />
-                        <Label className="text-sm font-semibold text-green-800">
-                          Correo de Ventas - Sede {sede.shortName}
-                        </Label>
-                      </div>
-                      <p className="text-xs text-green-700 mb-2">
-                        Recibe notificaciones cuando una cotización es <strong>Aprobada</strong> o <strong>Facturada</strong>. Para seguimiento comercial de la sede.
-                      </p>
-                      <Input
-                        type="email"
-                        value={emailsBySede[sede.id]?.sales || ''}
-                        onChange={(e) => updateSedeEmail(sede.id, 'sales', e.target.value)}
-                        placeholder={`ventas.${sede.id.toLowerCase()}@empresa.com`}
-                        className="bg-white"
-                        data-testid={`sales-email-${sede.id}`}
-                      />
-                    </div>
-
-                    {/* Email de Operaciones - Solo Sede PYME */}
-                    {sede.id === 'PYME' && (
-                      <div className="p-3 bg-cyan-50 rounded-lg border border-cyan-200">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Settings2 size={16} className="text-cyan-600" />
-                          <Label className="text-sm font-semibold text-cyan-800">
-                            Correo de Operaciones - Sede {sede.shortName}
-                          </Label>
-                        </div>
-                        <p className="text-xs text-cyan-700 mb-2">
-                          Recibe notificaciones de <strong>MPOS (Imple + POS)</strong> (configuración de equipos) y flujos operativos de la sede Pyme.
-                        </p>
-                        <Input
-                          type="email"
-                          value={emailsBySede[sede.id]?.operations || ''}
-                          onChange={(e) => updateSedeEmail(sede.id, 'operations', e.target.value)}
-                          placeholder="operaciones.pyme@empresa.com"
-                          className="bg-white"
-                          data-testid={`operations-email-${sede.id}`}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  )}
-                </div>
-                );
-              })}
-
-              {/* Email de Implementación (General - no por sede) */}
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <Mail size={18} className="text-blue-600" />
-                  <Label className="text-sm font-semibold text-blue-800">
-                    Correo de Implementación (General)
-                  </Label>
-                </div>
-                <p className="text-sm text-blue-700 mb-3">
-                  Recibe notificaciones cuando una cotización de <strong>Implementación</strong> es <strong>Enviada a Implementación</strong>.
-                  Incluye los detalles técnicos del proyecto.
-                </p>
-                <Input
-                  type="email"
-                  value={implementationEmail}
-                  onChange={(e) => setImplementationEmail(e.target.value)}
-                  placeholder="implementacion@empresa.com"
-                  className="bg-white"
-                  data-testid="implementation-email-input"
-                />
-              </div>
-
-              {/* Correo Gerente de Implementación */}
-              <div className="bg-purple-50 rounded-lg border border-purple-200 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Mail size={16} className="text-purple-600" />
-                  <Label className="text-sm font-semibold text-purple-800">
-                    Correo Gerente de Implementación
-                  </Label>
-                </div>
-                <p className="text-sm text-purple-700 mb-3">
-                  Recibe una alerta automática cada vez que una cotización pasa a ser un <strong>Proyecto</strong>.
-                  El Gerente puede asignar implementadores desde el módulo de Proyectos.
-                </p>
-                <Input
-                  type="email"
-                  value={implManagerEmail}
-                  onChange={(e) => setImplManagerEmail(e.target.value)}
-                  placeholder="gerente.implementacion@empresa.com"
-                  className="bg-white"
-                  data-testid="impl-manager-email-input"
-                />
-              </div>
-
-              {/* Botón Guardar */}
-              <div className="flex justify-end pt-2">
-                <Button
-                  onClick={handleSaveEmails}
-                  disabled={!canEdit || savingEmail}
-                  className="bg-brand-green-600 hover:bg-brand-green-700 text-white"
-                  data-testid="save-emails-button"
-                >
-                  <Save size={16} className="mr-2" />
-                  {savingEmail ? 'Guardando...' : 'Guardar Configuración de Correos'}
-                </Button>
-              </div>
-            </div>
-          </div>
-
           {/* ===== Configuración General (menú colapsable) ===== */}
           <div className="bg-white rounded-lg border border-slate-200 mb-6 overflow-hidden" data-testid="general-config-section">
             <button
@@ -828,6 +625,8 @@ export const Settings = () => {
 
             const tiles = [
               { key: 'footer', icon: FileText, accent: 'slate', title: 'Footer Global', desc: 'Pie de página institucional anexado a cada correo del ecosistema.', route: '/settings/email-footer', testid: 'open-email-footer-btn' },
+              { key: 'email-templates', icon: FileCode, accent: 'blue', title: 'Plantillas de Correo Electrónico', desc: 'Gestor y editor de las plantillas HTML predeterminadas del sistema por sede.', route: '/settings/email-templates', testid: 'open-email-templates-btn' },
+              { key: 'email-history', icon: Mail, accent: 'indigo', title: 'Historial de Correos', desc: 'Auditoría de correos despachados con filtros y total de registros.', route: '/settings/email-history', testid: 'open-email-history-btn' },
               { key: 'senders', adminOnly: true, icon: Mail, accent: 'blue', title: 'Remitentes de Correo', desc: 'Direcciones remitentes por área (Proyectos e Integradores).', route: '/settings/email-senders', testid: 'open-email-senders-btn' },
               { key: 'calendar', icon: CalendarDays, accent: 'indigo', title: 'Calendario Laboral', desc: 'Días festivos; los SLAs cuentan solo días hábiles.', route: '/settings/work-calendar', testid: 'open-work-calendar-btn' },
               { key: 'notifications', icon: Bell, accent: 'sky', title: 'Notificaciones Push', desc: '16 eventos con prioridad configurable (campana + toast).', route: '/settings/notifications', testid: 'open-notifications-config-btn' },
@@ -983,97 +782,6 @@ export const Settings = () => {
           </div>
           )}
 
-          {/* Plantillas de Correo Section */}
-          <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
-            <h2 className="text-xl font-semibold text-slate-900 font-manrope mb-4 flex items-center gap-2">
-              <FileCode size={24} />
-              Plantillas de Correo Electrónico
-            </h2>
-            <p className="text-slate-600 mb-6">
-              Personalice el contenido de los correos automáticos que envía el sistema en cada etapa del flujo de trabajo.
-              Cada sede tiene sus propias plantillas para mantener la identidad y control separado.
-            </p>
-
-            <EmailTemplatesEditor />
-          </div>
-        </div>
-
-        {/* Historial de Correos */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 mb-8" data-testid="email-logs-section">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                <Mail size={20} className="text-indigo-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">Historial de Correos</h2>
-                <p className="text-sm text-slate-500">Correos enviados y simulados del sistema</p>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" onClick={fetchEmailLogs} disabled={loadingLogs} data-testid="refresh-email-logs">
-              <RefreshCw size={14} className={`mr-1 ${loadingLogs ? 'animate-spin' : ''}`} />
-              Actualizar
-            </Button>
-          </div>
-
-          {emailLogs.length === 0 ? (
-            <div className="text-center py-8 text-slate-400">
-              <Mail size={32} className="mx-auto mb-2 opacity-50" />
-              <p>No hay correos registrados</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" data-testid="email-logs-table">
-                <thead className="bg-slate-50 border-b">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Estado</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Acción</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Destinatario</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Asunto</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Cotización</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Fecha</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {emailLogs.map((log) => {
-                    const statusConfig = {
-                      sent: { label: 'Enviado', color: 'bg-green-100 text-green-700' },
-                      simulated: { label: 'Simulado', color: 'bg-amber-100 text-amber-700' },
-                      error: { label: 'Error', color: 'bg-red-100 text-red-700' },
-                    };
-                    const st = statusConfig[log.status] || statusConfig.error;
-                    const actionLabels = {
-                      send_to_client: 'Enviar al Cliente',
-                      approve_admin: 'Aprobar (Admin)',
-                      approve_sales: 'Aprobar (Ventas)',
-                      approve_no_config: 'Aprobar (Sin config)',
-                      invoice_admin: 'Facturar (Admin)',
-                      invoice_sales: 'Facturar (Ventas)',
-                      invoice_no_config: 'Facturar (Sin config)',
-                      collect_warehouse: 'Cobrar (Almacén)',
-                      send_to_implementation: 'Enviar a Imple',
-                    };
-
-                    return (
-                      <tr key={log.email_log_id} className="hover:bg-slate-50" data-testid={`email-log-${log.email_log_id}`}>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-0.5 text-xs font-medium rounded ${st.color}`}>{st.label}</span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-700">{actionLabels[log.action] || log.action}</td>
-                        <td className="px-4 py-3 text-slate-600 font-mono text-xs">{(log.to || []).join(', ')}</td>
-                        <td className="px-4 py-3 text-slate-700 max-w-[200px] truncate">{log.subject}</td>
-                        <td className="px-4 py-3 text-slate-600 font-mono text-xs">{log.quote_number || '-'}</td>
-                        <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
-                          <Clock size={12} className="inline mr-1" />
-                          {formatDateTime(log.created_at)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       </main>
     </div>

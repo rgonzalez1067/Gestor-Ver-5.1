@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft, Download, Upload, DatabaseBackup, Package, ShieldAlert, Loader2, CloudUpload, CheckCircle2, AlertTriangle, Search } from 'lucide-react';
 import api from '../utils/api';
+import { ContingencyAttachmentsExport } from '../components/ContingencyAttachmentsExport';
 import { Button } from '../components/ui/button';
 import { Checkbox } from '../components/ui/checkbox';
 import { Badge } from '../components/ui/badge';
@@ -633,11 +634,16 @@ export default function BackupCenter() {
           </div>
         </div>
 
+        {/* Contingencia · Migración (cabecera del Centro de Respaldos) */}
+        <div className="mt-4">
+          <ContingencyAttachmentsExport />
+        </div>
+
         <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 px-3 py-2 text-xs my-4">
           <ShieldAlert size={15} className="shrink-0 mt-0.5" />
           <span>
-            Cotizaciones, Histórico y Proyectos se respaldan en sus propias vistas y no forman parte de
-            este centro. Formato de respaldo: <strong>JSON</strong> (round-trip sin pérdida).
+            Las secciones siguientes respaldan los datos maestros. Cotizaciones, Histórico y Proyectos se respaldan
+            con la Contingencia de arriba. Formato de respaldo: <strong>JSON</strong> (round-trip sin pérdida).
           </span>
         </div>
 

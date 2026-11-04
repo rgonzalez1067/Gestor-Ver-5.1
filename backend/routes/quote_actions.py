@@ -11,6 +11,7 @@ from fastapi.responses import Response
 from typing import List, Optional
 from datetime import datetime, timezone
 import uuid
+import re
 import logging
 import io
 import os
@@ -3458,12 +3459,60 @@ async def duplicate_quote(
 
 # ==================== EMAIL LOG ====================
 
+_EMAIL_LOG_IDX = False
+
+
 @router.get("/email-logs")
-async def get_email_logs(limit: int = 50, authorization: Optional[str] = Header(None)):
-    """Retorna el historial de correos enviados/simulados"""
+async def get_email_logs(
+    limit: int = 50,
+    page: int = 1,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    to: Optional[str] = None,
+    subject: Optional[str] = None,
+    status: Optional[str] = None,
+    action: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
+):
+    """Historial de correos con filtros y paginación en servidor."""
     await get_current_user(authorization)
-    logs = await db.email_logs.find({}, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
-    return {"email_logs": logs, "count": len(logs)}
+    global _EMAIL_LOG_IDX
+    if not _EMAIL_LOG_IDX:
+        await db.email_logs.create_index([("created_at", -1)])
+        _EMAIL_LOG_IDX = True
+    limit = max(1, min(limit, 200))
+    page = max(1, page)
+    q: dict = {}
+    if date_from or date_to:
+        rng = {}
+        if date_from:
+            rng["$gte"] = date_from[:10]
+        if date_to:
+            from datetime import date as _date, timedelta as _td
+            rng["$lt"] = (_date.fromisoformat(date_to[:10]) + _td(days=1)).isoformat()
+        q["created_at"] = rng
+    if to:
+        q["to"] = {"$regex": re.escape(to.strip()), "$options": "i"}
+    if subject:
+        q["subject"] = {"$regex": re.escape(subject.strip()), "$options": "i"}
+    if status:
+        q["status"] = {"$in": [s for s in status.split(",") if s]}
+    if action:
+        q["action"] = action
+    total_db = await db.email_logs.estimated_document_count()
+    total = await db.email_logs.count_documents(q) if q else total_db
+    logs = await db.email_logs.find(q, {"_id": 0, "html": 0}).sort("created_at", -1) \
+        .skip((page - 1) * limit).limit(limit).to_list(limit)
+    return {"email_logs": logs, "count": len(logs), "total": total, "total_db": total_db,
+            "page": page, "limit": limit, "pages": max(1, -(-total // limit))}
+
+
+@router.get("/email-logs/actions")
+async def get_email_log_actions(authorization: Optional[str] = Header(None)):
+    await get_current_user(authorization)
+    acts = [a for a in await db.email_logs.distinct("action") if a]
+    statuses = [s for s in await db.email_logs.distinct("status") if s]
+    return {"actions": sorted(acts), "statuses": sorted(statuses)}
 
 
 
