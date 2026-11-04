@@ -1871,4 +1871,10 @@ Antes, usuarios con permisos limitados no cargaban catálogos en el frontend →
 - Fila "Servicio Express" en Setup: max(setup_cost_conventional, cajas × setup_cost_outsourcing) del ítem de catálogo "Servicio Express" (PG: N=1, después de Persona Jurídica). Editable (expressManual detiene recálculo), cajas fijas en 1, sin duplicar, eliminar → pregunta en No.
 - Testing: iteration_352/353 + tests/test_quote_express_service.py.
 
+## 2026-06 — Modal de parámetros en reportes Bancos por Producto / Productos por Banco
+- `ReportParamsDialog`: Alcance (Solo Bancos/Entes | + Procesadores) y fases no productivas (Sí/No); defaults Solo Bancos/Entes + No.
+- Endpoints aceptan `include_processors` e `include_pre_production`; etiqueta [Fase] en PDF (sin [Producción]); línea "Filtros" en portada.
+- Testing: iteration_354 (100%).
+
+
 

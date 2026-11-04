@@ -1,0 +1,23 @@
+{
+  "summary": "Iter354 - Modal de parámetros para reportes PDF 'Productos por Banco' (/banks) y 'Bancos por Producto' (/medios-pago). Backend: 9/9 pytest OK (más 1 caso reformulado por limitación de datos). Frontend: 100% de los flujos OK en ambas páginas: el modal abre sin descargar, defaults Solo Bancos/Entes + No, al reabrir vuelve a defaults, Cancelar/ESC cierran sin request ni descarga, Generar descarga el PDF con include_processors/include_pre_production correctos y cierra el modal. Nota: la ruta real es /banks (no /bancos).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/services/report/banks-by-product/pdf", "issue": "Con include_processors=true NO aparecen Consorcio CrediCard/Platco/Tranred, pero no es bug: los 3 bancos tipo Procesador tienen products=[] en BD, así que nunca pueden salir como banco asociado a un producto. En 'Productos por Banco' sí aparecen (con '— Sin productos asociados —'). El filtro funciona correctamente."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_report_params_iter354.py", "/app/test_reports/pytest/pytest_iter354.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "services.py banks_for(): si un banco tiene la misma entrada de producto duplicada (por service_id o nombre normalizado) y la primera coincidencia es fase no productiva, el 'break' descarta el banco aunque una entrada posterior esté en Producción. Edge case; sería mejor 'continue' en vez de 'break' cuando se filtra.",
+    "Con include_pre_production=false, los bancos cuyos productos están todos en Imple salen como '— Sin productos asociados —' y cuentan en el KPI 'sin productos'; podría convenir un texto 'Sin productos en Producción' para no confundir.",
+    "Nombres de bancos/productos se interpolan en HTML sin escapar (html.escape) en ambos reportes (preexistente)."
+  ],
+  "updated_files": ["/app/backend/tests/test_report_params_iter354.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Ninguna. Pruebas de solo lectura; no se modificaron datos.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "BD: 38 bancos (tipos Banco/Fintech/Procesador); 3 Procesadores (Consorcio CrediCard, Platco, Tranred) sin productos; 18 productos en fase 'Imple', resto Producción (no hay DESA/SQA/Primer Prod en datos). PDFs se validan con PyMuPDF (fitz). Login admin rgonzalez@megasoft.com.ve / Mega2026* -> session_token Bearer. Rutas UI: /banks y /medios-pago."
+}
