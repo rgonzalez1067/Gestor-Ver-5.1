@@ -27,7 +27,8 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 from bson.json_util import dumps as bson_dumps, loads as bson_loads
-from fastapi import APIRouter, Header, HTTPException, UploadFile, File, Form, Body
+from fastapi import APIRouter, Header, HTTPException, UploadFile, File, Form, Body, Request
+import gzip
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse, Response
 from starlette.background import BackgroundTask
 
@@ -1459,6 +1460,21 @@ async def quotes_bundle_import_batch(body: _BundleBatch, authorization: Optional
     if not cfg:
         raise HTTPException(status_code=400, detail=f"Colección no permitida: {body.collection}")
     return await _upsert_bundle_docs(cfg, body.documents, user, datetime.now(timezone.utc).isoformat())
+
+
+@router.post("/admin/quotes-bundle-migration/import-batch-gz")
+async def quotes_bundle_import_batch_gz(request: Request, collection: str, authorization: Optional[str] = Header(None)):
+    """Igual que import-batch pero el cuerpo es un JSON (lista de documentos) comprimido en gzip."""
+    user = await _require_admin(authorization)
+    cfg = _BUNDLE_CFG.get(collection)
+    if not cfg:
+        raise HTTPException(status_code=400, detail=f"Colección no permitida: {collection}")
+    try:
+        docs = json.loads(gzip.decompress(await request.body()))
+        assert isinstance(docs, list)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Lote comprimido inválido")
+    return await _upsert_bundle_docs(cfg, docs, user, datetime.now(timezone.utc).isoformat())
 
 
 class _BundleResult(BaseModel):

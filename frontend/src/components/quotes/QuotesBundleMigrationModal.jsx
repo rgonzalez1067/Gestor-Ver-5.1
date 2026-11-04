@@ -206,7 +206,7 @@ export function QuotesBundleMigrationModal({ open, onClose }) {
   };
   const BUNDLE_KEYS = { quotes: 'quote_id', quote_history: 'history_id', projects: 'project_id' };
   const BUNDLE_LABELS = { quotes: 'Cotizaciones', quote_history: 'Históricas', projects: 'Proyectos' };
-  const BATCH_BYTES = 4 * 1024 * 1024;
+  const BATCH_BYTES = 8 * 1024 * 1024;
 
   const handlePreview = async () => {
     const f = previewFileRef.current?.files?.[0];
@@ -245,7 +245,16 @@ export function QuotesBundleMigrationModal({ open, onClose }) {
       let batch = []; let size = 0; let done = 0;
       const flush = async () => {
         if (!batch.length) return;
-        const r = await api.post('/admin/quotes-bundle-migration/import-batch', { collection: col, documents: batch });
+        let r;
+        if (typeof CompressionStream !== 'undefined') {
+          const gz = await new Response(
+            new Blob([JSON.stringify(batch)]).stream().pipeThrough(new CompressionStream('gzip'))
+          ).blob();
+          r = await api.post(`/admin/quotes-bundle-migration/import-batch-gz?collection=${encodeURIComponent(col)}`, gz,
+            { headers: { 'Content-Type': 'application/octet-stream' } });
+        } else {
+          r = await api.post('/admin/quotes-bundle-migration/import-batch', { collection: col, documents: batch });
+        }
         agg.label = r.data.label; agg.inserted += r.data.inserted; agg.updated += r.data.updated; agg.skipped += r.data.skipped;
         agg.errors = agg.errors.concat(r.data.errors || []).slice(0, 10);
         done += batch.length; batch = []; size = 0;
