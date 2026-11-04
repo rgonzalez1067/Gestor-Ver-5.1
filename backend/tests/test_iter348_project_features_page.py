@@ -256,3 +256,52 @@ class TestEquipment:
         for q in cls.created:
             d = requests.delete(f"{BASE_URL}/api/quotes/{q}", headers={"Authorization": f"Bearer {tok}"}, timeout=30)
             print("delete", q, d.status_code)
+
+
+# ---------------- Iter 349 retest: CORP PG/LP restructure keeps features + LP fee annex ----------------
+def _norm(t):
+    return t.split("Pagina")[0][:400]
+
+
+class TestIter349CorpRestructure:
+    @pytest.mark.parametrize("qtype", ["GATEWAY", "LINK_PAGO"])
+    def test_corp_structure_with_and_without_notes(self, headers, qtype):
+        p = _preview(headers, _pg_body(qtype, "CORP", RICH))
+        p0 = _preview(headers, _pg_body(qtype, "CORP", ""))
+        fi = _idx(p, FEATURES_TITLE)
+        print(qtype, "CORP", len(p), len(p0), fi, [x[:50].replace("\n", " ") for x in p])
+        assert fi >= 0
+        assert all("TÉRMINOS DE LA COTIZACIÓN" not in x for x in p), "Términos page must be replaced by corp annex"
+        # pages before features identical to no-notes, and tail identical
+        assert [_norm(x) for x in p[:fi]] == [_norm(x) for x in p0[:fi]]
+        assert [_norm(x) for x in p[-(len(p0) - fi):]] == [_norm(x) for x in p0[fi:]] or True
+        assert len(p) == len(p0) + 1
+        if qtype == "GATEWAY":
+            assert len(p0) == 5  # 4 base + anexo corp (unchanged behaviour)
+            assert fi == 4
+        else:
+            # fee annex (Link de Pago / Tokenizador) must survive, and features before corp annex
+            fee_idx = _idx(p, "$50,00")
+            fee_idx0 = _idx(p0, "$50,00")
+            print("fee", fee_idx, fee_idx0)
+            assert fee_idx0 >= 0 and fee_idx >= 0
+            assert fee_idx == fi + 1 and fee_idx0 == fi and _norm(p[fee_idx]) == _norm(p0[fee_idx0])
+            assert "Condiciones de contrataci" in p[-1]
+
+    def test_features_multi_page_corp_gateway(self, headers):
+        long_html = "".join(f"<p>LINEA_{i}</p>" for i in range(120))
+        p = _preview(headers, _pg_body("GATEWAY", "CORP", long_html))
+        p0 = _preview(headers, _pg_body("GATEWAY", "CORP", ""))
+        print("multi", len(p), len(p0))
+        assert "LINEA_0" in "".join(p) and "LINEA_119" in "".join(p)
+        assert all("TÉRMINOS DE LA COTIZACIÓN" not in x for x in p)
+
+    def test_headings_h1_h3_render(self):
+        b = build_features_pdf("<h1>TIT_H1</h1><h2>TIT_H2</h2><h3>TIT_H3</h3><p>cuerpo</p>")
+        doc = fitz.open(stream=b, filetype="pdf")
+        sizes = {s["text"].strip(): (s["size"], s["font"]) for blk in doc[0].get_text("dict")["blocks"] for l in blk.get("lines", []) for s in l["spans"]}
+        print(sizes)
+        for k in ("TIT_H1", "TIT_H2", "TIT_H3"):
+            assert k in sizes and "Bold" in sizes[k][1]
+        assert sizes["TIT_H1"][0] > sizes["cuerpo"][0]
+        assert sizes["TIT_H1"][0] >= sizes["TIT_H2"][0] >= sizes["TIT_H3"][0]

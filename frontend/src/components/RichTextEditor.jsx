@@ -340,6 +340,16 @@ export const RichTextEditor = forwardRef(function RichTextEditor({
       },
       // Pegado en caliente (Ctrl+V) de imágenes del portapapeles → upload + <img>.
       handlePaste: (view, event) => {
+        if (hardLimit) {
+          const pasted = (event.clipboardData && event.clipboardData.getData('text/plain')) || '';
+          const { from, to } = view.state.selection;
+          const current = view.state.doc.textBetween(0, view.state.doc.content.size, '\n').length;
+          if (current - (to - from) + pasted.length > maxChars) {
+            event.preventDefault();
+            toast.warning(`Límite de ${maxChars} caracteres: el texto pegado excede el máximo`, { id: `rte-limit-${testid}` });
+            return true;
+          }
+        }
         if (!enableImagePaste) return false;
         const items = event.clipboardData && event.clipboardData.items;
         if (!items) return false;
@@ -602,12 +612,6 @@ export const RichTextEditor = forwardRef(function RichTextEditor({
         [data-testid="${testid}"] .ProseMirror .selectedCell:after { background: rgba(99,102,241,0.18); content: ""; position: absolute; inset: 0; pointer-events: none; }
         [data-testid="${testid}"] .ProseMirror table p { margin: 0; }
         [data-testid="${testid}"] .ProseMirror p { margin: 0 0 10px 0; line-height: 1.5; }
-        [data-testid="${testid}"] .ProseMirror ul { list-style: disc; padding-left: 1.4rem; margin: 0 0 10px 0; }
-        [data-testid="${testid}"] .ProseMirror ol { list-style: decimal; padding-left: 1.4rem; margin: 0 0 10px 0; }
-        [data-testid="${testid}"] .ProseMirror li p { margin: 0 0 4px 0; }
-        [data-testid="${testid}"] .ProseMirror h1 { font-size: 1.35rem; font-weight: 700; margin: 6px 0 8px; color: #1E3A8A; }
-        [data-testid="${testid}"] .ProseMirror h2 { font-size: 1.15rem; font-weight: 700; margin: 6px 0 8px; color: #1E3A8A; }
-        [data-testid="${testid}"] .ProseMirror h3 { font-size: 1rem; font-weight: 700; margin: 6px 0 6px; color: #1E3A8A; }
       `}</style>
 
       {/* Editor */}

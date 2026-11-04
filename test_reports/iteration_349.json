@@ -1,0 +1,35 @@
+{
+  "summary": "Retest of iteration_348 ('Características particulares del Proyecto'). BACKEND: 20 of 20 tests pass (3 equipment tests are opt-in and were skipped; equipment was checked manually). FIX HIGH 1-2 VERIFIED. GATEWAY CORP: with notes 6 pages (4 base + features + corp annex); without notes 5 pages, the same as before. LINK_PAGO CORP: with notes 7 pages (4 base + features + Link de Pago fee annex '1 500 $50,00' + corp annex 'Condiciones de contratación'); without notes 6 pages. The Términos page is replaced in every case. Long notes spanning several pages are fully kept in GATEWAY CORP. Regression: VPOS PYME/CORP and PG/LP PYME still place the page correctly. FIX MEDIUM 3 (headings) WORKS FUNCTIONALLY: the -h1/-h2/-h3 buttons exist, the heading node is in the schema, H1/H3 toggle to <h1>/<h3>, and the PDF renders them as Helvetica-Bold at 15/13/11.5pt versus 10pt body. FIX MEDIUM 4 NOT EFFECTIVE: in the editor, ul/ol still compute list-style none with padding 0, and h1/h2 look like body text (14px/400). The inline <style> block in RichTextEditor is in the DOM (1720 chars, with injected x-file-name/x-component attributes) but its CSSStyleSheet has 0 cssRules. The same CSS text appended to <head> parses to 12 rules, so the inline <style> rendered inside the component is not applied in this build. Table controls are hidden in this field. The toast 'Límite de 1000 caracteres alcanzado' appears when a paste goes over 1000 characters. NUMBERING FIX VERIFIED: counter quote_PYME_2026_11 was at seq 21 while 022 and 023 existed. A test equipment quote (Verifone, with notes) received COT-2026-11-024-PYME, so 022 and 023 were skipped. The PDF has 4 pages with the features page at index 1. The quote quo_b2f54ab738cb was then deleted (GET returns 404), and I manually removed its orphan file /app/backend/uploads/COT-2026-11-024-PYME_Cotizacion_Equipo.pdf. No real quotes were changed. The editor UI was tested in EditEquipRepairDialog on quo_972bad9871a8 without saving.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "DELETE /api/quotes/{id} (equipment)", "issue": "Deleting an equipment quote leaves /uploads/{quote_number}_Cotizacion_Equipo.pdf orphaned. This is pre-existing and was cleaned up manually here."},
+      {"endpoint": "notes length", "issue": "The backend still does not enforce the 1000-character limit (carried over from iter348). The multi-page features PDF does work."},
+      {"endpoint": "generate_quote_number", "issue": "Pre-existing duplicate quote numbers in the DB (COT-2026-11-010/011-PYME, COT-2026-10-003-PYME, 2 records each) remain. The fix prevents new duplicates only."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "RichTextEditor inline <style> (lists/headings)", "issue": "The ul disc / ol decimal and h1-h3 styles are NOT applied. Computed list-style-type is 'none', padding-left is 0px, and h2 is 14px/400. The only matching rule is Tailwind preflight 'ol, ul, menu'. The <style> element exists, but style.sheet.cssRules.length is 0, likely because the dev tooling injects x-* attributes into the JSX <style>. Users still cannot see bullets, numbers or heading sizes in the editor. Suggested fix: move the rules to index.css as global CSS, for example '.rte-root .ProseMirror ul{list-style:disc;padding-left:1.4rem}', '.rte-root .ProseMirror ol{list-style:decimal;...}', and h1/h2/h3 sizes, or use Tailwind arbitrary variants on the editor class ([&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_h1]:text-xl ...). The editor table styles in the same <style> block are probably not applied either.", "selector": "[data-testid='edit-equip-features-editor-content'] ul", "priority": "MEDIUM"},
+      {"component": "RichTextEditor hard limit (onUpdate → editor.commands.undo())", "issue": "When a paste over the limit happens within the history newGroupDelay (about 500ms) of typing, undo also reverts the text typed just before. Observed: the typed 'num 1/num 2' list items were lost together with the rejected paste. Suggested fix: block the change before it is applied, using a filterTransaction/ProseMirror plugin or a handlePaste length check, instead of undo.", "selector": "[data-testid$='-features-editor'] .ProseMirror", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_iter348_project_features_page.py", "/app/test_reports/pytest/iter349.xml"],
+  "action_items": [
+    "Make the ul/ol/h1-h3 editor styles actually apply. The inline <style> in RichTextEditor has 0 parsed rules, so move the CSS to index.css (.rte-root .ProseMirror ...) or use Tailwind arbitrary variants. Then verify that getComputedStyle(ul).listStyleType is 'disc'.",
+    "Optional: replace the undo-based 1000-character limit with a filterTransaction/handlePaste guard so that recent typing is not lost.",
+    "Optional: remove the equipment PDF from /uploads when an equipment quote is deleted."
+  ],
+  "critical_code_review_comments": [
+    "apply_corporate_pg_lp_restructure scans backwards for 'TÉRMINOS DE LA COTIZACIÓN'. This is correct and robust to user notes that contain the same phrase. When the text is not found, it falls back to the fixed keep_pages, which would truncate the features page again. Consider logging a warning in that fallback.",
+    "generate_quote_number: the loop of up to 500 iterations calls find_one_and_update and 2 lookups on every iteration. That is fine. If the loop runs out, the last number returned may still collide, so consider raising an error instead."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter348_project_features_page.py (added TestIter349CorpRestructure: CORP structure with/without notes, LP fee annex retained, multi-page features, h1-h3 PDF rendering)"],
+  "success_rate": {"backend": "100% (20/20, plus the manual equipment numbering check)", "frontend": "75% (headings, toolbar, table controls hidden and limit toast OK; list and heading styling in the editor NOT applied)"},
+  "seed_data_creation": "Created a test equipment quote, quo_b2f54ab738cb (COT-2026-11-024-PYME), then deleted it and its PDF file. The PYME counter is now at seq 24, leaving a gap at 024, which is expected.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && python -m pytest tests/test_iter348_project_features_page.py -p no:xdist. Equipment tests are opt-in (RUN_EQUIP_PDF_TESTS=1); the numbering fix is now in place, but check the counter first. For UI testing: log in as admin, go to /quotes, open quote-actions-quo_972bad9871a8, click modify-quote-btn, then modify-choice-in-place. That opens the edit-equip-features-editor. Do not save. Check the computed list-style of the .ProseMirror ul and the parsed rules of the style.sheet inside the editor root."
+}
