@@ -701,9 +701,9 @@ def _summarize_matrix(matrix):
         return "—"
     parts = []
     for bn, prods in matrix.items():
-        prod_list = ", ".join(sorted((prods or {}).keys())) or "(sin productos)"
-        parts.append(f"{bn}: {prod_list}")
-    return " | ".join(parts)
+        prod_list = ", ".join(sorted((p or "").strip() for p in (prods or {}).keys())) or "(sin productos)"
+        parts.append(f"{(bn or '').strip()}: {prod_list}")
+    return " | ".join(sorted(parts))
 
 
 def _master_diff(old_project, update, is_multistore):
@@ -723,6 +723,10 @@ def _master_diff(old_project, update, is_multistore):
             continue
         old_val = old_project.get(field)
         new_val = update.get(field)
+        if old_val == "—":
+            old_val = None
+        if new_val == "—":
+            new_val = None
         if (old_val or "") != (new_val or "") and not (old_val in (None, "") and new_val in (None, "")):
             changes.append({"field": field, "label": label, "old": old_val, "new": new_val})
 

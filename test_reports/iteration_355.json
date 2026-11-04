@@ -1,0 +1,44 @@
+{
+  "summary": "Probé de extremo a extremo la Edición Maestra con sucursales (multistore prj_4903ac85c83d, multirif prj_9b08ebe9a4ef) y la regresión en un proyecto single (prj_25f4b646cd7c). Backend: 19/19 pruebas pytest pasaron. Cubren el contexto (baseline, certificadas, clientes elegibles), el error exacto de exceso de cajas, 'Producto no contratado', el tope por medio compartido vía reemplazo, el reemplazo inválido, el nombre vacío, cajas negativas, RIF fuera del grupo, que no se pueda eliminar una sucursal certificada, que una sucursal nueva reciba un st_ nuevo, que se preserven las fases (incluido el producto con espacio final), que un cliente del grupo económico se agregue a rifs con box_count = suma de sus sucursales, y la regresión single + server_name. UI con Playwright: el editor de sucursales muestra el total, los chips, las tarjetas, el candado en sucursales certificadas, Agregar/Eliminar sucursal y el panel de reemplazos (Mercantil). Al guardar con exceso aparece el toast exacto del backend. El guardado multirif con una sucursal nueva de un RIF del grupo (J503707402) funcionó. El selector de servidor muestra '(valor anterior)' y guarda la descripción elegida; el proyecto single usa master-single-editor. Respaldé y restauré exactamente con replace_one los 3 proyectos tocados; verifiqué la igualdad completa del documento.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/projects/{id}/master-override (multistore)", "issue": "En multistore (sin rifs), la UI envía client_id = p.client_id por defecto en cada sucursal. Al guardar, apply_branches crea rifs[] con un RIF nuevo (rif_xxx, box_count=2) y escribe rif_id/rif/client_name en cada store. Esto cambia la estructura de un proyecto multistore aunque el usuario no haya tocado el RIF. Lo reproduje por API y por UI."},
+      {"endpoint": "PUT /api/projects/{id}/master-override", "issue": "Ruido en la bitácora: aparece 'Generador: '—' → '—'' (created_by_name None frente a '—') y 'Bancos/Productos' cambia solo por normalizar el espacio final ('Cambio Pago Movil ' → 'Cambio Pago Movil'), sin cambios reales."},
+      {"endpoint": "apply_branches / _build_override_services", "issue": "Las claves de producto en implementation_matrix se normalizan sin espacio final, pero services[].item_name conserva el espacio ('Cambio Pago Movil '). Cualquier código que cruce item_name con las claves de la matriz sin aplicar strip dejará de coincidir."},
+      {"endpoint": "apply_branches", "issue": "Al bajar las cajas de una sucursal certificada (Carbon 10→5), los datos de fase quedan con expected/processed=10. No se bloquea ni se recalcula, y queda inconsistente con box_count. Tampoco se impide quitar medios de una sucursal certificada."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BranchesEditor ReplacementsPanel", "issue": "Los candidatos de reemplazo buscan el banco con banksCatalog.find(b => b.name === bank_name). Los proyectos guardan 'Banco Nacional de Crédito (BNC)' y 'Banco Fondo Común (BFC)', pero el catálogo /api/banks los llama 'Banco Nacional de Crédito' y 'Banco Fondo Común'. Resultado: 'Sin alternativas' para BNC y BFC, y en el multirif de BFC no se puede registrar ningún reemplazo. Solo funciona con Banco Mercantil (nombre idéntico). Conviene buscar por bank_id o con un match normalizado (quitar el sufijo entre paréntesis).", "selector": "[data-testid='master-replacement-to']", "priority": "HIGH"},
+      {"component": "BranchesEditor", "issue": "Los data-testid master-medio-usage-{slug} y master-branch-medio-{i}-{slug} se arman solo con el nombre del producto. Con dos bancos que tienen el mismo producto (BNC y Mercantil 'Cambio Pago Movil'), los testids se duplican.", "selector": "[data-testid^='master-medio-usage-']", "priority": "LOW"},
+      {"component": "BranchesEditor", "issue": "Las opciones de medios = medios cotizados + reemplazos. Si una sucursal ya tiene un medio fuera de esa lista (datos legacy) o se borra un reemplazo en uso, ese medio sigue en b.medios pero no aparece como checkbox. El guardado falla con 'Producto no contratado' y el usuario no tiene forma de desmarcarlo.", "selector": "[data-testid^='master-branch-medio-']", "priority": "MEDIUM"},
+      {"component": "ReplacementsPanel", "issue": "Después de pulsar Agregar, el Select 'from' sigue mostrando el medio elegido anteriormente (se hace setFrom('') con value undefined) aunque el estado ya se reinició.", "selector": "[data-testid='master-replacement-from']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Edición Maestra - chips de uso", "issues": ["Los chips no muestran el banco: 'Cambio Pago Movil: 2/2' aparece dos veces (BNC y Mercantil) y no se distinguen", "La lista de servidores en master-server-select no está ordenada alfabéticamente"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_master_branches_iter355.py", "/app/test_reports/pytest/pytest_iter355.xml"],
+  "action_items": [
+    "Corregir la búsqueda de banco en ReplacementsPanel (match por bank_id o por nombre normalizado sin sufijo '(XXX)') para que BNC y BFC ofrezcan alternativas",
+    "Evitar que el guardado de un multistore cree rifs[] cuando el usuario no cambió el RIF (no enviar client_id por defecto o no crear un RIF si project_type=='multistore' y el cliente es el del proyecto)",
+    "Mostrar como checkbox (marcados en rojo y desmarcables) los medios de una sucursal que no estén en las opciones, para que se puedan quitar",
+    "Incluir el banco en los chips de uso y en los slugs de data-testid",
+    "Quitar el ruido del diff de auditoría (Generador '—'→'—', normalización de espacios)",
+    "Evaluar el bloqueo o recálculo de expected/processed al cambiar las cajas de una sucursal certificada"
+  ],
+  "critical_code_review_comments": [
+    "master_branches.py: `from routes.projects import BankProductsOverride` se importa dentro del loop. Sería mejor pasarlo como parámetro o moverlo a un módulo de modelos.",
+    "used_rifs elimina en silencio los RIFs que se quedan sin sucursales. Puede ser intencional, pero no queda en el diff de auditoría.",
+    "projects.py tiene 4741 líneas (supera ampliamente 700); conviene seguir extrayendo la lógica a services/."
+  ],
+  "updated_files": ["/app/backend/tests/test_master_branches_iter355.py"],
+  "success_rate": {"backend": "100% (19/19)", "frontend": "~85% (flujos principales OK; reemplazo inutilizable para bancos con sufijo en el nombre)"},
+  "seed_data_creation": "No se crearon datos semilla. Todo cambio de prueba se hizo sobre prj_4903ac85c83d, prj_9b08ebe9a4ef y prj_25f4b646cd7c, previo respaldo, y se restauró exactamente con replace_one; verifiqué que el documento es idéntico (respaldos en /tmp/bk).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login: rgonzalez@megasoft.com.ve / Mega2026* → session_token; en la UI se guarda en localStorage 'session_token' y 'user'. Los proyectos de prueba están en estado Culminado: en /projects hay que elegir 'Todos los estados' en project-status-filter y buscar por número (PRY-2026-05-021-PRI multistore, PRY-2026-06-063-PRI multirif, PRY-2026-10-150-PRI single). Cliente del grupo 'Grupo Brasero' que no está en rifs: cli_2657337835da (J503707402). El test pytest hace su propio backup/restore con replace_one."
+}

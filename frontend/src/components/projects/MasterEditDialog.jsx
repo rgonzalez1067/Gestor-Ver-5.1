@@ -210,7 +210,7 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
     branches: (p.stores || []).map(s => ({
       store_id: s.store_id,
       name: s.name || '',
-      client_id: ((p.rifs || []).find(r => r.rif_id === s.rif_id) || {}).client_id || p.client_id || '',
+      client_id: ((p.rifs || []).find(r => r.rif_id === s.rif_id) || {}).client_id || '',
       box_count: s.box_count ?? 0,
       medios: Object.entries(s.implementation_matrix || {}).flatMap(([bank_name, prods]) =>
         Object.keys(prods || {}).map(product_name => ({ bank_name, product_name }))),

@@ -105,10 +105,17 @@ async def apply_branches(project: dict, branches: list, replacements: list, buil
         if not name:
             _fail("Toda sucursal debe tener un nombre.")
         st = dict(old_stores.get(b.store_id) or {})
+        if st and is_store_certified(st):
+            old_keys = {_key(bn, pn) for bn, ps in (st.get("implementation_matrix") or {}).items() for pn in (ps or {})}
+            new_keys = {_key(m.bank_name, m.product_name) for m in b.medios}
+            if int(b.box_count or 0) != int(st.get("box_count") or 0) or not old_keys <= new_keys:
+                _fail(f"La sucursal «{st.get('name')}» está certificada: no se pueden cambiar sus cajas ni quitar sus medios de pago.")
         if not st:
             st = {"store_id": f"st_{uuid.uuid4().hex[:8]}", "status": "Pendiente", "notes": []}
         rif_id = None
-        if b.client_id:
+        # Multitienda sin RIFs: el RIF del propio cliente no crea estructura multi-RIF.
+        own_client = not project.get("rifs") and b.client_id == project.get("client_id")
+        if b.client_id and not own_client:
             if b.client_id not in eligible:
                 _fail(f"El RIF seleccionado para «{name}» no pertenece al cliente ni a su Grupo Económico.")
             rif_id = by_client.get(b.client_id)
