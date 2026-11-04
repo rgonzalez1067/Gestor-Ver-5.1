@@ -7,6 +7,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Frame, PageTemplate, BaseDocTemplate, PageBreak, KeepTogether
+from services.project_features_pdf import has_features, features_flowables
 from reportlab.lib.units import inch, cm, mm
 from reportlab.pdfgen import canvas as canvas_module
 import io
@@ -894,7 +895,9 @@ class DynamicQuotePDFGenerator:
             base_pages = list(base_reader.pages)
             # El PDF base de PG tiene 5 páginas (Portada, Resumen, Setup, Recurrentes, Términos).
             # Insertamos los anexos en la posición 5 (índice 4), desplazando Términos al final.
-            insert_idx = 4 if len(base_pages) >= 5 else max(0, len(base_pages) - 1)
+            # Insertamos los anexos justo antes de la última página (Términos), aunque exista
+            # la página de Características particulares del Proyecto.
+            insert_idx = max(0, len(base_pages) - 1)
 
             for i, p in enumerate(base_pages):
                 if i == insert_idx:
@@ -1005,11 +1008,6 @@ class DynamicQuotePDFGenerator:
                 show_tax=True
             )
             elements.extend(recurring_elements)
-        
-        # Notas (si existen) - van en esta página
-        if self.data.notes:
-            elements.append(Spacer(1, 8))
-            elements.append(Paragraph(f"<b>Notas:</b> {self.data.notes}", self.styles['TextoNormal']))
         
         # Salto de página para el Resumen de Inversión
         elements.append(PageBreak())
@@ -1264,6 +1262,11 @@ class DynamicQuotePDFGenerator:
         # ==================== PÁGINA 5 (Multi-RIF): DETALLE DE TIENDAS Y SUCURSALES ====================
         if getattr(self.data, 'is_multirif', False):
             self._build_multirif_section(elements)
+
+        # Características particulares del Proyecto → página propia antes de los Términos
+        if has_features(self.data.notes):
+            elements.append(PageBreak())
+            elements.extend(features_flowables(self.data.notes))
 
         # Salto de página para Términos
         elements.append(PageBreak())
@@ -1786,6 +1789,10 @@ class DynamicQuotePDFGenerator:
         if getattr(self.data, 'is_multirif', False):
             self._build_multirif_section(elements)
 
+        # Características particulares del Proyecto → antes del Anexo Corporativo (condiciones)
+        if has_features(self.data.notes):
+            elements.extend(features_flowables(self.data.notes, page_break_before=True))
+
         # NO añadir términos - el Anexo Corporativa los reemplaza
         # El anexo se fusiona externamente en config.py
         
@@ -2104,9 +2111,10 @@ class DynamicQuotePDFGenerator:
             ]))
             elements.append(rec_table)
         
-        if self.data.notes:
-            elements.append(Spacer(1, 8))
-            elements.append(Paragraph(f"<b>Notas:</b> {self.data.notes}", self.styles['TextoNormal']))
+        # Características particulares del Proyecto → página propia antes de los Términos
+        if has_features(self.data.notes):
+            elements.append(PageBreak())
+            elements.extend(features_flowables(self.data.notes))
         
         elements.append(PageBreak())
         

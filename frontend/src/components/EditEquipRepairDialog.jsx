@@ -7,6 +7,7 @@ import { Plus, Trash2, Save, Package, Wrench, MessageSquare, AlertCircle, Chevro
 import { toast } from 'sonner';
 import api from '../utils/api';
 import { SerialsSelectorModal } from './SerialsSelectorModal';
+import { ProjectFeaturesField } from './ProjectFeaturesField';
 
 const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num || 0);
 const IVA_RATE = 0.16;
@@ -410,11 +411,8 @@ export const EditEquipRepairDialog = ({ open, onClose, quote, onSaved, editMode 
               </div>
             </div>
 
-            {/* Notas */}
-            <div>
-              <label className="text-xs font-semibold text-slate-500 mb-1 block">Notas / Observaciones</label>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Notas adicionales..." />
-            </div>
+            {/* Características particulares del Proyecto */}
+            <ProjectFeaturesField value={notes} onChange={setNotes} testid="edit-equip-features-editor" />
 
             {/* Desglose financiero */}
             <div className="bg-slate-800 text-white rounded-lg p-4">

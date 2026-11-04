@@ -15,6 +15,12 @@ from services.pdf_storage import save_pdf_dual
 from services.rif_formatter import format_rif
 from models import *
 from services.pdf_generator import TemplateQuotePDFRequest, DynamicQuotePDFGenerator
+from services.project_features_pdf import has_features, features_flowables, build_features_pdf, insert_pdf_before_tail
+
+
+def _features_logo():
+    f = UPLOADS_DIR / "logo.png"
+    return str(f) if f.exists() else None
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
@@ -1031,10 +1037,8 @@ async def generate_quote_pdf(quote_id: str, authorization: Optional[str] = Heade
     ]))
     elements.append(totals_table)
     
-    if quote.get("notes"):
-        elements.append(Spacer(1, 0.3*inch))
-        elements.append(Paragraph("<b>Notas:</b>", styles['Heading3']))
-        elements.append(Paragraph(quote["notes"], styles['Normal']))
+    if has_features(quote.get("notes")):
+        elements.extend(features_flowables(quote["notes"], page_break_before=True))
     
     doc.build(elements)
     buffer.seek(0)
@@ -1805,11 +1809,9 @@ async def generate_quote_pdf_from_data(data: QuotePDFRequest, authorization: Opt
     ]))
     elements.append(total_table)
     
-    # Notas
-    if data.notes:
-        elements.append(Spacer(1, 0.2*inch))
-        elements.append(Paragraph("<b>Notas:</b>", styles['Heading3']))
-        elements.append(Paragraph(data.notes, styles['Normal']))
+    # Características particulares del Proyecto
+    if has_features(data.notes):
+        elements.extend(features_flowables(data.notes, page_break_before=True))
     
     # Pie de página
     elements.append(Spacer(1, 0.3*inch))
@@ -2214,9 +2216,7 @@ async def generate_equipment_quote_pdf(data: EquipmentQuotePDFRequest, authoriza
             {'<br><span style="font-size:12px;color:#64748b">Entrega Est.: ' + data.estimated_delivery_date + '</span>' if data.estimated_delivery_date else ''}
         </div>"""
 
-    notes_section = ""
-    if data.notes:
-        notes_section = f'<br><strong>Observaciones:</strong><br><span style="font-size:12px">{data.notes}</span>'
+    notes_section = ""  # Las notas van en la página "Características particulares del Proyecto"
 
     html = f"""<!DOCTYPE html>
 <html lang="es">
@@ -2368,6 +2368,8 @@ async def generate_equipment_quote_pdf(data: EquipmentQuotePDFRequest, authoriza
         writer.write(combined)
         pdf_bytes = combined.getvalue()
 
+    # Características particulares del Proyecto (página propia antes de las condiciones)
+    pdf_bytes = insert_pdf_before_tail(pdf_bytes, build_features_pdf(data.notes, _features_logo()))
     # Anexar condiciones legales según el tipo de cotización
     pdf_bytes = append_equipment_conditions(pdf_bytes, data.equipment_type, user_sede)
 
@@ -2589,9 +2591,7 @@ async def regenerate_equipment_pdf(quote_id: str, data: dict = {}, authorization
             {models_summary}
         </div>"""
 
-    notes_section = ""
-    if notes:
-        notes_section = f'<br><strong>Observaciones:</strong><br><span style="font-size:12px">{notes}</span>'
+    notes_section = ""  # Las notas van en la página "Características particulares del Proyecto"
 
     html = f"""<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
     <style>
@@ -2698,6 +2698,7 @@ async def regenerate_equipment_pdf(quote_id: str, data: dict = {}, authorization
     # para que al MODIFICAR la cotización el PDF conserve las Condiciones Verifone
     # (PyME/TBP vs LCH) y las demás condiciones por tipo.
     _cond_sede = quote.get("sede") or current_user.get("sede", "PYME")
+    pdf_bytes = insert_pdf_before_tail(pdf_bytes, build_features_pdf(notes, _features_logo()))
     pdf_bytes = append_equipment_conditions(pdf_bytes, equipment_type, _cond_sede)
 
     # Guardar PDF + Object Storage

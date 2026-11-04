@@ -18,6 +18,7 @@ import { MultiProductSelector } from '../MultiProductSelector';
 import { QUOTE_TYPES, PRICING_MODELS, SETUP_CONCEPTS } from './constants';
 import { integratorModalityMatch, shouldShowIntegrationBadge, integrationTypesForName, formatIntegrationBadge, isSelectableIntegrator, isInProcessName } from '../../utils/integratorModality';
 import { toast } from 'sonner';
+import { ProjectFeaturesField } from '../ProjectFeaturesField';
 
 export const QuoteWizardDialog = ({ ctx }) => {
   const {
@@ -2423,14 +2424,10 @@ export const QuoteWizardDialog = ({ ctx }) => {
 
                   {/* Notas y Botón Finalizar */}
                   <div className="p-4">
-                    <Label htmlFor="notes" className="text-sm font-medium text-slate-700">Notas adicionales</Label>
-                    <Textarea
-                      id="notes"
+                    <ProjectFeaturesField
                       value={quoteData.notes}
-                      onChange={(e) => setQuoteData({ ...quoteData, notes: e.target.value })}
-                      placeholder="Observaciones o condiciones especiales..."
-                      rows={2}
-                      className="mt-2"
+                      onChange={(html) => setQuoteData(prev => ({ ...prev, notes: html }))}
+                      testid="quote-features-editor"
                     />
 
                     {/* Detalle de Sucursales (opcional para VPOS/MPOS/Fast Track y Multi-RIF) */}
@@ -2517,15 +2514,10 @@ export const QuoteWizardDialog = ({ ctx }) => {
               {/* Botones de acción para Payment Gateway */}
               {isPaymentGateway && isHeaderComplete && pgSetupItems.length > 0 && (
                 <div className="bg-white rounded-lg p-5 border mt-4">
-                  <Label htmlFor="pg-notes" className="text-sm font-medium text-slate-700">Notas adicionales</Label>
-                  <Textarea
-                    id="pg-notes"
+                  <ProjectFeaturesField
                     value={quoteData.notes}
-                    onChange={(e) => setQuoteData({ ...quoteData, notes: e.target.value })}
-                    placeholder="Observaciones o condiciones especiales..."
-                    rows={2}
-                    className="mt-2"
-                    data-testid="pg-notes-input"
+                    onChange={(html) => setQuoteData(prev => ({ ...prev, notes: html }))}
+                    testid="pg-features-editor"
                   />
                   <div className="mt-4 flex justify-end gap-3">
                     <Button

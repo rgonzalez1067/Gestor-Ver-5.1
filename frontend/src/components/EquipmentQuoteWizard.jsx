@@ -11,6 +11,7 @@ import { Search, Plus, Trash2, Package, Cpu, FileText, CheckCircle2, Monitor, Cr
 import { toast } from 'sonner';
 import api, { markCriticalStart, markCriticalEnd } from '../utils/api';
 import { SerialsSelectorModal } from './SerialsSelectorModal';
+import { ProjectFeaturesField } from './ProjectFeaturesField';
 
 // Categorías principales - 4 categorías planas
 const EQUIPMENT_CATEGORIES = [
@@ -1295,17 +1296,8 @@ export const EquipmentQuoteWizard = ({ open, onClose, onQuoteCreated, clients, h
                 </div>
               )}
 
-              {/* Notas */}
-              <div>
-                <Label>Observaciones (opcional)</Label>
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Notas adicionales para la cotización..."
-                  rows={2}
-                  data-testid="equipment-notes"
-                />
-              </div>
+              {/* Características particulares del Proyecto */}
+              <ProjectFeaturesField value={notes} onChange={setNotes} testid="equipment-notes" />
 
               <div className="flex justify-between pt-4">
                 <Button variant="outline" onClick={() => setStep(2)}>
