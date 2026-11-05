@@ -106,6 +106,9 @@ async def create_quote(quote_data: QuoteCreate, authorization: Optional[str] = H
         cantidad_cajas=quote_data.cantidad_cajas,
         cantidad_bancos=quote_data.cantidad_bancos,
         servicio_express=bool(quote_data.servicio_express),
+        include_tokenizador=bool(quote_data.include_tokenizador),
+        include_link_pago=bool(quote_data.include_link_pago),
+        lp_standalone=bool(quote_data.lp_standalone),
         pg_setup_items=quote_data.pg_setup_items,
         pg_recurring_cost=quote_data.pg_recurring_cost,
         pg_transaction_range=quote_data.pg_transaction_range,
@@ -172,6 +175,9 @@ class QuoteCreateWithPDF(BaseModel):
     # Cliente exento de IVA — suprime impuesto en cálculos y facturación
     iva_exempt: Optional[bool] = False
     servicio_express: Optional[bool] = False
+    include_tokenizador: Optional[bool] = False
+    include_link_pago: Optional[bool] = False
+    lp_standalone: Optional[bool] = False
     cantidad_cajas: Optional[int] = None
     cantidad_bancos: Optional[int] = None
     # Datos para el PDF (diccionario flexible)
@@ -262,6 +268,9 @@ async def create_quote_with_pdf(data: QuoteCreateWithPDF, authorization: Optiona
                 pdf_request.quote_number = quote_number
                 # Asegurar herencia del flag iva_exempt desde la cotización
                 pdf_request.iva_exempt = bool(data.iva_exempt)
+                pdf_request.include_tokenizador = bool(data.include_tokenizador)
+                pdf_request.include_link_pago = bool(data.include_link_pago)
+                pdf_request.lp_standalone = bool(data.lp_standalone)
                 # Aislamiento RBAC: garantizar IDs y hidratar nombres desde la BD,
                 # de modo que el PDF guardado sea idéntico a Previsualizar/Exportar.
                 pdf_request.client_id = pdf_request.client_id or data.client_id
@@ -451,6 +460,9 @@ async def create_quote_with_pdf(data: QuoteCreateWithPDF, authorization: Optiona
             sponsoring_processor_name=data.sponsoring_processor_name if data.sponsored_implementation else None,
             iva_exempt=bool(data.iva_exempt),
             servicio_express=bool(data.servicio_express),
+            include_tokenizador=bool(data.include_tokenizador),
+            include_link_pago=bool(data.include_link_pago),
+            lp_standalone=bool(data.lp_standalone),
             cantidad_cajas=data.cantidad_cajas,
             cantidad_bancos=data.cantidad_bancos,
             pg_setup_items=data.pg_setup_items,
@@ -515,13 +527,14 @@ async def get_tokenizador_billing_line(quote_id: str, authorization: Optional[st
     Link de Pago cuya variante sea 'tokenizador' o 'ambos'. El monto se extrae
     del catálogo de Medios de Pago (colección services). Bajo /api/quotes."""
     await get_current_user(authorization)
-    quote = await db.quotes.find_one({"quote_id": quote_id}, {"_id": 0, "quote_type": 1, "link_pago_variant": 1})
+    quote = await db.quotes.find_one({"quote_id": quote_id}, {"_id": 0, "quote_type": 1, "link_pago_variant": 1, "include_tokenizador": 1})
     if not quote:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
-    if (quote.get("quote_type") or "").upper() != "LINK_PAGO":
-        return {"applies": False}
-    variant = (quote.get("link_pago_variant") or "").lower()
-    if variant not in ("tokenizador", "ambos"):
+    qt = (quote.get("quote_type") or "").upper()
+    if qt == "GATEWAY":
+        if not quote.get("include_tokenizador"):
+            return {"applies": False}
+    elif qt != "LINK_PAGO" or (quote.get("link_pago_variant") or "").lower() not in ("tokenizador", "ambos"):
         return {"applies": False}
     svc = await db.services.find_one(
         {"name": {"$regex": r"^\s*Configuraci[oó]n del Tokenizador\s*$", "$options": "i"}},
@@ -1082,6 +1095,9 @@ class QuoteUpdate(BaseModel):
     # Cliente exento de IVA
     iva_exempt: Optional[bool] = None
     servicio_express: Optional[bool] = None
+    include_tokenizador: Optional[bool] = None
+    include_link_pago: Optional[bool] = None
+    lp_standalone: Optional[bool] = None
     subtotal_usd: Optional[float] = None
     total_usd: Optional[float] = None
     recurring_total_usd: Optional[float] = None
@@ -1294,6 +1310,9 @@ async def regenerate_quote_pdf(quote_id: str, data: dict = {}, authorization: Op
             branch_details=quote.get("branch_details") or [],
             include_recurring=quote.get("include_recurring", True),
             iva_exempt=bool(quote.get("iva_exempt", False)),
+            include_tokenizador=bool(quote.get("include_tokenizador", False)),
+            include_link_pago=bool(quote.get("include_link_pago", False)),
+            lp_standalone=bool(quote.get("lp_standalone", False)),
         )
         
         # Enriquecer tipo_corp

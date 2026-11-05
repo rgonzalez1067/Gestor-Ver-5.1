@@ -430,6 +430,13 @@ async def _create_project_from_quote(
             "link_pago": _variant in ("link_pago", "ambos"),
             "tokenizador": _variant in ("tokenizador", "ambos"),
         }
+    if _add_comp is None and (quote.get("quote_type") or "").upper() == "GATEWAY" and (
+        quote.get("include_tokenizador") or quote.get("include_link_pago")
+    ):
+        _add_comp = {
+            "link_pago": bool(quote.get("include_link_pago")),
+            "tokenizador": bool(quote.get("include_tokenizador")),
+        }
     if _add_comp:
         project["additional_components"] = _add_comp
 

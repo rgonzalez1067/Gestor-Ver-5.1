@@ -689,6 +689,9 @@ class QuoteCreate(BaseModel):
     # Cliente exento de IVA (impacta cálculo de impuestos en cotización y facturación)
     iva_exempt: Optional[bool] = False
     servicio_express: Optional[bool] = False
+    include_tokenizador: Optional[bool] = False
+    include_link_pago: Optional[bool] = False
+    lp_standalone: Optional[bool] = False
     # Campos de cantidades a nivel de cotización
     cantidad_cajas: Optional[int] = None
     cantidad_bancos: Optional[int] = None
@@ -804,6 +807,9 @@ class Quote(BaseModel):
     # Cliente exento de IVA (heredado al proyecto/facturación)
     iva_exempt: Optional[bool] = False
     servicio_express: Optional[bool] = False
+    include_tokenizador: Optional[bool] = False
+    include_link_pago: Optional[bool] = False
+    lp_standalone: Optional[bool] = False
     # Campos de cantidades a nivel de cotización
     cantidad_cajas: Optional[int] = None
     cantidad_bancos: Optional[int] = None

@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { ProjectFeaturesField } from '../ProjectFeaturesField';
 import { PhaseTag } from '../PhaseTag';
 import { ExpressServiceToggle } from './ExpressServiceToggle';
+import { PgAdditionalServicesToggles, LpStandaloneSummary } from './PgAdditionalServices';
 
 export const QuoteWizardDialog = ({ ctx }) => {
   const {
@@ -72,6 +73,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
     // Misc
     isLoadingEdit, editingQuoteId, currentUser,
   } = ctx;
+  const isLpStandalone = quoteData.quote_type === 'LINK_PAGO' && !!quoteData.lp_standalone;
 
   // ── Filtro dinámico por Marca según Tipo de Proyecto (Detalles de Integración y Hardware) ──
   // Regla de negocio: el desplegable "Modelo de Pinpad / POS" solo debe mostrar
@@ -336,6 +338,10 @@ export const QuoteWizardDialog = ({ ctx }) => {
                           ...quoteData, 
                           quote_type: value, 
                           link_pago_variant: value === 'LINK_PAGO' ? (quoteData.link_pago_variant || 'link_pago') : quoteData.link_pago_variant,
+                          include_tokenizador: false,
+                          include_link_pago: false,
+                          lp_standalone: value === 'LINK_PAGO',
+                          servicio_express: value === 'LINK_PAGO' ? false : quoteData.servicio_express,
                           medios_pago_items: [], 
                           pricing_model: isPGLike ? 'conventional' : (isMposLike ? 'outsourcing' : ''),
                           requires_vpn: false,
@@ -357,7 +363,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                         setPgTransactionRange(null);
                         setPgShowRecurringTable(false);
                         setPgFilteredProducts([]);
-                        if (isPGLike) {
+                        if (value === 'GATEWAY') {
                           const pjService = serviceCatalog.find(s => s.gateway_enabled && s.name?.toLowerCase().includes('persona jur'));
                           const pjCost = pjService?.setup_cost_outsourcing || pgDefaults?.costo || 240;
                           setPgSetupItems([{
@@ -860,8 +866,11 @@ export const QuoteWizardDialog = ({ ctx }) => {
                       )}
                     </div>
                     )}
-                    {(isVPOS || isMPOS || isPaymentGateway) && (
+                    {(isVPOS || isMPOS || (isPaymentGateway && !isLpStandalone)) && (
                       <ExpressServiceToggle quoteData={quoteData} setQuoteData={setQuoteData} expressService={expressService} />
+                    )}
+                    {quoteData.quote_type === 'GATEWAY' && (
+                      <PgAdditionalServicesToggles quoteData={quoteData} setQuoteData={setQuoteData} />
                     )}
                   </div>
                 </div>
@@ -1266,7 +1275,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
               )}
 
               {/* ====== SECCIÓN PG: Setup de Payment Gateway ====== */}
-              {isPaymentGateway && isHeaderComplete && (
+              {isPaymentGateway && !isLpStandalone && isHeaderComplete && (
                 <div className="bg-white rounded-lg p-5 border mt-4">
                   <h3 className="font-semibold text-lg text-slate-800 mb-4 flex items-center gap-2">
                     <span className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm">2</span>
@@ -1385,7 +1394,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
               )}
 
               {/* ====== SECCIÓN PG: Costos Recurrentes ====== */}
-              {isPaymentGateway && isHeaderComplete && pgRecurringCostsTable && (
+              {isPaymentGateway && !isLpStandalone && isHeaderComplete && pgRecurringCostsTable && (
                 <div className="bg-white rounded-lg p-5 border mt-4">
                   <h3 className="font-semibold text-lg text-slate-800 mb-4 flex items-center gap-2">
                     <span className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm">3</span>
@@ -2530,7 +2539,10 @@ export const QuoteWizardDialog = ({ ctx }) => {
               )}
 
               {/* Botones de acción para Payment Gateway */}
-              {isPaymentGateway && isHeaderComplete && pgSetupItems.length > 0 && (
+              {isLpStandalone && isHeaderComplete && (
+                <LpStandaloneSummary variant={quoteData.link_pago_variant || 'link_pago'} onChangeVariant={() => setLinkPagoModal(true)} />
+              )}
+              {isPaymentGateway && isHeaderComplete && (pgSetupItems.length > 0 || isLpStandalone) && (
                 <div className="bg-white rounded-lg p-5 border mt-4">
                   <ProjectFeaturesField
                     value={quoteData.notes}
@@ -2615,14 +2627,14 @@ export const QuoteWizardDialog = ({ ctx }) => {
               <DialogHeader>
                 <DialogTitle>¿Qué tipo de cotización desea generar?</DialogTitle>
                 <DialogDescription>
-                  Esta selección determina la estructura de tarifas del PDF final.
+                  Solo para clientes con Payment Gateway activo: el PDF incluirá únicamente las tarifas del servicio elegido, sin conceptos de Payment Gateway.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-2 py-2">
                 {[
-                  { id: 'link_pago', label: 'Link de Pago', desc: 'Tarifas de Link de Pago (5 páginas).' },
-                  { id: 'tokenizador', label: 'Tokenizador', desc: 'Reemplaza las tarifas por las del Tokenizador (5 páginas).' },
-                  { id: 'ambos', label: 'Link de Pago/Tokenizador', desc: 'Incluye ambas tablas de tarifas (6 páginas).' },
+                  { id: 'link_pago', label: 'Link de Pago', desc: 'Solo las tarifas de Link de Pago.' },
+                  { id: 'tokenizador', label: 'Tokenizador', desc: 'Solo las tarifas del Tokenizador.' },
+                  { id: 'ambos', label: 'Link de Pago/Tokenizador', desc: 'Tarifas de Link de Pago y Tokenizador.' },
                 ].map((opt) => {
                   const active = (quoteData.link_pago_variant || 'link_pago') === opt.id;
                   return (

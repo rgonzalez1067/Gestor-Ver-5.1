@@ -194,6 +194,9 @@ export const Quotes = () => {
     // Cliente exento de IVA (radio Sí/No)
     iva_exempt: false,
     servicio_express: false,
+    include_tokenizador: false,
+    include_link_pago: false,
+    lp_standalone: false,
   });
   
   // Estado para agregar nuevo medio de pago
@@ -1146,6 +1149,9 @@ export const Quotes = () => {
       sponsoring_processor_name: '',
       iva_exempt: false,
     servicio_express: false,
+    include_tokenizador: false,
+    include_link_pago: false,
+    lp_standalone: false,
     });
     setSelectedBankId('');
     setSelectedMedioPagoId('');
@@ -1830,6 +1836,9 @@ export const Quotes = () => {
       sponsor_processor_id: quoteData.sponsor_processor_id || null,
       quote_type: quoteData.quote_type,
       link_pago_variant: quoteData.link_pago_variant || 'link_pago',
+      include_tokenizador: quoteData.quote_type === 'GATEWAY' && !!quoteData.include_tokenizador,
+      include_link_pago: quoteData.quote_type === 'GATEWAY' && !!quoteData.include_link_pago,
+      lp_standalone: quoteData.quote_type === 'LINK_PAGO' && !!quoteData.lp_standalone,
       pricing_model: quoteData.pricing_model,
       cantidad_cajas: quoteData.cantidad_cajas || 1,
       quote_number: quoteNumber || '',
@@ -1927,7 +1936,8 @@ export const Quotes = () => {
   };
 
   const handleSubmitPGQuote = async () => {
-    if (pgSetupItems.length === 0) {
+    const isLpStandalone = quoteData.quote_type === 'LINK_PAGO' && !!quoteData.lp_standalone;
+    if (!isLpStandalone && pgSetupItems.length === 0) {
       toast.error('Agregue al menos un concepto de setup');
       return;
     }
@@ -1964,10 +1974,13 @@ export const Quotes = () => {
         integrator_app_name: quoteData.integrator_app_name,
         cantidad_cajas: 1,
         cantidad_bancos: 1,
-        pg_setup_items: pgSetupItems.map(({ fixed, ...item }) => item), // Remove fixed flag
+        pg_setup_items: isLpStandalone ? [] : pgSetupItems.map(({ fixed, ...item }) => item), // Remove fixed flag
         servicio_express: !!quoteData.servicio_express,
-        pg_recurring_cost: recurringData,
-        pg_transaction_range: pgMediosPagoCount,
+        include_tokenizador: quoteData.quote_type === 'GATEWAY' && !!quoteData.include_tokenizador,
+        include_link_pago: quoteData.quote_type === 'GATEWAY' && !!quoteData.include_link_pago,
+        lp_standalone: quoteData.quote_type === 'LINK_PAGO' && !!quoteData.lp_standalone,
+        pg_recurring_cost: isLpStandalone ? null : recurringData,
+        pg_transaction_range: isLpStandalone ? 0 : pgMediosPagoCount,
         // Mismo payload de PDF que Previsualizar/Exportar → PDF idéntico (incluye
         // tabla de recurrentes, setup por medio de pago/banco, resumen, etc.)
         pdf_data: buildTemplatePdfData('')
@@ -2266,6 +2279,9 @@ export const Quotes = () => {
         // Cliente exento de IVA
         iva_exempt: !!quoteData.iva_exempt,
         servicio_express: !!quoteData.servicio_express,
+        include_tokenizador: quoteData.quote_type === 'GATEWAY' && !!quoteData.include_tokenizador,
+        include_link_pago: quoteData.quote_type === 'GATEWAY' && !!quoteData.include_link_pago,
+        lp_standalone: quoteData.quote_type === 'LINK_PAGO' && !!quoteData.lp_standalone,
         // Total USD = Total Setup Neto + Equipment (calculado por el wizard)
         override_total_usd: totalNetoSetup + ftHardwareSubtotal,
         descuento_setup: quoteData.descuento_setup || 0,
@@ -3883,6 +3899,9 @@ export const Quotes = () => {
       sponsoring_processor_name: quote.sponsoring_processor_name || '',
       iva_exempt: !!quote.iva_exempt,
       servicio_express: !!quote.servicio_express || (quote.pg_setup_items || []).some(i => i.express),
+      include_tokenizador: !!quote.include_tokenizador,
+      include_link_pago: !!quote.include_link_pago,
+      lp_standalone: !!quote.lp_standalone,
     });
     
     // Load PG data if it's a Payment Gateway / Link de Pago quote
@@ -4098,6 +4117,9 @@ export const Quotes = () => {
         // Cliente exento de IVA
         iva_exempt: !!quoteData.iva_exempt,
         servicio_express: !!quoteData.servicio_express,
+        include_tokenizador: quoteData.quote_type === 'GATEWAY' && !!quoteData.include_tokenizador,
+        include_link_pago: quoteData.quote_type === 'GATEWAY' && !!quoteData.include_link_pago,
+        lp_standalone: quoteData.quote_type === 'LINK_PAGO' && !!quoteData.lp_standalone,
       });
       
       toast.success(editMode === 'in_place'
