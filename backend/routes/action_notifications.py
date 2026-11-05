@@ -38,7 +38,7 @@ BUSINESS_TYPES = [
 
 PRODUCT_SUBCATEGORIES = [
     {"id": "vpos", "label": "VPOS"},
-    {"id": "mpos_tablet", "label": "MPOS Tablet"},
+    {"id": "mpos_tablet", "label": "MPOS"},
     {"id": "mpos_imple_pos", "label": "MPOS Imple+POS"},
     {"id": "payment_gateway", "label": "Payment Gateway"},
     {"id": "link_pago", "label": "Link de Pago"},
@@ -82,7 +82,7 @@ ALLOWED_ACTIONS_BY_BIZ_SUB = {
         "send_to_client", "approve", "invoice", "collect", "send_to_implementation",
     ],
     ("implementacion_pyme", "mpos_tablet"): [
-        "send_to_client", "approve", "invoice", "collect", "send_to_implementation",
+        "send_to_client", "approve", "invoice", "collect", "send_to_implementation", "configure",
     ],
     ("implementacion_pyme", "payment_gateway"): [
         "send_to_client", "approve", "invoice", "collect", "send_to_implementation",
@@ -98,7 +98,7 @@ ALLOWED_ACTIONS_BY_BIZ_SUB = {
         "send_to_client", "approve", "invoice", "collect", "send_to_implementation",
     ],
     ("implementacion_corp", "mpos_tablet"): [
-        "send_to_client", "approve", "invoice", "collect", "send_to_implementation",
+        "send_to_client", "approve", "invoice", "collect", "send_to_implementation", "configure",
     ],
     ("implementacion_corp", "payment_gateway"): [
         "send_to_client", "approve", "invoice", "collect", "send_to_implementation",

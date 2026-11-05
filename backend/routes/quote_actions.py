@@ -1020,6 +1020,70 @@ async def approve_quote(
     }
 
 
+def is_mpos_license(quote: dict) -> bool:
+    """Cotización MPOS (sin equipos): flujo VPOS + Configuración tras Enviar a Imple."""
+    return (quote.get("quote_category") or "implementation") == "implementation" \
+        and (quote.get("quote_type") or "").upper() == "MPOS" \
+        and "IMPLE" not in (quote.get("sub_quote_type") or "").upper()
+
+
+async def _configure_mpos_license(quote: dict, current_user: dict, custom_message, additional_recipients, manual_attachment_ids):
+    quote_id = quote["quote_id"]
+    if not quote.get("sent_to_implementation_at"):
+        raise HTTPException(status_code=400, detail="Primero debe Enviar a Implementación antes de marcar la cotización MPOS como Configurada")
+    now = datetime.now(timezone.utc).isoformat()
+    await db.quotes.update_one({"quote_id": quote_id}, {"$set": {"quote_status": "Configurada", "configured_at": now, "updated_at": now}})
+    quote.update({"quote_status": "Configurada", "configured_at": now})
+
+    client = await db.clients.find_one({"client_id": quote.get("client_id")}, {"_id": 0}) or {}
+    client_name = client.get("fantasy_name") or client.get("legal_name") or "Cliente"
+    quote["client_name"] = client_name
+    quote["client_rif"] = client.get("rif", "N/A")
+    cc_emails = [e.strip() for e in (additional_recipients or "").split(",") if e.strip() and "@" in e.strip()]
+    _manual_attachments = await _resolve_manual_attachments(manual_attachment_ids)
+
+    email_results = await _engine_or_legacy(
+        "configure", quote, current_user,
+        custom_message=custom_message, cc_emails=cc_emails,
+        extra_attachments=_manual_attachments or None,
+    )
+    if email_results is None:
+        email_results = []
+        creator = await db.users.find_one({"user_id": quote.get("created_by_user_id")}, {"_id": 0, "first_name": 1, "last_name": 1, "email": 1}) if quote.get("created_by_user_id") else None
+        seller_email = (creator or {}).get("email")
+        seller_name = f"{(creator or {}).get('first_name', '')} {(creator or {}).get('last_name', '')}".strip()
+        subject = f"Cotización MPOS Configurada - {quote.get('quote_number', '')} - {client_name}"
+        html = f'''<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:700px;margin:0 auto;">
+<div style="background:#003366;color:#fff;padding:18px 28px;border-radius:6px 6px 0 0;"><h2 style="margin:0;font-size:18px;">Cotización MPOS Configurada</h2></div>
+<div style="padding:24px 28px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 6px 6px;">
+<p>Hola {seller_name or 'equipo'}, la configuración de la siguiente cotización MPOS fue completada y la cotización pasó al Histórico.</p>
+<table style="border-collapse:collapse;width:100%;max-width:500px;margin:16px 0;">
+<tr style="background:#f8fafc;"><td style="padding:10px 16px;border:1px solid #e2e8f0;font-weight:bold;color:#475569;width:40%;">Cotización</td><td style="padding:10px 16px;border:1px solid #e2e8f0;">{quote.get("quote_number", "")}</td></tr>
+<tr><td style="padding:10px 16px;border:1px solid #e2e8f0;font-weight:bold;color:#475569;">Cliente</td><td style="padding:10px 16px;border:1px solid #e2e8f0;">{client_name}</td></tr>
+<tr style="background:#f8fafc;"><td style="padding:10px 16px;border:1px solid #e2e8f0;font-weight:bold;color:#475569;">Proyecto</td><td style="padding:10px 16px;border:1px solid #e2e8f0;">{quote.get("project_number", "N/A")}</td></tr>
+</table></div></div>'''
+        if custom_message and custom_message.strip():
+            user_name = f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip()
+            html = inject_custom_message(html, custom_message, user_name, max_chars=1500)
+        sender = await resolve_sender_for_quote(quote)
+        for to in ([seller_email] if seller_email else []) + cc_emails:
+            email_results.append(await send_email(to=[to], subject=subject, html=html, action="configure_mpos_seller", quote_id=quote_id, quote_number=quote.get("quote_number"), attachments=_manual_attachments or None, sender=sender))
+
+    try:
+        from routes.quote_history import archive_quote_to_history
+        await archive_quote_to_history(quote_id, "status_configurada", current_user)
+    except Exception as e:
+        logger.error(f"Error archivando cotización MPOS {quote_id} al histórico: {e}")
+
+    return {
+        "message": "Cotización MPOS configurada y enviada al Histórico. Se notificó al vendedor.",
+        "quote_id": quote_id,
+        "new_status": "Configurada",
+        "archived": True,
+        "emails": email_results,
+    }
+
+
 @router.post("/quotes/{quote_id}/configure")
 async def configure_quote(quote_id: str, authorization: Optional[str] = Header(None), custom_message: Optional[str] = Header(None, alias="x-custom-message"), additional_recipients: Optional[str] = Header(None, alias="x-additional-recipients"), manual_attachment_ids: Optional[str] = Header(None, alias="x-manual-attachment-ids")):
     """Marcar cotización Fast Track como Configurada y notificar a Administración para facturar."""
@@ -1029,8 +1093,10 @@ async def configure_quote(quote_id: str, authorization: Optional[str] = Header(N
     if not quote:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
 
+    if is_mpos_license(quote):
+        return await _configure_mpos_license(quote, current_user, custom_message, additional_recipients, manual_attachment_ids)
     if quote.get("quote_category") != "fast_track":
-        raise HTTPException(status_code=400, detail="Esta acción solo aplica a cotizaciones MPOS (Imple + POS)")
+        raise HTTPException(status_code=400, detail="Esta acción solo aplica a cotizaciones MPOS")
 
     # NOTA: las cotizaciones MPOS (Imple + POS / fast_track) tienen un flujo
     # particular; la acción "Configuración" NO debe bloquearse por el estado
@@ -1644,6 +1710,8 @@ async def send_quote_to_implementation(quote_id: str, body: Optional[SendToImple
     if not quote:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
     
+    if is_mpos_license(quote) and quote.get("sent_to_implementation_at"):
+        raise HTTPException(status_code=400, detail="Esta cotización MPOS ya fue enviada a Implementación")
     current_status = quote.get("quote_status", "Borrador")
     # MPOS (Imple + POS / fast_track): el flujo institucional es
     # Aprobada → (Preasign) → Configurada → Enviar a Implementación → Entregada,
@@ -1740,7 +1808,7 @@ async def send_quote_to_implementation(quote_id: str, body: Optional[SendToImple
 
     # PASO 4: Crear Proyecto PRIMERO (transaccional a nivel de aplicación)
     # Si falla, NO se envía email ni se modifica la cotización
-    is_mpos_fast_track = (quote.get("quote_category") == "fast_track")
+    is_mpos_fast_track = (quote.get("quote_category") == "fast_track") or is_mpos_license(quote)
     try:
         quote_for_project = await db.quotes.find_one({"quote_id": quote_id}, {"_id": 0})
         if not quote_for_project:

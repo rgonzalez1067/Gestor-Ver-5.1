@@ -255,7 +255,7 @@ async def generate_quote_pdf_buffer(quote: dict, client: dict) -> io.BytesIO:
         'VPOS': 'VPOS/MPOS (Cajas y Tablet)',
         'VPOS_MPOS': 'VPOS/MPOS (Cajas y Tablet)',
         'GATEWAY': 'Payment Gateway',
-        'MPOS': 'VPOS/MPOS (Cajas y Tablet)',
+        'MPOS': 'MPOS',
         'LINK': 'Link de Pago'
     }
     

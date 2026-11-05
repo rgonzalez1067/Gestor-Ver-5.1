@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import QuoteStatusStepper from './QuoteStatusStepper';
+import QuoteStatusStepper, { isMposLicense } from './QuoteStatusStepper';
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { getEffectiveStatus as getEffectiveStatusShared, quoteMatchesFilters } from './quoteStatus';
@@ -40,6 +40,25 @@ const getQuoteTypeName = (type, variant) => {
     return LINK_VARIANT_LABELS[String(variant).toLowerCase()];
   }
   return map[type] || type || 'N/A';
+};
+
+const MposConfigureItem = ({ quote, meta, onConfigure }) => {
+  if (meta.hidden) return null;
+  const notSent = !quote.sent_to_implementation_at;
+  const isDisabled = notSent || meta.disabled;
+  return (
+    <DropdownMenuItem
+      onSelect={() => !isDisabled && onConfigure(quote.quote_id)}
+      disabled={isDisabled}
+      title={notSent ? 'Primero debe Enviar a Implementación' : (meta.tooltip || '')}
+      className={`cursor-pointer ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      data-testid={`configure-mpos-btn-${quote.quote_id}`}>
+      <Settings size={16} className={`mr-2 ${isDisabled ? 'text-slate-400' : 'text-indigo-600'}`} />
+      {meta.label}
+      {!isDisabled && <span className="ml-auto text-xs text-indigo-500">&#x25CF;</span>}
+      {notSent && <span className="ml-auto text-[9px] bg-amber-100 text-amber-700 px-1 rounded">Enviar a Imple primero</span>}
+    </DropdownMenuItem>
+  );
 };
 
 export const QuotesTable = ({
@@ -269,6 +288,7 @@ export const QuotesTable = ({
             const isEquipment = quote.quote_category === 'equipment';
             const isRepair = quote.quote_category === 'repair';
             const isFastTrack = quote.quote_category === 'fast_track';
+            const isMposLic = isMposLicense(quote);
             // Modo Operaciones (Feb 2026, ajuste Iter36):
             // La restricción de "solo Configuración" para usuarios del Departamento
             // de Operaciones aplica EXCLUSIVAMENTE a cotizaciones MPOS (Imple+POS)
@@ -674,12 +694,18 @@ export const QuotesTable = ({
                         )}
                         {canEditNonConfig && (isEquipment || isRepair || isFastTrack) && renderAnchoredCustomActions(quote, 'deliver', customByAnchor)}
                         {canEditNonConfig && (!isEquipment && !isRepair && !isFastTrack) && (
-                          <DropdownMenuItem onSelect={() => onSendToImplementation(quote.quote_id)} className="cursor-pointer">
+                          <DropdownMenuItem onSelect={() => !(isMposLic && quote.sent_to_implementation_at) && onSendToImplementation(quote.quote_id)}
+                            disabled={isMposLic && !!quote.sent_to_implementation_at}
+                            className="cursor-pointer" data-testid={`send-to-impl-btn-${quote.quote_id}`}>
                             <Send size={16} className="mr-2 text-amber-500" /> Enviar a Implementación
-                            {isFastTrack && !quote.delivered_at && <span className="ml-auto text-[9px] bg-amber-100 text-amber-700 px-1 rounded">Entregar primero</span>}
+                            {quote.sent_to_implementation_at && <span className="ml-auto text-xs text-amber-500">&#10003;</span>}
                           </DropdownMenuItem>
                         )}
                         {canEditNonConfig && (!isEquipment && !isRepair && !isFastTrack) && renderAnchoredCustomActions(quote, 'send_to_implementation', customByAnchor)}
+                        {canEdit && isMposLic && (
+                          <MposConfigureItem quote={quote} meta={getActionMeta(quote, 'configure', 'Configuración')} onConfigure={onConfigure} />
+                        )}
+                        {canEdit && isMposLic && renderAnchoredCustomActions(quote, 'configure', customByAnchor)}
                         <DropdownMenuSeparator />
                         {/* ── ACCIONES PERSONALIZADAS SIN ANCLA (Fase A) ── */}
                         {(() => {

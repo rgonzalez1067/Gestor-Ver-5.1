@@ -36,7 +36,19 @@ const FLOWS = {
     { key: 'Pagada', label: 'Pagada', ts: 'paid_at' },
     { key: 'Enviada a Imple', label: 'Imple.', ts: 'sent_to_implementation_at' },
   ],
+  mpos: [
+    { key: 'Enviada', label: 'Enviada', ts: 'sent_to_client_at' },
+    { key: 'Aprobada', label: 'Aprobada', ts: 'approved_at' },
+    { key: 'Facturada', label: 'Factura', ts: 'invoiced_at' },
+    { key: 'Pagada', label: 'Pagada', ts: 'paid_at' },
+    { key: 'Enviada a Imple', label: 'Imple.', ts: 'sent_to_implementation_at' },
+    { key: 'Configurada', label: 'Config.', ts: 'configured_at' },
+  ],
 };
+
+export const isMposLicense = (q) => (q?.quote_category || 'implementation') === 'implementation'
+  && (q?.quote_type || '').toUpperCase() === 'MPOS'
+  && !(q?.sub_quote_type || '').toUpperCase().includes('IMPLE');
 
 const ACTION_NAMES = {
   approve: 'Aprobación', invoice: 'Factura / Proforma',
@@ -102,7 +114,7 @@ function formatStepDate(isoDate) {
 
 const QuoteStatusStepper = memo(function QuoteStatusStepper({ quote, onOpenBitacoraFlujo, customActions = [] }) {
   const cat = quote.quote_category || 'implementation';
-  const baseSteps = FLOWS[cat] || FLOWS.implementation;
+  const baseSteps = isMposLicense(quote) ? FLOWS.mpos : (FLOWS[cat] || FLOWS.implementation);
   const exec = quote.custom_actions_executed || {};
 
   // Inyectar custom actions del catálogo como pasos extra.

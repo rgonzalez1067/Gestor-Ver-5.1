@@ -1418,7 +1418,7 @@ async def generate_quote_pdf_from_data(data: QuotePDFRequest, authorization: Opt
         'FAST_TRACK': 'POS Stand Alone (Fast Track)',
         'VPOS_MPOS': 'VPOS/MPOS',
         'GATEWAY': 'Payment Gateway',
-        'MPOS': 'VPOS/MPOS (Cajas y Tablet)',
+        'MPOS': 'MPOS',
         'LINK': 'Link de Pago',
         'LINK_PAGO': 'Link de Pago'
     }

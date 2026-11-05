@@ -2469,7 +2469,7 @@ export const Quotes = () => {
 
   const getQuoteTypeName = (typeId) => {
     if (typeId === 'VPOS') return 'VPOS (Cajas)';
-    if (typeId === 'MPOS') return 'MPOS (Tablet/Móvil)';
+    if (typeId === 'MPOS') return 'MPOS';
     if (typeId === 'FAST_TRACK') return 'MPOS (Imple + POS)';
     if (typeId === 'VPOS_MPOS') return 'VPOS/MPOS';
     const type = QUOTE_TYPES.find(t => t.id === typeId);
@@ -3158,7 +3158,8 @@ export const Quotes = () => {
     let inferred = 'pos_fast_track';
     if (qt === 'VPOS') inferred = 'vpos_mpos';
     else if (qt === 'GATEWAY' || qt === 'LINK') inferred = 'payment_gateway';
-    else if (qt === 'MPOS' || qt === 'FAST_TRACK') inferred = 'pos_fast_track';
+    else if (qt === 'MPOS') inferred = 'vpos_mpos';
+    else if (qt === 'FAST_TRACK') inferred = 'pos_fast_track';
     // Ejecutamos la selección a continuación. Pasamos `quoteId` EXPLÍCITO para
     // evitar el stale closure de `multistoreQuoteId` (setState asíncrono no
     // está committed cuando dispara el setTimeout). Fix iter37.
