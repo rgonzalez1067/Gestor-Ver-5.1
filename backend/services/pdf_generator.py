@@ -1391,6 +1391,26 @@ class DynamicQuotePDFGenerator:
         for col in CORP_COLUMNS:
             total_by_col[col] = setup_by_corp[col] + recurring_by_corp[col]
         grand_total = total_setup + total_recurring
+
+        # VPOS / VPOS MultiRIF Corp: montos netos (post-descuento) + columna Costo Unitario por Caja.
+        unit_mode = (self.data.quote_type or '').upper() == 'VPOS'
+        _sp = (getattr(self.data, 'descuento_setup', 0) or 0) or (getattr(self.data, 'descuento', 0) or 0)
+        _rp = (getattr(self.data, 'descuento_recurrente', 0) or 0) or (getattr(self.data, 'descuento', 0) or 0)
+        net_applied = unit_mode and (_sp > 0 or _rp > 0)
+        if unit_mode:
+            show_setup = {c: v * (1 - _sp / 100.0) for c, v in setup_by_corp.items()}
+            show_rec = {c: v * (1 - _rp / 100.0) for c, v in recurring_by_corp.items()}
+        else:
+            show_setup, show_rec = dict(setup_by_corp), dict(recurring_by_corp)
+        show_total_setup = sum(show_setup.values())
+        show_total_rec = sum(show_rec.values())
+        show_by_col = {c: show_setup[c] + show_rec[c] for c in CORP_COLUMNS}
+        show_grand = show_total_setup + show_total_rec
+        if getattr(self.data, 'is_multirif', False) and self.data.multirif_distribution:
+            total_cajas = sum(int(d.get('boxes') or 0) for d in self.data.multirif_distribution)
+        else:
+            total_cajas = int(self.data.cantidad_cajas or 0)
+        total_cajas = total_cajas or 1
         
         # Construir tabla: Header con agrupación
         # Fila 0 (encabezado principal):  Concepto | Hardware y Software | Consultoría (colspan 2) | Total
@@ -1428,34 +1448,41 @@ class DynamicQuotePDFGenerator:
         # Data rows
         row_setup = [
             Paragraph("Set-up", label_style),
-            Paragraph(f"${setup_by_corp['Derecho de Uso']:,.2f}", cell_style),
-            Paragraph(f"${setup_by_corp['Infraestructura']:,.2f}", cell_style),
-            Paragraph(f"${setup_by_corp['Apoyo Técnico']:,.2f}", cell_style),
-            Paragraph(f"${setup_by_corp['Soporte y Monitoreo']:,.2f}", cell_style),
-            Paragraph(f"${total_setup:,.2f}", cell_bold_style),
+            Paragraph(f"${show_setup['Derecho de Uso']:,.2f}", cell_style),
+            Paragraph(f"${show_setup['Infraestructura']:,.2f}", cell_style),
+            Paragraph(f"${show_setup['Apoyo Técnico']:,.2f}", cell_style),
+            Paragraph(f"${show_setup['Soporte y Monitoreo']:,.2f}", cell_style),
+            Paragraph(f"${show_total_setup:,.2f}", cell_bold_style),
         ]
 
         row_recurring = [
             Paragraph("* Recurrentes", label_style),
-            Paragraph(f"${recurring_by_corp['Derecho de Uso']:,.2f}", cell_style),
-            Paragraph(f"${recurring_by_corp['Infraestructura']:,.2f}", cell_style),
-            Paragraph(f"${recurring_by_corp['Apoyo Técnico']:,.2f}", cell_style),
-            Paragraph(f"${recurring_by_corp['Soporte y Monitoreo']:,.2f}", cell_style),
-            Paragraph(f"${total_recurring:,.2f}", cell_bold_style),
+            Paragraph(f"${show_rec['Derecho de Uso']:,.2f}", cell_style),
+            Paragraph(f"${show_rec['Infraestructura']:,.2f}", cell_style),
+            Paragraph(f"${show_rec['Apoyo Técnico']:,.2f}", cell_style),
+            Paragraph(f"${show_rec['Soporte y Monitoreo']:,.2f}", cell_style),
+            Paragraph(f"${show_total_rec:,.2f}", cell_bold_style),
         ]
 
         row_total = [
             Paragraph("<b>Total</b>", ParagraphStyle('CorpTotalLabel', fontName='Helvetica-Bold', fontSize=10, textColor=colors.white)),
-            Paragraph(f"<b>${total_by_col['Derecho de Uso']:,.2f}</b>", ParagraphStyle('CorpTotalCell', fontName='Helvetica-Bold', fontSize=9, textColor=colors.white, alignment=2)),
-            Paragraph(f"<b>${total_by_col['Infraestructura']:,.2f}</b>", ParagraphStyle('CorpTotalCellInfra', fontName='Helvetica-Bold', fontSize=9, textColor=colors.white, alignment=2)),
-            Paragraph(f"<b>${total_by_col['Apoyo Técnico']:,.2f}</b>", ParagraphStyle('CorpTotalCell2', fontName='Helvetica-Bold', fontSize=9, textColor=colors.white, alignment=2)),
-            Paragraph(f"<b>${total_by_col['Soporte y Monitoreo']:,.2f}</b>", ParagraphStyle('CorpTotalCell3', fontName='Helvetica-Bold', fontSize=9, textColor=colors.white, alignment=2)),
-            Paragraph(f"<b>${grand_total:,.2f}</b>", ParagraphStyle('CorpGrandTotal', fontName='Helvetica-Bold', fontSize=10, textColor=colors.white, alignment=2)),
+            Paragraph(f"<b>${show_by_col['Derecho de Uso']:,.2f}</b>", ParagraphStyle('CorpTotalCell', fontName='Helvetica-Bold', fontSize=9, textColor=colors.white, alignment=2)),
+            Paragraph(f"<b>${show_by_col['Infraestructura']:,.2f}</b>", ParagraphStyle('CorpTotalCellInfra', fontName='Helvetica-Bold', fontSize=9, textColor=colors.white, alignment=2)),
+            Paragraph(f"<b>${show_by_col['Apoyo Técnico']:,.2f}</b>", ParagraphStyle('CorpTotalCell2', fontName='Helvetica-Bold', fontSize=9, textColor=colors.white, alignment=2)),
+            Paragraph(f"<b>${show_by_col['Soporte y Monitoreo']:,.2f}</b>", ParagraphStyle('CorpTotalCell3', fontName='Helvetica-Bold', fontSize=9, textColor=colors.white, alignment=2)),
+            Paragraph(f"<b>${show_grand:,.2f}</b>", ParagraphStyle('CorpGrandTotal', fontName='Helvetica-Bold', fontSize=10, textColor=colors.white, alignment=2)),
         ]
+
+        if unit_mode:
+            row_header.append(Paragraph("<b>Costo Unitario<br/>por Caja</b>", subheader_style))
+            row_subheader.append('')
+            row_setup.append(Paragraph(f"${show_total_setup / total_cajas:,.2f}", cell_style))
+            row_recurring.append(Paragraph(f"${show_total_rec / total_cajas:,.2f}", cell_style))
+            row_total.append(Paragraph("<b>-</b>", ParagraphStyle('CorpUnitTotal', fontName='Helvetica-Bold', fontSize=9, textColor=colors.white, alignment=1)))
 
         table_data = [row_header, row_subheader, row_setup, row_recurring, row_total]
 
-        col_widths = [78, 82, 82, 88, 88, 72]
+        col_widths = [76, 72, 84, 70, 72, 62, 72] if unit_mode else [78, 82, 82, 88, 88, 72]
         table = Table(table_data, colWidths=col_widths)
 
         COLOR_AMARILLO = colors.HexColor("#F59E0B")
@@ -1484,6 +1511,7 @@ class DynamicQuotePDFGenerator:
             # Highlight grand total cell in yellow (col 5)
             ('BACKGROUND', (5, 4), (5, 4), COLOR_AMARILLO),
             ('TEXTCOLOR', (5, 4), (5, 4), colors.HexColor("#1E293B")),
+        ] + ([('SPAN', (6, 0), (6, 1)), ('BACKGROUND', (6, 0), (6, 1), self.COLOR_AZUL)] if unit_mode else []) + [
 
             # Grid
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
@@ -1500,6 +1528,10 @@ class DynamicQuotePDFGenerator:
         nota_style = ParagraphStyle('CorpNota', fontName='Helvetica', fontSize=8, textColor=colors.HexColor("#DC2626"), leading=10)
         elements.append(Paragraph("Montos no incluyen IVA", nota_style))
         elements.append(Spacer(1, 8))
+        if net_applied:
+            elements.append(Paragraph("Montos con descuento aplicado", ParagraphStyle(
+                'CorpNotaDesc', fontName='Helvetica-Bold', fontSize=8, textColor=colors.HexColor('#16A34A'), leading=10)))
+            elements.append(Spacer(1, 8))
         
         nota_amarillo_style = ParagraphStyle('CorpNotaAmarillo', fontName='Helvetica', fontSize=8, textColor=self.COLOR_TEXTO, leading=10)
         elements.append(Paragraph(

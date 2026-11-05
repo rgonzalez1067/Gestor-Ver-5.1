@@ -4697,3 +4697,9 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Archivos: pdf_generator.py (_insert_anexos_before_terms, _lp_standalone_body, _pg_terms_elements), routes/quotes.py, models.py, quote_transitions.py, PgAdditionalServices.jsx, QuoteWizardDialog.jsx, Quotes.jsx.
 - Probado: iteration_363.json (15/15 backend, frontend OK).
 - Pendiente conocido (anterior a este cambio): "Modificar" en PG/LP siempre crea una nueva versión aunque se elija mantener la original.
+
+## 2026-06 — Tabla "Costos de Implementación" Corp (VPOS y VPOS MultiRIF)
+- `_create_corp_financial_summary` (pdf_generator.py): solo si quote_type == VPOS, las celdas muestran montos netos (Setup × (1−desc_setup), Recurrentes × (1−desc_rec)). Nueva última columna "Costo Unitario por Caja" = neto de la fila ÷ total de cajas (en MultiRIF, suma de boxes de multirif_distribution). La fila Total muestra "-". Con descuento se agrega la nota "Montos con descuento aplicado".
+- El bloque "Resumen de Descuento y Total Neto a Pagar" queda igual (usa el bruto). MPOS / FAST_TRACK Corp sin cambios.
+- Verificado con /app/memory/scripts/check_corp_unit.py y el endpoint preview-pdf-with-template ($80 −10% → $72; 4 cajas → $18).
+- ⚠️ Los tests antiguos en backend/tests usan claves viejas y BLOQUEAN al admin; para desbloquear: python /app/memory/scripts/unlock_admins.py

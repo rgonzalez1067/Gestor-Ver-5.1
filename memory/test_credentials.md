@@ -114,3 +114,6 @@ Admin (toggle cualquiera): rgonzalez@megasoft.com.ve / Mega2026*
 Proyectos de referencia: CORP=prj_ad1bb4bd314e, PYME=prj_826643491b64
 
 - Nota (2026-11-03): PREVIEW — rgonzalez y dcollazo@megasoft.com.ve con clave Mega2026* (tras restore de Backup Center que revirtió hashes). Login verificado.
+
+## ⚠️ Nota (Jun 2026)
+Muchos tests antiguos de /app/backend/tests usan "Mega2026*" y bloquean a rgonzalez tras 5 intentos. Desbloquear con: python /app/memory/scripts/unlock_admins.py
