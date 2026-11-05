@@ -9,6 +9,7 @@ import logging
 import io
 import os
 
+from services.audit_trail import set_audit_user
 from config import db, get_current_user, get_resend_api_key, hash_password, verify_password, UPLOADS_DIR, SENDER_EMAIL, RESEND_AVAILABLE, generate_quote_number, append_vpos_static_pages, append_pg_static_pages, render_email_template
 from models import *
 import secrets
@@ -291,6 +292,8 @@ async def login_user(credentials: UserLogin):
 
     # Buscar usuario
     user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
+    if user:
+        set_audit_user(user)
     if not user:
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     
@@ -412,6 +415,8 @@ async def verify_two_factor(data: TwoFactorVerify):
     from services.security_policy import verify_2fa, get_policy, expiry_info
     user_id = await verify_2fa(data.challenge_id, data.code)
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if user:
+        set_audit_user(user)
     resp = await _issue_session(user)
     resp["password_expires_in_days"] = expiry_info(user, await get_policy())["days_left"]
     return resp
@@ -432,6 +437,8 @@ async def change_expired_password(data: ExpiredPasswordChange):
     if not tok or datetime.now(timezone.utc) > datetime.fromisoformat(tok["expires_at"]):
         raise HTTPException(status_code=400, detail="El enlace de cambio expiró. Inicie sesión nuevamente.")
     user = await db.users.find_one({"user_id": tok["user_id"]}, {"_id": 0})
+    if user:
+        set_audit_user(user)
     await validate_new_password(user["user_id"], user.get("password_hash"), data.new_password)
     await record_password_change(user["user_id"], user.get("password_hash"), hash_password(data.new_password))
     await db.password_change_tokens.delete_many({"user_id": user["user_id"]})
@@ -546,6 +553,8 @@ async def get_coordinadores(authorization: Optional[str] = Header(None)):
 async def forgot_password(data: ForgotPasswordRequest):
     """Solicitar restablecimiento de contraseña. Envía email con enlace."""
     user = await db.users.find_one({"email": data.email.lower()}, {"_id": 0})
+    if user:
+        set_audit_user(user)
     # Siempre retornar éxito para no revelar si el email existe
     if not user:
         return {"message": "Si el correo existe, recibirás un enlace de recuperación."}

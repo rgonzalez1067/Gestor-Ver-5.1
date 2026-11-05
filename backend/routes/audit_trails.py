@@ -116,20 +116,26 @@ async def export_audit_trails(
         c.font = Font(bold=True, color="FFFFFF")
         c.fill = PatternFill("solid", fgColor="003366")
     import json
-    async for d in _coll().find(q).sort("fecha_hora", -1).limit(EXPORT_LIMIT):
-        d = _out(d)
-        ws.append([
-            d.get("fecha_hora", ""), d.get("modulo", ""), d.get("entidad", ""), d.get("registro_id", ""), d.get("accion", ""),
-            d.get("usuario_nombre", ""), d.get("usuario_email", ""), d.get("ip_origen", ""), d.get("endpoint", ""),
-            ", ".join(d.get("campos_modificados") or []),
-            json.dumps(d.get("valores_anteriores"), ensure_ascii=False, default=str)[:32000] if d.get("valores_anteriores") is not None else "",
-            json.dumps(d.get("valores_nuevos"), ensure_ascii=False, default=str)[:32000] if d.get("valores_nuevos") is not None else "",
-        ])
-    for col, w in zip("ABCDEFGHIJKL", (22, 20, 20, 26, 10, 24, 28, 16, 36, 40, 60, 60)):
-        ws.column_dimensions[col].width = w
-    buf = io.BytesIO()
-    wb.save(buf)
-    buf.seek(0)
+    import asyncio
+    docs = [_out(d) for d in await _coll().find(q).sort("fecha_hora", -1).limit(EXPORT_LIMIT).to_list(EXPORT_LIMIT)]
+
+    def _build():
+        for d in docs:
+            ws.append([
+                d.get("fecha_hora", ""), d.get("modulo", ""), d.get("entidad", ""), d.get("registro_id", ""), d.get("accion", ""),
+                d.get("usuario_nombre", ""), d.get("usuario_email", ""), d.get("ip_origen", ""), d.get("endpoint", ""),
+                ", ".join(d.get("campos_modificados") or []),
+                json.dumps(d.get("valores_anteriores"), ensure_ascii=False, default=str)[:32000] if d.get("valores_anteriores") is not None else "",
+                json.dumps(d.get("valores_nuevos"), ensure_ascii=False, default=str)[:32000] if d.get("valores_nuevos") is not None else "",
+            ])
+        for col, w in zip("ABCDEFGHIJKL", (22, 20, 20, 26, 10, 24, 28, 16, 36, 40, 60, 60)):
+            ws.column_dimensions[col].width = w
+        out = io.BytesIO()
+        wb.save(out)
+        out.seek(0)
+        return out
+
+    buf = await asyncio.to_thread(_build)
     fname = f"pistas_auditoria_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.xlsx"
     return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                              headers={"Content-Disposition": f'attachment; filename="{fname}"'})

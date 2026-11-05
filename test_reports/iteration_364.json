@@ -1,0 +1,39 @@
+{
+  "summary": "Tested the Audit Trails module (audit_trails) end to end. Backend: 18 of 18 pytest tests pass (tests/test_iter364_audit_trails.py). Verified: (1) CREATE when a PRE quote is created via POST /api/quotes with cli_sin_rif: registro_id=PRE-..., valores_anteriores=null, full snapshot, user, IP, UA and endpoint captured. (2) assign-client PRE→COT creates an UPDATE with client_id and quote_number (old/new values correct, no updated_at). (3) DELETE quote stores the full snapshot, with valores_nuevos=null and campos=null. (4) PUT security-policy gives campos_modificados exactly ['lockout_minutes']; repeating the same PUT creates NO trail. (5) Bank integration: the $push is audited as integrations[<id>]; PUT notes gives campos exactly ['integrations[<id>].notes']; a no-op PUT creates no trail; the DELETE integration is audited. (6) Client CREATE/UPDATE(fantasy_name)/DELETE are all logged. (7) Projects: PUT /api/projects/{id}/priority adds no trails. A unit check also confirmed the AuditedCollection skips writes for /api/projects* and /api/direct-projects* even on audited collections such as quotes. (8) Filters: combined filters, pagination, field and registro work; total and total_all are consistent; detail returns 404 for a bad id; a bad date returns 400; unauthenticated calls are rejected; PUT/DELETE/PATCH/POST on trails return 404/405; export returns a valid xlsx with only the filtered module. (9) RBAC: a non-admin TEST user gets 403 on list, filters and export, 200 after special_permissions=['configuracion:auditor'], and 403 again after revert. (10) Login of a user that already has menu_groups creates no trail; change-password creates an UPDATE with password_hash shown as '***'. UI: the Settings tile (inside the collapsed 'Configuración General' accordion) and the Security button both navigate to /settings/audit-trails. The page shows the counter, filters (modules multi-select, action select, field, reset), a table with no edit or delete buttons, and a detail dialog with the diff in red/green plus IP, UA and endpoint metadata. Excel export downloads. A non-admin auditor user sees the tile and the page, the back link goes to 'Configuración', and the Security tile is hidden. There were no backend 500s during the run.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "services/audit_trail.py SENSITIVE_RE", "issue": "The regex (password|passwd|hash|token|secret|otp|api_key|apikey) is substring-based, so it over-masks business fields. Verified: include_tokenizador, tokenizador_items, otp_ttl_minutes, otp_enabled, password_max_age_days, password_history_count, min_password_length, pdf_hash and hashtags are all stored as '***'. As a result, an auditor cannot see old/new values for most Security Policy changes (password age, length, OTP/2FA settings) or for the quote Tokenizador flags. Fix: match exact key names or word boundaries (e.g. ^(password|password_hash|.*_token|token|secret|otp_code|otp_hash|api_key)$) and keep config fields readable."},
+      {"endpoint": "POST /api/auth/login, /api/auth/expired-password/change, failed logins", "issue": "Writes made by unauthenticated flows are attributed to 'Anónimo' instead of the user involved. Examples: the menu_groups auto-migration in _issue_session (seen live), locked_until on lockout, and the forced password change. Suggest calling set_audit_user(user) in these handlers once the user is identified."},
+      {"endpoint": "GET /api/audit-trails/export", "issue": "openpyxl builds up to 50k rows synchronously inside an async handler, which blocks the event loop. Consider run_in_threadpool."},
+      {"endpoint": "AuditedCollection (design)", "issue": "Every update/delete now runs 1–2 extra reads (find before, find after). update_many/delete_many log at most 500 docs, so larger bulk operations are only partly audited. bulk_write, aggregate($merge/$out) and with_options() fall through __getattr__ and are not audited. None of these are used today, but this should be documented."},
+      {"endpoint": "AuditContextMiddleware / contextvar", "issue": "A long-lived task started with asyncio.create_task from inside a request (rather than at startup) inherits that request's context. Its later writes would then be attributed to that user and endpoint instead of 'Sistema'. Worth checking for lazily started schedulers."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Configuración", "issues": ["The 'Pistas de Auditoría' tile is hidden inside the collapsed 'Configuración General' accordion, so it is hard to find. It is visible after clicking general-config-toggle."]},
+      {"screen": "Pistas de Auditoría list", "issues": ["Registro ID for Bancos shows the bank name (e.g. '100% Banco') rather than an ID. It is readable, but searching by bank_id only works through entidad_id.", "The /settings/audit-trails route is not role-guarded on the frontend. A non-auditor who opens it directly gets an error toast and an empty page, not a redirect. The backend correctly returns 403."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter364_audit_trails.py", "/app/test_reports/pytest/pytest_iter364.xml"],
+  "action_items": [
+    "Narrow SENSITIVE_RE so that non-secret fields (otp_ttl_minutes, otp_enabled, password_max_age_days, min_password_length, password_history_count, include_tokenizador, pdf_hash) are not masked. Keep masking password_hash, password_history, tokens, secrets and OTP codes.",
+    "(Optional) Call set_audit_user in the login, expired-password and lockout flows so trails are not 'Anónimo'.",
+    "(Optional) Run the Excel export in a threadpool."
+  ],
+  "critical_code_review_comments": [
+    "audit_trail.py: SENSITIVE_RE over-masking (see minor issue). This is the main functional gap for auditing Security Policy changes.",
+    "audit_trail.py _log: UPDATE masks twice (_mask on the dict, then again on each key); it works but is redundant.",
+    "The interceptor scope is correct: _skip on the path prefix covers all write methods; find_one_and_delete checks _skip after the delete, which is fine.",
+    "routes/audit_trails.py: when the user and registro filters are combined, the code mixes $or with $and; this works, but building the whole query under $and would be cleaner."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter364_audit_trails.py"],
+  "success_rate": {"backend": "100% (18/18)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "Test data was created and then removed. A TEST quote PRE→COT-2026-11-070-PYME was deleted through the API (its sequence number is consumed). A TEST client was deleted through the API, and a TEST bank integration on '100% Banco' was deleted through the API. Security policy lockout_minutes was reverted to its original value. TEST users test_iter364_*@example.com and test_iter364_ui@example.com were inserted and deleted directly in Mongo, without audit. The audit trails produced by the tests remain, since they are immutable.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && REACT_APP_BACKEND_URL=$(grep REACT_APP_BACKEND_URL /app/frontend/.env|cut -d= -f2) python -m pytest tests/test_iter364_audit_trails.py -p no:xdist. Banks have no integrations by default, so the test creates its own. A TEST user without menu_groups produces a menu_groups UPDATE trail on first login; the test includes menu_groups to avoid this. Profiles do not include configuracion:auditor, so the special-permissions ceiling blocks it for users that have a profile_id; RBAC tests use a TEST user without a profile. The Settings tile lives under the general-config-toggle accordion."
+}

@@ -48,7 +48,21 @@ EXCLUDED_PATH_PREFIXES = ("/api/projects", "/api/direct-projects")
 # Campos técnicos que, si son los únicos alterados, no generan pista.
 NOISE_FIELDS = {"updated_at", "last_login", "last_login_at", "last_activity", "last_activity_at", "last_seen",
                 "last_seen_at", "is_online", "online", "failed_login_attempts", "_id"}
-SENSITIVE_RE = re.compile(r"(password|passwd|hash|token|secret|otp|api_key|apikey)", re.I)
+_SENSITIVE_EXACT = {"password", "passwd", "password_hash", "hashed_password", "new_password", "old_password",
+                    "current_password", "smtp_password", "token", "secret", "client_secret", "api_key", "apikey",
+                    "otp", "otp_code", "otp_hash", "code_hash"}
+
+
+class _SensitiveMatcher:
+    """Coincidencia por nombre exacto del campo (último segmento de la ruta)."""
+
+    @staticmethod
+    def search(key: str) -> bool:
+        k = re.split(r"[.\[\]]", str(key).strip("]"))[-1].lower() if key else ""
+        return k in _SENSITIVE_EXACT or k.endswith(("_token", "_secret", "_api_key", "password_hash"))
+
+
+SENSITIVE_RE = _SensitiveMatcher()
 
 # Identificador legible por colección (primer campo presente).
 ID_FIELDS = {

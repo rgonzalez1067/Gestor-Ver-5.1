@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { ArrowLeft, ScrollText, Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Sidebar } from '../components/Sidebar';
@@ -25,7 +25,9 @@ const Pager = ({ page, total, onPage }) => {
 
 export default function AuditTrailsPage() {
   const navigate = useNavigate();
-  const isAdmin = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}')?.role === 'admin'; } catch { return false; } })();
+  const me = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+  const isAdmin = me?.role === 'admin';
+  const canAudit = isAdmin || (me?.special_permissions || []).includes('configuracion:auditor');
   const [options, setOptions] = useState({ modules: [], users: [] });
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [applied, setApplied] = useState(EMPTY_FILTERS);
@@ -35,7 +37,7 @@ export default function AuditTrailsPage() {
   const [exporting, setExporting] = useState(false);
   const [detail, setDetail] = useState(null);
 
-  useEffect(() => { api.get('/audit-trails/filters').then((r) => setOptions(r.data)).catch(() => {}); }, []);
+  useEffect(() => { if (canAudit) api.get('/audit-trails/filters').then((r) => setOptions(r.data)).catch(() => {}); }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,7 +49,7 @@ export default function AuditTrailsPage() {
     } finally { setLoading(false); }
   }, [applied, page]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (canAudit) load(); }, [load, canAudit]);
 
   const search = () => { setPage(1); setApplied(filters); };
   const reset = () => { setFilters(EMPTY_FILTERS); setPage(1); setApplied(EMPTY_FILTERS); };
@@ -64,6 +66,8 @@ export default function AuditTrailsPage() {
       URL.revokeObjectURL(url);
     } catch { toast.error('No se pudo exportar'); } finally { setExporting(false); }
   };
+
+  if (!canAudit) return <Navigate to="/settings" replace />;
 
   return (
     <div className="flex min-h-screen bg-slate-50">

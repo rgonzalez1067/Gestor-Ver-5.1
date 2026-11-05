@@ -4703,3 +4703,11 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - El bloque "Resumen de Descuento y Total Neto a Pagar" queda igual (usa el bruto). MPOS / FAST_TRACK Corp sin cambios.
 - Verificado con /app/memory/scripts/check_corp_unit.py y el endpoint preview-pdf-with-template ($80 −10% → $72; 4 cajas → $18).
 - ⚠️ Los tests antiguos en backend/tests usan claves viejas y BLOQUEAN al admin; para desbloquear: python /app/memory/scripts/unlock_admins.py
+
+## 2026-06 — Pistas de Auditoría (audit_trails)
+- `services/audit_trail.py`: `config.db` ahora es `AuditedDatabase` (proxy de Motor). Las colecciones de negocio y configuración (COLLECTION_MODULES) registran CREATE/UPDATE (diff profundo; listas emparejadas por id; ignora updated_at/last_login) y DELETE con snapshot. Los campos sensibles se enmascaran por nombre exacto.
+- Se excluyen las colecciones projects/bitacora y toda petición a /api/projects* y /api/direct-projects*. AuditContextMiddleware (ASGI, el más externo) guarda IP, User-Agent y endpoint; set_audit_user se llama en get_current_user y en login/2FA/cambio de clave. Sin petición se registra como usuario "Sistema".
+- TTL de 2 años sobre fecha_hora. Endpoints de solo lectura: GET /api/audit-trails, /filters, /{id}, /export (xlsx). Acceso: admin o special_permission `configuracion:auditor`.
+- UI: /settings/audit-trails (AuditTrailsPage + components/audit/*), tile en Configuración y botón en Seguridad.
+- Probado: iteration_364.json (18/18 backend, frontend OK). Ajustes posteriores: enmascarado por nombre exacto, usuario en login, export en hilo, redirección para quien no es auditor.
+- Limitaciones: update_many/delete_many registran máx. 500 docs por operación; bulk_write y aggregate $out no se auditan (hoy no se usan).
