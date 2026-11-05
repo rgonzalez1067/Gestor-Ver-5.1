@@ -832,6 +832,10 @@ async def get_all_users(authorization: Optional[str] = Header(None)):
         raise HTTPException(status_code=403, detail="Solo administradores pueden ver la lista de usuarios")
     
     users = await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(1000)
+    from services.security_policy import get_policy, effective_lock_status
+    policy = await get_policy()
+    for u in users:
+        u["account_status"] = effective_lock_status(u, policy)
     return users
 
 @router.get("/admin/permission-catalog")

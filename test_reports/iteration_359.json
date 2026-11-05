@@ -1,0 +1,45 @@
+{
+  "summary": "Módulo Políticas de Seguridad probado E2E (backend pytest 13/13 + UI Playwright). Tablero /settings/security (tile open-security-policy-btn dentro de 'Configuración General'): carga defaults, guarda/persiste (lockout 20, longitud 14, 2FA switch), 400 para longitud<12 y aviso>=vigencia, 403 no-admin. Complejidad: backend rechaza 11 chars y 12 sin especial con detalle; ChangePasswordDialog checklist dinámico y botón deshabilitado. Historial: A→B→C→A rechazado con mensaje exacto (N=3 backend, N=5 UI). Bloqueo: 3 fallos→423 con mensaje exacto, 4to con clave correcta→423, lockout_timestamp -16min→login OK y contadores reseteados, botón Desbloquear en Permisos de Usuarios funciona (toast 'Cuenta desbloqueada'), mensaje 423 visible en login UI. Vencimiento: password_changed_at -100d → PASSWORD_EXPIRED (sin session_token), expired-password-step con checklist, reuso rechazado, mismatch, cambio OK → vuelve al login → entra; change_token de un solo uso; -85d → banner 'Su contraseña vencerá en 5 días' + 'Cambiar ahora' abre diálogo y el banner desaparece tras cambiar. 2FA: challenge con email enmascarado y TTL, correo enviado por SMTP (email_logs status=sent), código incorrecto→'Código incorrecto.', reenviar OK, código correcto→dashboard, challenge no reutilizable, 5 intentos→'Demasiados intentos'; 2FA inactivo entra directo. Reset-password por enlace aplica complejidad e historial. Política restaurada a defaults y usuarios de prueba eliminados. No se tocó rgonzalez/dcollazo (contadores en 0, ACTIVE).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/admin/security-policy", "issue": "Mensajes de validación exponen la clave técnica: 'min_password_length debe estar entre 12 y 128.' (debería usar etiqueta legible, ej. 'Longitud mínima de contraseña')."},
+      {"endpoint": "services/security_policy.register_failure", "issue": "Incremento de failed_login_attempts no atómico (read-modify-write); con logins concurrentes se pueden perder intentos. Usar $inc con find_one_and_update."},
+      {"endpoint": "GET /api/admin/users", "issue": "Usuarios cuyo bloqueo ya expiró siguen mostrando 'Bloqueada' hasta su próximo login (auto-desbloqueo sólo ocurre en check_lock). Calcular estado efectivo al listar."},
+      {"endpoint": "2FA email / db.email_logs", "issue": "El código OTP queda en texto plano en email_logs.html_preview; cualquiera con acceso a logs de correo puede leer códigos vigentes. Considerar enmascararlo en el log."},
+      {"endpoint": "POST /api/auth/login", "issue": "El login con 2FA espera el envío SMTP de forma síncrona (~2-3s). Considerar background task."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "TwoFactorStep", "issue": "maxLength=6 se aplica antes de sanear no-dígitos: pegar '123 456' o '123-456' queda en '12345' (incompleto). Sanear primero y luego truncar (quitar maxLength o slice(0,6) en onChange).", "selector": "[data-testid='twofa-code-input']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Auth (twofa-step / expired-password-step)", "issues": ["Las pestañas 'Iniciar Sesión / Registrarse' siguen visibles durante 2FA y cambio obligatorio; conviene ocultarlas en esos pasos."]},
+      {"screen": "ChangePasswordDialog", "issues": ["No muestra la regla de historial ('No puede repetir sus últimas N contraseñas') que sí muestra ExpiredPasswordStep; duplica lógica de checklist en vez de reutilizar PasswordChecklist."]},
+      {"screen": "SecurityPolicyPage (mobile 390px)", "issues": ["Contenido cortado por el sidebar fijo (problema general del layout en móvil)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_security_policy_iter359.py", "/app/backend/tests/ui_fixture_iter359.py", "/app/test_reports/pytest/pytest_iter359.xml"],
+  "action_items": [
+    "(Bajo) Sanear el input 2FA antes de truncar a 6 dígitos",
+    "(Bajo) Mensajes de validación de política con etiquetas legibles",
+    "(Bajo) $inc atómico para failed_login_attempts",
+    "(Bajo) Mostrar estado de bloqueo efectivo (expirado) en lista de usuarios",
+    "(Bajo) Actualizar /app/memory/test_credentials.md: aún dice Mega2026* para rgonzalez/dcollazo; la clave real es MegaSoft2026* y no existe la sección 'POLÍTICA DE SEGURIDAD' mencionada"
+  ],
+  "critical_code_review_comments": [
+    "config.hash_password usa SHA-256 con salt de una sola iteración (formato 'salt:hash'), no bcrypt ($2b$). Para un módulo de políticas de seguridad es débil frente a fuerza bruta offline; migrar a bcrypt/argon2 con rehash transparente en login.",
+    "Sesión vía token en localStorage (no httpOnly cookie) — preexistente.",
+    "routes/auth.py tiene ~1600 líneas; considerar extraer los endpoints de seguridad/2FA a routes/security.py. _validate_password_policy_legacy parece código muerto.",
+    "models.UserRegister/ResetPasswordRequest mantienen min_length=8 (pydantic) — la política real se aplica en backend, OK, pero Auth.jsx registro valida 'Mínimo 8' en frontend (inconsistente con 12)."
+  ],
+  "updated_files": ["/app/backend/tests/test_security_policy_iter359.py", "/app/backend/tests/ui_fixture_iter359.py"],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "100% de flujos solicitados (1 bug menor de UX en input 2FA)"},
+  "test_credentials": "Admin real: rgonzalez@megasoft.com.ve / MegaSoft2026* (test_credentials.md desactualizado: dice Mega2026*).",
+  "seed_data_creation": "Usuarios test_sec_*/test_ui_*@example.com creados y eliminados (users, history, sessions, challenges, tokens). Quedan entradas de email_logs (action login_2fa) hacia esos correos de prueba.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Correr: cd /app/backend && python -m pytest tests/test_security_policy_iter359.py -v (restaura política a defaults en teardown). Para UI: python tests/ui_fixture_iter359.py setup|force2fa (código 246810)|policy2fa on/off|cleanup. El tile de seguridad está dentro del acordeón 'Configuración General' en /settings. Unlock en /admin/users (search-users → click usuario → user-unlock-{id})."
+}

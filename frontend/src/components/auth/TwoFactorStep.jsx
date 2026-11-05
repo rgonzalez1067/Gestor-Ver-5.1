@@ -45,8 +45,8 @@ export const TwoFactorStep = ({ challenge, onSuccess, onBack }) => {
         </div>
       </div>
       <Input
-        autoFocus inputMode="numeric" maxLength={6} value={code}
-        onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+        autoFocus inputMode="numeric" value={code}
+        onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
         placeholder="000000" className="h-12 text-center text-2xl tracking-[0.5em] font-mono"
         data-testid="twofa-code-input"
       />

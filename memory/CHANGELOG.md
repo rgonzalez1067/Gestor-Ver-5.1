@@ -1884,6 +1884,13 @@ Antes, usuarios con permisos limitados no cargaban catálogos en el frontend →
 - Fix: "Comercio / RIF" de sucursales = buscador sobre TODOS los clientes (`ClientCombobox.jsx`), sin restricción de grupo; multitienda con comercio ajeno vincula todas las sucursales a rifs[]. Testing: iteration_357 + tests iter355-357 (32/32).
 - Edición Maestra: proyectos de sede única → botón "Agregar Sucursal" con confirmación; convierte a multistore (`convert_to_multistore`), la sede actual = Sucursal 1 (cajas, medios y avance heredados vía `inherit_main`, solo una vez). Testing: iteration_358 + tests iter355-358 (37/37).
 
+## 2026-06 — Módulo de Seguridad y Control de Acceso
+- `services/security_policy.py` + endpoints en routes/auth.py: política global (db.security_policies; defaults 90/7/5/5/15, 2FA off, longitud 12, OTP 10 min), complejidad, historial (db.user_password_history), vencimiento + aviso, PASSWORD_EXPIRED con change_token, bloqueo (423, $inc atómico, auto-desbloqueo, admin unlock), 2FA por correo (código enmascarado en email_logs).
+- Cambio forzado único a todos los usuarios al arrancar (force_change_applied). Admins preview: MegaSoft2026*.
+- Frontend: /settings/security, TwoFactorStep, ExpiredPasswordStep, PasswordChecklist dinámico, PasswordExpiryBanner, botón Desbloquear en Usuarios.
+- Testing: iteration_359 (100%) + tests/test_security_policy_iter359.py (13/13).
+
+
 
 - Testing: iteration_355/356; tests/test_master_branches_iter355.py + iter356.py (28/28).
 

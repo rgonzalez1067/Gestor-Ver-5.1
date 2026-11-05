@@ -9,7 +9,7 @@ import api from '../utils/api';
 import { usePasswordPolicy } from './auth/PasswordRules';
 
 export const ChangePasswordDialog = ({ open, onOpenChange }) => {
-  const { rules: RULES } = usePasswordPolicy();
+  const { rules: RULES, password_history_count } = usePasswordPolicy();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -139,6 +139,9 @@ export const ChangePasswordDialog = ({ open, onOpenChange }) => {
               <div className="flex items-center gap-1.5 text-xs text-red-500">
                 <X size={13} /> Debe ser diferente a la actual
               </div>
+            )}
+            {password_history_count > 0 && (
+              <div className="text-xs text-slate-400 pl-5" data-testid="cp-history-rule">No puede repetir sus últimas {password_history_count} contraseñas.</div>
             )}
           </div>
 

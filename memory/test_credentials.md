@@ -1,3 +1,11 @@
+## ⚠️ POLÍTICA DE SEGURIDAD ACTIVA (Jun 2026) — LEER PRIMERO
+- Todos los usuarios quedaron con `must_change_password=True` (cambio forzado único). Login devuelve {status:"PASSWORD_EXPIRED", change_token} → POST /api/auth/expired-password/change {change_token,new_password}.
+- Contraseña: mínimo 12, mayúscula, minúscula, número y especial; historial 5; 5 intentos → bloqueo 15 min (423); 2FA por correo apagado por defecto.
+- Admins ya cambiados: rgonzalez@megasoft.com.ve / MegaSoft2026*  y  dcollazo@megasoft.com.ve / MegaSoft2026*
+- Las claves "Mega2026*" y "Test1234!" de abajo YA NO cumplen la política: esos usuarios deben pasar por el cambio obligatorio (o resetear vía hash_password + password_changed_at=now + must_change_password=False).
+- Endpoints: GET/PUT /api/admin/security-policy, GET /api/auth/password-policy, POST /api/auth/2fa/verify, POST /api/auth/2fa/resend, POST /api/admin/users/{id}/unlock
+
+
 ## QA — Aislamiento por segmento en Histórico de Cotizaciones (Jun 2026)
 Password para todos: Test1234! (reseteado por el agente con config.hash_password → campo `password_hash`)
 - gteran@megasoft.com.ve  → sede PYME, Coordinador, quote_history=edit. Ve SOLO histórico de sede PYME (105 registros).
@@ -23,7 +31,7 @@ Regla: usuarios no-admin/no-Director solo ven registros del Histórico cuya `sed
 
 ## Admin principal
 - Email: rgonzalez@megasoft.com.ve
-- Password: Mega2026*
+- Password: MegaSoft2026*  (política de seguridad: la anterior Mega2026* ya no es válida)
 - Role: admin
 - Name: Rafael González
 - Nota (2026-06): password re-restablecido a `admin123` con config.hash_password en PREVIEW (se había cambiado a otra clave). Verificado login OK vía API.

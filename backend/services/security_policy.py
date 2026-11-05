@@ -28,6 +28,15 @@ LIMITS = {
     "min_password_length": (12, 128),
     "otp_ttl_minutes": (1, 60),
 }
+LABELS = {
+    "password_max_age_days": "Vigencia de contraseñas",
+    "expiry_warning_days": "Aviso previo de vencimiento",
+    "password_history_count": "Historial de contraseñas",
+    "max_failed_attempts": "Intentos fallidos permitidos",
+    "lockout_minutes": "Duración del bloqueo",
+    "min_password_length": "Longitud mínima de contraseña",
+    "otp_ttl_minutes": "Vigencia del código 2FA",
+}
 SPECIAL_RE = r"[!@#$%^&*(),.?\":{}|<>\-_=+\[\]\\/;'`~]"
 
 
@@ -61,10 +70,10 @@ def clean_policy(data: dict) -> dict:
         try:
             n = int(v)
         except (TypeError, ValueError):
-            raise HTTPException(status_code=400, detail=f"Valor inválido para {k}.")
+            raise HTTPException(status_code=400, detail=f"Valor inválido para {LABELS[k]}.")
         lo, hi = LIMITS[k]
         if not lo <= n <= hi:
-            raise HTTPException(status_code=400, detail=f"{k} debe estar entre {lo} y {hi}.")
+            raise HTTPException(status_code=400, detail=f"{LABELS[k]} debe estar entre {lo} y {hi}.")
         out[k] = n
     return out
 
@@ -135,6 +144,16 @@ def _lock_message(minutes_left: int) -> str:
             f"minutos o contacte al administrador.")
 
 
+def effective_lock_status(user: dict, policy: dict) -> str:
+    """Estado mostrado: un bloqueo cuyo tiempo ya expiró se reporta como ACTIVE."""
+    if user.get("account_status") != "LOCKED":
+        return user.get("account_status") or "ACTIVE"
+    ts = _parse(user.get("lockout_timestamp"))
+    if not ts or _now() - ts >= timedelta(minutes=policy["lockout_minutes"]):
+        return "ACTIVE"
+    return "LOCKED"
+
+
 async def check_lock(user: dict, policy: dict):
     if user.get("account_status") != "LOCKED":
         return
@@ -151,13 +170,14 @@ async def check_lock(user: dict, policy: dict):
 
 
 async def register_failure(user: dict, policy: dict):
-    attempts = int(user.get("failed_login_attempts") or 0) + 1
-    upd = {"failed_login_attempts": attempts}
+    doc = await db.users.find_one_and_update(
+        {"user_id": user["user_id"]}, {"$inc": {"failed_login_attempts": 1}},
+        projection={"_id": 0, "failed_login_attempts": 1}, return_document=True,
+    )
+    attempts = int((doc or {}).get("failed_login_attempts") or 1)
     if attempts >= policy["max_failed_attempts"]:
-        upd.update({"account_status": "LOCKED", "lockout_timestamp": _now().isoformat()})
-        await db.users.update_one({"user_id": user["user_id"]}, {"$set": upd})
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"account_status": "LOCKED", "lockout_timestamp": _now().isoformat()}})
         raise HTTPException(status_code=423, detail=_lock_message(policy["lockout_minutes"]))
-    await db.users.update_one({"user_id": user["user_id"]}, {"$set": upd})
     left = policy["max_failed_attempts"] - attempts
     raise HTTPException(status_code=401, detail=f"Credenciales inválidas. Le quedan {left} intento(s) antes del bloqueo temporal.")
 
@@ -231,6 +251,9 @@ async def send_2fa_email(user: dict, code: str, ttl: int):
       </div>
     </div>"""
     await send_email(to=[user["email"]], subject="Código de verificación — Gestor MegaNexus", html=html, action="login_2fa")
+    # No dejar el código legible en el historial de correos.
+    async for log in db.email_logs.find({"action": "login_2fa", "html_preview": {"$regex": code}}, {"_id": 1, "html_preview": 1}):
+        await db.email_logs.update_one({"_id": log["_id"]}, {"$set": {"html_preview": log["html_preview"].replace(code, "••••••")}})
 
 
 async def verify_2fa(challenge_id: str, code: str) -> str:

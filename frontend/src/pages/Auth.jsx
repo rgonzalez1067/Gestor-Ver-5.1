@@ -207,7 +207,7 @@ export const Auth = () => {
           </div>
           
           {/* Mode Selector - solo login/register */}
-          {mode !== 'forgot' && (
+          {mode !== 'forgot' && !authStep && (
             <div className="flex mb-8 bg-slate-100 rounded-lg p-1">
               <button
                 type="button"
@@ -318,7 +318,7 @@ export const Auth = () => {
           )}
           
           {/* Login / Register Form */}
-          {mode !== 'forgot' && (
+          {mode !== 'forgot' && !authStep && (
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'register' && (
               <>
