@@ -26,6 +26,7 @@ from routes.hardware import router as hardware_router
 from routes.services import router as services_router
 from routes.quotes import router as quotes_router
 from routes.quote_actions import router as quote_actions_router
+from routes.preliminary_quotes import router as preliminary_quotes_router
 from routes.quote_taller import router as quote_taller_router
 from routes.quote_serials import router as quote_serials_router
 from routes.commercial_categories import router as commercial_categories_router
@@ -96,6 +97,8 @@ async def _on_startup():
     try:
         from services.security_policy import ensure_initial_setup
         await ensure_initial_setup()
+        from config import ensure_sin_rif_client
+        await ensure_sin_rif_client()
     except Exception as e:
         logging.warning(f"[startup] security policy setup failed: {e}")
     try:
@@ -208,6 +211,18 @@ MODULE_CATALOG_READ_GRANTS = {
     "cotizaciones": {"clientes", "bancos", "integradores", "dispositivos", "medios_pago"},
     "proyectos": {"clientes", "bancos", "integradores", "dispositivos"},
 }
+
+
+@app.middleware("http")
+async def preliminary_quote_guard(request: Request, call_next):
+    """Bloquea acciones de flujo sobre cotizaciones preliminares (PRE)."""
+    from routes.preliminary_quotes import BLOCKED_PRE_ACTIONS, PRE_BLOCK_MSG, is_preliminary
+    m = BLOCKED_PRE_ACTIONS.match(request.url.path)
+    if m and request.method in ("POST", "PUT", "GET"):
+        q = await db.quotes.find_one({"quote_id": m.group(1)}, {"_id": 0, "quote_number": 1, "client_id": 1})
+        if q and is_preliminary(q):
+            return JSONResponse(status_code=400, content={"detail": PRE_BLOCK_MSG})
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -335,6 +350,7 @@ api_router.include_router(banks_router)
 api_router.include_router(hardware_router)
 api_router.include_router(services_router)
 api_router.include_router(quote_actions_router)
+api_router.include_router(preliminary_quotes_router)
 api_router.include_router(quote_taller_router)
 api_router.include_router(quote_serials_router)
 api_router.include_router(commercial_categories_router)

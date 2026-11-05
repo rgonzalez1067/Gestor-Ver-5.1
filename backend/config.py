@@ -137,12 +137,28 @@ async def require_permission(authorization: Optional[str], module: str, level: s
     return user
 
 
-async def generate_quote_number(sede: str) -> str:
+SIN_RIF_CLIENT_ID = "cli_sin_rif"
+
+
+async def ensure_sin_rif_client():
+    """Cliente genérico para cotizaciones preliminares (oculto del directorio)."""
+    await db.clients.update_one(
+        {"client_id": SIN_RIF_CLIENT_ID},
+        {"$setOnInsert": {
+            "client_id": SIN_RIF_CLIENT_ID, "legal_name": "Cliente Sin Rif", "fantasy_name": "Cliente Sin Rif",
+            "rif": "J000000000", "is_placeholder": True, "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+
+
+async def generate_quote_number(sede: str, client_id: str = None) -> str:
     now = datetime.now(timezone.utc)
     year = now.strftime("%Y")
     month = now.strftime("%m")
     sede_code = sede.upper() if sede in ("PYME", "CORP") else "PYME"
-    counter_key = f"quote_{sede_code}_{year}_{month}"
+    preliminary = client_id == SIN_RIF_CLIENT_ID
+    counter_key = f"{'pre' if preliminary else 'quote'}_{sede_code}_{year}_{month}"
     
     # Evita números duplicados si el contador quedó desfasado (p. ej. tras importar datos):
     # salta los números ya usados en cotizaciones vigentes o históricas.
@@ -153,7 +169,8 @@ async def generate_quote_number(sede: str) -> str:
             upsert=True,
             return_document=True
         )
-        number = f"COT-{year}-{month}-{result['seq']:03d}-{sede_code}"
+        number = (f"PRE-{year}-{month}-{result['seq']:04d}-{sede_code}" if preliminary
+                  else f"COT-{year}-{month}-{result['seq']:03d}-{sede_code}")
         if not await db.quotes.find_one({"quote_number": number}, {"_id": 1}) and \
                 not await db.quote_history.find_one({"quote_number": number}, {"_id": 1}):
             return number

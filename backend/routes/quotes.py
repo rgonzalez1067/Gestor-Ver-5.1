@@ -72,7 +72,7 @@ async def create_quote(quote_data: QuoteCreate, authorization: Optional[str] = H
     # Obtener la sede del usuario actual
     user_sede = current_user.get("sede", "PYME")
     
-    quote_number = await generate_quote_number(user_sede)
+    quote_number = await generate_quote_number(user_sede, quote_data.client_id)
     
     # El segmento PyME/Corporativo lo define la opción del menú elegida por el operador.
     qtype = quote_data.quote_type or "VPOS"
@@ -249,7 +249,7 @@ async def create_quote_with_pdf(data: QuoteCreateWithPDF, authorization: Optiona
         # Obtener la sede del usuario actual
         user_sede = current_user.get("sede", "PYME")
         
-        quote_number = await generate_quote_number(user_sede)
+        quote_number = await generate_quote_number(user_sede, data.client_id)
         quote_id = f"quo_{uuid.uuid4().hex[:12]}"
         
         # Generar PDF si se proporcionaron los datos
@@ -2111,7 +2111,7 @@ async def generate_equipment_quote_pdf(data: EquipmentQuotePDFRequest, authoriza
     now = datetime.now(timezone.utc)
     # Obtener sede del usuario
     user_sede = current_user.get("sede", "PYME")
-    quote_number = await generate_quote_number(user_sede)
+    quote_number = await generate_quote_number(user_sede, data.client_id)
     fecha = now.strftime("%d/%m/%Y")
     # Vencimiento: Equipos y Accesorios = 5 días continuos; Reparaciones = 15 días.
     _vence_days = 5 if data.equipment_type != "Reparación" else 15

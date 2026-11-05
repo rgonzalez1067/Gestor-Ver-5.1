@@ -476,9 +476,12 @@ async def create_client(client_data: ClientCreate, authorization: Optional[str] 
     return doc
 
 @router.get("/clients")
-async def get_clients(authorization: Optional[str] = Header(None)):
+async def get_clients(include_placeholder: bool = False, authorization: Optional[str] = Header(None)):
     await get_current_user(authorization)
-    clients = await db.clients.find({}, {"_id": 0}).to_list(2000)
+    query = {} if include_placeholder else {"is_placeholder": {"$ne": True}}
+    clients = await db.clients.find(query, {"_id": 0}).to_list(2000)
+    if include_placeholder:
+        clients.sort(key=lambda c: not c.get("is_placeholder"))
     return clients
 
 

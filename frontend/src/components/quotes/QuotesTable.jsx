@@ -1,4 +1,4 @@
-import { FileText, Search, X, FolderOpen, MoreHorizontal, RefreshCw, Mail, CheckCircle, Receipt, Banknote, Truck, Send, Trash2, Eye, Wrench, Settings, Package, Landmark, Sparkles } from 'lucide-react';
+import { FileText, Search, X, FolderOpen, MoreHorizontal, RefreshCw, Mail, CheckCircle, Receipt, Banknote, Truck, Send, Trash2, Eye, Wrench, Settings, Package, Landmark, Sparkles, UserCheck } from 'lucide-react';
 import { formatDateTime, formatDate, formatTime } from '../../utils/dateFormat';
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '../ui/button';
@@ -50,6 +50,7 @@ export const QuotesTable = ({
   onOpenAnexos, onEditQuote, onSendToClient,
   onApprove, onInvoice, onCollect, onDeliver, onSendToImplementation, onRepairComplete, onConfigure, onDelete,
   onOpenBitacoraFlujo, onOpenFtConfig, onPreassignSerials,
+  onAssignClient = () => {}, onSendPreliminary = () => {},
   actionOverrides = {}, customActions = [], currentUserId = '', currentUserEmail = '', currentUserCargo = '', currentUserRole = '', onCustomAction,
   opsReadonly = false,
   clearFilters,
@@ -292,7 +293,7 @@ export const QuotesTable = ({
                 data-testid={`quote-row-${quote.quote_id}`}
                 data-quote-row={quote.quote_number}
               >
-                <td className={`px-3 py-4 text-sm font-mono font-medium text-slate-900 whitespace-nowrap sticky left-0 z-10 border-r-2 border-slate-200 ${isHighlighted ? 'bg-amber-50 group-hover:bg-amber-50' : 'bg-white group-hover:bg-slate-50'}`}>{quote.quote_number}</td>
+                <td className={`px-3 py-4 text-sm font-mono font-medium text-slate-900 whitespace-nowrap sticky left-0 z-10 border-r-2 border-slate-200 ${isHighlighted ? 'bg-amber-50 group-hover:bg-amber-50' : 'bg-white group-hover:bg-slate-50'}`}>{quote.quote_number}{quote.quote_number?.startsWith('PRE-') && <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 font-sans" data-testid={`quote-pre-badge-${quote.quote_id}`}>PRELIMINAR</span>}</td>
                 <td className="px-3 py-4 text-sm">
                   <span className={`px-2 py-1 text-xs font-medium rounded ${categoryColor}`}>
                     {isRepair ? 'Reparaciones' : isFastTrack ? 'MPOS (Imple + POS)' : isEquipment ? 'Equipos' : 'Implementación'}
@@ -490,11 +491,13 @@ export const QuotesTable = ({
                 <td className="px-3 py-4 text-sm text-slate-600 whitespace-nowrap">{formatDate(quote.created_at)}</td>
                 <td className="px-3 py-4 sticky right-0 bg-white group-hover:bg-slate-50 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)]">
                   <div className="flex items-center justify-center gap-2">
+                    {!quote.quote_number?.startsWith('PRE-') && (
                     <Button size="sm" variant="outline" onClick={() => onOpenAnexos(quote)}
                       className="text-brand-blue-600" disabled={isLoading}
                       data-testid={`quote-anexos-btn-${quote.quote_id}`}>
                       <FolderOpen size={16} className="mr-1" />Anexos
                     </Button>
+                    )}
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -508,6 +511,17 @@ export const QuotesTable = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56">
+                        {quote.quote_number?.startsWith('PRE-') ? (<>
+                        <DropdownMenuItem onSelect={() => onAssignClient(quote)} className="cursor-pointer" data-testid={`pre-assign-client-btn-${quote.quote_id}`}>
+                          <UserCheck size={16} className="mr-2 text-emerald-600" /> Asignar a un cliente
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => onEditQuote(quote)} className="cursor-pointer" data-testid={`modify-quote-btn-${quote.quote_id}`}>
+                          <RefreshCw size={16} className="mr-2 text-slate-500" /> Modificar Cotización
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => onSendPreliminary(quote)} className="cursor-pointer" data-testid={`pre-send-email-btn-${quote.quote_id}`}>
+                          <Mail size={16} className="mr-2 text-blue-600" /> Enviar a un correo
+                        </DropdownMenuItem>
+                        </>) : (<>
                         {canEditNonConfig && <DropdownMenuItem onSelect={() => onEditQuote(quote)} className="cursor-pointer" data-testid={`modify-quote-btn-${quote.quote_id}`}>
                           <RefreshCw size={16} className="mr-2 text-slate-500" /> Modificar Cotización
                         </DropdownMenuItem>}
@@ -693,6 +707,7 @@ export const QuotesTable = ({
                           className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50">
                           <Trash2 size={16} className="mr-2" /> Eliminar Cotización
                         </DropdownMenuItem>}
+                        </>)}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

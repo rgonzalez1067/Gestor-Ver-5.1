@@ -38,6 +38,7 @@ import { QuotesBundleMigrationModal } from '../components/quotes/QuotesBundleMig
 import { QUOTE_TYPES, PRICING_MODELS, SETUP_CONCEPTS, RECURRING_BASIC_CONCEPTS, RECURRING_OTHER_CONCEPTS, STATUS_COLORS, STATUS_DISPLAY_NAMES, QUOTE_CATEGORY_LABELS, ACTION_LABELS } from '../components/quotes/constants';
 import api from '../utils/api';
 import { getProductStatus } from '../utils/bankProductStatus';
+import { AssignClientDialog, SendPreliminaryDialog } from '../components/quotes/PreliminaryQuoteDialogs';
 import { contactMatchesPurpose, purposeForQuoteCategory } from '../utils/contactPurposes';
 import { toast } from 'sonner';
 import { usePermission } from '../hooks/usePermission';
@@ -141,6 +142,8 @@ export const Quotes = () => {
   const [editEquipRepairOpen, setEditEquipRepairOpen] = useState(false);
   const [editEquipRepairQuote, setEditEquipRepairQuote] = useState(null);
   // Estado para modal de elección "Modificar Cotización"
+  const [assignPreQuote, setAssignPreQuote] = useState(null);
+  const [sendPreQuote, setSendPreQuote] = useState(null);
   const [modifyChoiceOpen, setModifyChoiceOpen] = useState(false);
   const [modifyChoiceQuote, setModifyChoiceQuote] = useState(null);
   const [editMode, setEditMode] = useState('new_version'); // 'new_version' | 'in_place'
@@ -779,7 +782,7 @@ export const Quotes = () => {
     try {
       const [quotesRes, clientsRes, banksRes, servicesRes, integratorsRes, hardwareRes, templatesRes, pgCostsRes, pgDefaultsRes] = await Promise.all([
         api.get('/quotes'),
-        api.get('/clients').catch(() => ({ data: [] })),
+        api.get('/clients?include_placeholder=true').catch(() => ({ data: [] })),
         api.get('/banks').catch(() => ({ data: [] })),
         api.get('/services').catch(() => ({ data: [] })),
         api.get('/integrators').catch(() => ({ data: [] })),
@@ -4505,6 +4508,8 @@ export const Quotes = () => {
             }}
             onEditQuote={handleEditQuote}
             onSendToClient={handleSendToClient}
+            onAssignClient={setAssignPreQuote}
+            onSendPreliminary={setSendPreQuote}
             onApprove={(id) => checkIrregularAndProceed(id, 'approve', openApproveConfirm)}
             onInvoice={openInvoiceModal}
             onCollect={(id) => handleCollect(id)}
@@ -4676,6 +4681,9 @@ export const Quotes = () => {
           />
 
           {/* Modal de elección al ejecutar Modificar Cotización */}
+          <AssignClientDialog quote={assignPreQuote} clients={clients} onClose={() => setAssignPreQuote(null)}
+            onDone={() => { setAssignPreQuote(null); fetchData(); }} />
+          <SendPreliminaryDialog quote={sendPreQuote} onClose={() => setSendPreQuote(null)} />
           <ModifyQuoteChoiceDialog
             open={modifyChoiceOpen}
             onClose={() => { setModifyChoiceOpen(false); setModifyChoiceQuote(null); }}
