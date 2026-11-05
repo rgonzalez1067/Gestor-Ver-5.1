@@ -6,16 +6,10 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Button } from './ui/button';
 import api from '../utils/api';
-
-const RULES = [
-  { key: 'len', label: 'Al menos 10 caracteres', test: (v) => v.length >= 10 },
-  { key: 'upper', label: 'Una letra mayúscula', test: (v) => /[A-Z]/.test(v) },
-  { key: 'lower', label: 'Una letra minúscula', test: (v) => /[a-z]/.test(v) },
-  { key: 'num', label: 'Un número', test: (v) => /[0-9]/.test(v) },
-  { key: 'special', label: 'Un carácter especial', test: (v) => /[^A-Za-z0-9]/.test(v) },
-];
+import { usePasswordPolicy } from './auth/PasswordRules';
 
 export const ChangePasswordDialog = ({ open, onOpenChange }) => {
+  const { rules: RULES } = usePasswordPolicy();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -48,6 +42,8 @@ export const ChangePasswordDialog = ({ open, onOpenChange }) => {
         new_password: next,
       });
       toast.success('Contraseña actualizada correctamente.');
+      localStorage.removeItem('password_expiry_warning');
+      window.dispatchEvent(new Event('password-changed'));
       reset();
       onOpenChange(false);
     } catch (err) {

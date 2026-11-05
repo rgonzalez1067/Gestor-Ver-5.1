@@ -624,6 +624,7 @@ export const Settings = () => {
             };
 
             const tiles = [
+              { key: 'security', adminOnly: true, icon: ShieldCheck, accent: 'emerald', title: 'Seguridad y Control de Acceso', desc: 'Políticas de contraseñas, bloqueo por intentos fallidos y 2FA por correo.', route: '/settings/security', testid: 'open-security-policy-btn' },
               { key: 'footer', icon: FileText, accent: 'slate', title: 'Footer Global', desc: 'Pie de página institucional anexado a cada correo del ecosistema.', route: '/settings/email-footer', testid: 'open-email-footer-btn' },
               { key: 'email-templates', icon: FileCode, accent: 'blue', title: 'Plantillas de Correo Electrónico', desc: 'Gestor y editor de las plantillas HTML predeterminadas del sistema por sede.', route: '/settings/email-templates', testid: 'open-email-templates-btn' },
               { key: 'email-history', adminOnly: true, icon: Mail, accent: 'indigo', title: 'Historial de Correos', desc: 'Auditoría de correos despachados con filtros y total de registros.', route: '/settings/email-history', testid: 'open-email-history-btn' },

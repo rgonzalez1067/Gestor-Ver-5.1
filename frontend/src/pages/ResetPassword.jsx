@@ -6,6 +6,7 @@ import { Label } from '../components/ui/label';
 import { Lock, Eye, EyeOff, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import api from '../utils/api';
 import { toast } from 'sonner';
+import { usePasswordPolicy, PasswordChecklist } from '../components/auth/PasswordRules';
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const { rules, password_history_count } = usePasswordPolicy();
 
   useEffect(() => {
     if (!token) {
@@ -29,8 +31,9 @@ export default function ResetPassword() {
     e.preventDefault();
     setError('');
 
-    if (password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres.');
+    const failed = rules.find((r) => !r.test(password));
+    if (failed) {
+      setError(`La contraseña debe tener: ${failed.label.toLowerCase()}.`);
       return;
     }
     if (password !== confirmPassword) {
@@ -146,6 +149,8 @@ export default function ResetPassword() {
                   />
                 </div>
               </div>
+
+              <PasswordChecklist value={password} rules={rules} historyCount={password_history_count} testid="reset-pwd-rules" />
 
               {error && (
                 <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-md" data-testid="reset-error">

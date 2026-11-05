@@ -161,6 +161,8 @@ async def register_user(user_data: UserRegister):
     
     # Crear usuario
     user_id = f"user_{uuid.uuid4().hex[:12]}"
+    from services.security_policy import get_policy
+    _validate_password_policy(user_data.password, await get_policy())
     password_hash = hash_password(user_data.password)
     
     # Validar sede
@@ -280,8 +282,13 @@ async def register_user(user_data: UserRegister):
 
 @router.post("/auth/login")
 async def login_user(credentials: UserLogin):
-    """Login con email y contraseña"""
-    
+    """Login con email y contraseña + políticas de seguridad (bloqueo, vencimiento, 2FA)."""
+    from services.security_policy import (
+        get_policy, check_lock, register_failure, reset_failures, expiry_info,
+        create_change_token, create_2fa_challenge, mask_email,
+    )
+    policy = await get_policy()
+
     # Buscar usuario
     user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
     if not user:
@@ -293,15 +300,44 @@ async def login_user(credentials: UserLogin):
             status_code=400, 
             detail="Esta cuenta fue creada con Google. Por favor, use el inicio de sesión con Google."
         )
+
+    # Bloqueo temporal (incluso con la clave correcta)
+    await check_lock(user, policy)
     
     # Verificar contraseña
     if not verify_password(credentials.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Credenciales inválidas")
+        await register_failure(user, policy)
+    await reset_failures(user)
     
     # Verificar si la cuenta está activa
     if not user.get("is_active", True):
         raise HTTPException(status_code=403, detail="Cuenta desactivada. Contacte al administrador.")
-    
+
+    # Contraseña vencida → cambio obligatorio antes de entrar
+    exp = expiry_info(user, policy)
+    if exp["expired"]:
+        return {
+            "status": "PASSWORD_EXPIRED",
+            "change_token": await create_change_token(user["user_id"]),
+            "message": "Su contraseña venció. Debe cambiarla para continuar.",
+        }
+
+    # 2FA por correo
+    if policy["two_factor_enabled"]:
+        return {
+            "status": "2FA_CHALLENGE",
+            "challenge_id": await create_2fa_challenge(user, policy),
+            "email_masked": mask_email(user["email"]),
+            "ttl_minutes": policy["otp_ttl_minutes"],
+        }
+
+    resp = await _issue_session(user)
+    resp["password_expires_in_days"] = exp["days_left"]
+    return resp
+
+
+async def _issue_session(user: dict) -> dict:
+    """Crea la sesión y arma la respuesta estándar de login."""
     # Auto-migración menu_groups: si no existen, se marcan TODOS como activos (legacy).
     if not user.get("menu_groups"):
         from permissions_catalog import get_default_menu_groups
@@ -353,6 +389,101 @@ async def login_user(credentials: UserLogin):
         "session_token": session_token,
         "user": user_response
     }
+
+
+# ==================== POLÍTICAS DE SEGURIDAD / 2FA ====================
+
+class TwoFactorVerify(BaseModel):
+    challenge_id: str
+    code: str
+
+
+class ChallengeRef(BaseModel):
+    challenge_id: str
+
+
+class ExpiredPasswordChange(BaseModel):
+    change_token: str
+    new_password: str
+
+
+@router.post("/auth/2fa/verify")
+async def verify_two_factor(data: TwoFactorVerify):
+    from services.security_policy import verify_2fa, get_policy, expiry_info
+    user_id = await verify_2fa(data.challenge_id, data.code)
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    resp = await _issue_session(user)
+    resp["password_expires_in_days"] = expiry_info(user, await get_policy())["days_left"]
+    return resp
+
+
+@router.post("/auth/2fa/resend")
+async def resend_two_factor(data: ChallengeRef):
+    from services.security_policy import resend_2fa
+    await resend_2fa(data.challenge_id)
+    return {"message": "Se envió un nuevo código a su correo."}
+
+
+@router.post("/auth/expired-password/change")
+async def change_expired_password(data: ExpiredPasswordChange):
+    """Cambio obligatorio de contraseña vencida (sin sesión, con token temporal)."""
+    from services.security_policy import validate_new_password, record_password_change
+    tok = await db.password_change_tokens.find_one({"token": data.change_token}, {"_id": 0})
+    if not tok or datetime.now(timezone.utc) > datetime.fromisoformat(tok["expires_at"]):
+        raise HTTPException(status_code=400, detail="El enlace de cambio expiró. Inicie sesión nuevamente.")
+    user = await db.users.find_one({"user_id": tok["user_id"]}, {"_id": 0})
+    await validate_new_password(user["user_id"], user.get("password_hash"), data.new_password)
+    await record_password_change(user["user_id"], user.get("password_hash"), hash_password(data.new_password))
+    await db.password_change_tokens.delete_many({"user_id": user["user_id"]})
+    await db.user_sessions.delete_many({"user_id": user["user_id"]})
+    return {"message": "Contraseña actualizada. Inicie sesión con su nueva contraseña."}
+
+
+@router.get("/auth/password-policy")
+async def public_password_policy():
+    """Reglas de complejidad para validación en tiempo real en el frontend."""
+    from services.security_policy import get_policy
+    p = await get_policy()
+    return {"min_password_length": p["min_password_length"], "password_history_count": p["password_history_count"]}
+
+
+@router.get("/admin/security-policy")
+async def get_security_policy(authorization: Optional[str] = Header(None)):
+    current_user = await get_current_user(authorization)
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores")
+    from services.security_policy import get_policy
+    return await get_policy()
+
+
+@router.put("/admin/security-policy")
+async def update_security_policy(data: dict, authorization: Optional[str] = Header(None)):
+    current_user = await get_current_user(authorization)
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores")
+    from services.security_policy import get_policy, clean_policy, POLICY_ID
+    upd = clean_policy(data)
+    merged = {**(await get_policy()), **upd}
+    if merged["expiry_warning_days"] >= merged["password_max_age_days"]:
+        raise HTTPException(status_code=400, detail="El aviso previo debe ser menor que la vigencia de la contraseña.")
+    await db.security_policies.update_one({"policy_id": POLICY_ID}, {"$set": {
+        **upd, "updated_at": datetime.now(timezone.utc).isoformat(), "updated_by": current_user.get("email")}}, upsert=True)
+    await db.audit_logs.insert_one({"action": "security_policy_updated", "performed_by": current_user["user_id"],
+                                    "changes": upd, "timestamp": datetime.now(timezone.utc).isoformat()})
+    return await get_policy()
+
+
+@router.post("/admin/users/{user_id}/unlock")
+async def unlock_user(user_id: str, authorization: Optional[str] = Header(None)):
+    current_user = await get_current_user(authorization)
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores")
+    res = await db.users.update_one({"user_id": user_id}, {"$set": {"account_status": "ACTIVE", "failed_login_attempts": 0}, "$unset": {"lockout_timestamp": ""}})
+    if not res.matched_count:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    await db.audit_logs.insert_one({"action": "user_unlocked", "user_id": user_id, "performed_by": current_user["user_id"],
+                                    "timestamp": datetime.now(timezone.utc).isoformat()})
+    return {"message": "Cuenta desbloqueada"}
 
 # ==================== USERS LIST (para dropdowns) ====================
 
@@ -489,12 +620,12 @@ async def reset_password(data: ResetPasswordRequest):
         raise HTTPException(status_code=400, detail="El token ha expirado. Solicita uno nuevo.")
 
     user_id = token_doc["user_id"]
+    from services.security_policy import validate_new_password, record_password_change
+    target = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 1})
+    old_hash = (target or {}).get("password_hash")
+    await validate_new_password(user_id, old_hash, data.new_password)
     new_hash = hash_password(data.new_password)
-
-    await db.users.update_one(
-        {"user_id": user_id},
-        {"$set": {"password_hash": new_hash}}
-    )
+    await record_password_change(user_id, old_hash, new_hash)
 
     # Marcar token como usado
     await db.password_reset_tokens.update_one(
@@ -509,7 +640,18 @@ async def reset_password(data: ResetPasswordRequest):
     return {"message": "Contraseña restablecida exitosamente. Ya puedes iniciar sesión."}
 
 
-def _validate_password_policy(pwd: str):
+def _validate_password_policy(pwd: str, policy: dict = None):
+    """Valida complejidad con la política vigente (longitud parametrizada)."""
+    from services.security_policy import password_errors, DEFAULTS
+    errors = password_errors(pwd, policy or DEFAULTS)
+    if errors:
+        raise HTTPException(
+            status_code=400,
+            detail="Contraseña Inválida: debe tener " + ", ".join(errors) + ".",
+        )
+
+
+def _validate_password_policy_legacy(pwd: str):
     """Política: mínimo 10 caracteres, al menos una mayúscula, una minúscula,
     un número y un carácter especial. Lanza HTTP 400 con el detalle si falla."""
     errors = []
@@ -555,15 +697,13 @@ async def change_password(
     if verify_password(data.new_password, user["password_hash"]):
         raise HTTPException(status_code=400, detail="La nueva contraseña debe ser diferente a la actual.")
 
-    # 3) Política de complejidad
-    _validate_password_policy(data.new_password)
+    # 3) Política de complejidad + historial
+    from services.security_policy import validate_new_password, record_password_change
+    await validate_new_password(user["user_id"], user["password_hash"], data.new_password)
 
-    # 4) Actualizar hash
+    # 4) Actualizar hash (guarda el anterior en el historial)
     new_hash = hash_password(data.new_password)
-    await db.users.update_one(
-        {"user_id": user["user_id"]},
-        {"$set": {"password_hash": new_hash, "password_changed_at": datetime.now(timezone.utc).isoformat()}},
-    )
+    await record_password_change(user["user_id"], user["password_hash"], new_hash)
 
     # 5) Conservar la sesión actual, invalidar las demás
     caller_token = authorization.replace("Bearer ", "").strip() if authorization else None
@@ -1377,6 +1517,8 @@ async def admin_create_user(user_data: UserRegister, authorization: Optional[str
             raise HTTPException(status_code=400, detail="Ya existe un usuario con esa cédula")
     
     user_id = f"user_{uuid.uuid4().hex[:12]}"
+    from services.security_policy import get_policy
+    _validate_password_policy(user_data.password, await get_policy())
     password_hash = hash_password(user_data.password)
     
     valid_sedes = ["PYME", "CORP"]

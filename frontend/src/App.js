@@ -19,6 +19,7 @@ import { ClientTemplatesConfig } from './pages/ClientTemplatesConfig';
 import { EmailFooterConfig } from './pages/EmailFooterConfig';
 import EmailTemplatesPage from './pages/EmailTemplatesPage';
 import EmailHistoryPage from './pages/EmailHistoryPage';
+import SecurityPolicyPage from './pages/SecurityPolicyPage';
 import { EmailSendersConfig } from './pages/EmailSendersConfig';
 import { WorkCalendarConfig } from './pages/WorkCalendarConfig';
 import { CommercialCategories } from './pages/CommercialCategories';
@@ -246,6 +247,11 @@ function AppRouter() {
       <Route path="/settings/email-templates" element={
         <ProtectedRoute>
           <EmailTemplatesPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/settings/security" element={
+        <ProtectedRoute>
+          <SecurityPolicyPage />
         </ProtectedRoute>
       } />
       <Route path="/settings/email-history" element={

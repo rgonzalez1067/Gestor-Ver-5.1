@@ -7,6 +7,8 @@ import { Eye, EyeOff, User, Mail, Lock, CreditCard, Loader2, Building2, ArrowLef
 import api from '../utils/api';
 import { toast } from 'sonner';
 import { showInboxWelcomeToast } from '../utils/inboxWelcome';
+import { TwoFactorStep } from '../components/auth/TwoFactorStep';
+import { ExpiredPasswordStep } from '../components/auth/ExpiredPasswordStep';
 
 // Sedes disponibles
 const SEDES = [
@@ -34,6 +36,21 @@ export const Auth = () => {
   
   // Errors
   const [errors, setErrors] = useState({});
+  const [authStep, setAuthStep] = useState(null);
+
+  const completeLogin = (data) => {
+    localStorage.setItem('session_token', data.session_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    toast.success(`Bienvenido, ${data.user.first_name || data.user.name}`);
+    // Iter44: aviso destacado de mensajes sin leer en el Centro de Mensajes.
+    showInboxWelcomeToast({ firstName: data.user.first_name });
+    if (data.password_expires_in_days) {
+      localStorage.setItem('password_expiry_warning', String(data.password_expires_in_days));
+    } else {
+      localStorage.removeItem('password_expiry_warning');
+    }
+    navigate('/dashboard');
+  };
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -102,14 +119,17 @@ export const Auth = () => {
           email: formData.email,
           password: formData.password
         });
-        
-        localStorage.setItem('session_token', response.data.session_token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        
-        toast.success(`Bienvenido, ${response.data.user.first_name || response.data.user.name}`);
-        // Iter44: aviso destacado de mensajes sin leer en el Centro de Mensajes.
-        showInboxWelcomeToast({ firstName: response.data.user.first_name });
-        navigate('/dashboard');
+        if (response.data.status === '2FA_CHALLENGE') {
+          setAuthStep({ type: '2fa', ...response.data });
+          toast.info('Le enviamos un código de verificación a su correo');
+          return;
+        }
+        if (response.data.status === 'PASSWORD_EXPIRED') {
+          setAuthStep({ type: 'expired', change_token: response.data.change_token });
+          toast.warning(response.data.message);
+          return;
+        }
+        completeLogin(response.data);
         
       } else {
         // Registro
@@ -216,6 +236,16 @@ export const Auth = () => {
             </div>
           )}
 
+          {/* Pasos de seguridad: 2FA o cambio obligatorio */}
+          {authStep?.type === '2fa' && (
+            <TwoFactorStep challenge={authStep} onSuccess={completeLogin} onBack={() => setAuthStep(null)} />
+          )}
+          {authStep?.type === 'expired' && (
+            <ExpiredPasswordStep changeToken={authStep.change_token}
+              onDone={() => { setAuthStep(null); setFormData((f) => ({ ...f, password: '' })); }}
+              onBack={() => setAuthStep(null)} />
+          )}
+          {!authStep && (<>
           {/* Forgot Password Form */}
           {mode === 'forgot' && (
             <div className="space-y-4" data-testid="forgot-password-form">
@@ -473,6 +503,7 @@ export const Auth = () => {
             </Button>
           </form>
           )}
+          </>)}
           
           {/* Info text */}
           <p className="text-center text-xs text-slate-500 mt-6">

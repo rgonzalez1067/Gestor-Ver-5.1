@@ -196,6 +196,14 @@ const AdminUsers = () => {
     } catch (err) { toast.error(err.response?.data?.detail || 'Error'); }
   };
 
+  const handleUnlock = async (userId) => {
+    try {
+      await api.post(`/admin/users/${userId}/unlock`);
+      patchUser(userId, { account_status: 'ACTIVE', failed_login_attempts: 0 });
+      toast.success('Cuenta desbloqueada');
+    } catch (err) { toast.error(err.response?.data?.detail || 'Error'); }
+  };
+
   const handleAlmacenChange = async (userId, almacenId) => {
     try {
       const value = almacenId === '__none__' ? null : almacenId;
@@ -403,6 +411,7 @@ const AdminUsers = () => {
                 savingKey={savingKey}
                 onRoleChange={handleRoleChange}
                 onStatusChange={handleStatusChange}
+                onUnlock={handleUnlock}
                 onAlmacenChange={handleAlmacenChange}
                 onSupervisorChange={handleSupervisorChange}
                 onProfileChange={handleProfileChange}
@@ -432,7 +441,7 @@ const AdminUsers = () => {
 // =============================
 const UserPermissionsPanel = ({
   user, currentUser, catalog, warehouses, allUsers, profiles, savingKey,
-  onRoleChange, onStatusChange, onAlmacenChange, onSupervisorChange, onProfileChange,
+  onRoleChange, onStatusChange, onUnlock, onAlmacenChange, onSupervisorChange, onProfileChange,
   onGroupToggle, onLevelChange, onSpecialToggle,
 }) => {
   const isMe = currentUser?.user_id === user.user_id;
@@ -500,6 +509,12 @@ const UserPermissionsPanel = ({
                 {user.is_active !== false ? 'Activo' : 'Inactivo'}
               </span>
             </div>
+            {user.account_status === 'LOCKED' && (
+              <div className="mt-2 flex items-center gap-2" data-testid={`user-locked-${user.user_id}`}>
+                <span className="text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded px-1.5 py-0.5">Bloqueada</span>
+                <button type="button" onClick={() => onUnlock(user.user_id)} className="text-[11px] font-semibold text-indigo-600 hover:underline" data-testid={`user-unlock-${user.user_id}`}>Desbloquear</button>
+              </div>
+            )}
           </div>
           <div>
             <Label className="text-xs text-slate-500 uppercase tracking-wide flex items-center gap-1"><Warehouse size={10} /> Almacén</Label>

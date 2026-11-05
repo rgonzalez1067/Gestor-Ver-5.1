@@ -42,6 +42,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { KeyRound } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
+import { PasswordExpiryBanner } from './auth/PasswordExpiryBanner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import api from '../utils/api';
 import { ROUTE_MODULE_MAP, isGroupActive } from '../hooks/usePermission';
@@ -519,6 +520,7 @@ const SidebarInner = () => {
         </div>
       </aside>
       <ChangePasswordDialog open={pwdOpen} onOpenChange={setPwdOpen} />
+      <PasswordExpiryBanner onChange={() => setPwdOpen(true)} />
     </TooltipProvider>
   );
 };

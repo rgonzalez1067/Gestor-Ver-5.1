@@ -94,6 +94,11 @@ async def _on_startup():
     except Exception as e:
         logging.warning(f"[startup] migrate_integration_modalities failed: {e}")
     try:
+        from services.security_policy import ensure_initial_setup
+        await ensure_initial_setup()
+    except Exception as e:
+        logging.warning(f"[startup] security policy setup failed: {e}")
+    try:
         from routes.banks import migrate_bank_product_status
         await migrate_bank_product_status()
     except Exception as e:
