@@ -1,0 +1,36 @@
+{
+  "summary": "Tested PG Tokenizador/Link de Pago flags and standalone LINK_PAGO (no PG) in the backend and the UI. Backend: 15 of 15 pytest tests passed. They cover preview-pdf-with-template for all 4 PG flag combinations (PYME, plus CORP with both flags), standalone LP for link_pago/tokenizador/ambos (PYME and CORP), legacy LP (still includes PG), VPOS regression, create-with-pdf persistence (GET), the saved PDF in /api/uploads, regenerate-pdf using the stored flags, PUT persisting include_link_pago, and tokenizador-billing-line (applies=true for GATEWAY+tok, false for GATEWAY with link only, true for standalone ambos). The tariff pages are inserted before 'TÉRMINOS DE LA COTIZACIÓN'. UI (PYME, EKONOMAR): the PG wizard shows pg-include-tokenizador and pg-include-link-pago, both NO by default. For LINK_PAGO they are not shown. Total Setup stays at $240 for every combination. Previsualizar sends the correct flags; replaying the exact UI payload gives PDFs with the expected pages (tok only, link only, both). Saving PG with both SÍ persists both flags and the stored PDF has PG + Tokenizador + Link. Modificar loads both SÍ and the preview keeps the flags. LINK_PAGO: the variant modal works. After Cliente + Integrador + Aplicativo there is no PG setup section, no recurrentes and no Servicio Express. lp-standalone-summary shows the chips, and change-variant reopens the modal and updates the chips. Saving gives quote_type LINK_PAGO, lp_standalone=true, pg_setup_items=[], total 0. The 'ambos' PDF (preview and saved) contains Tokenizador + Link de Pago and no 'INVERSIÓN EN SETUP', 'Persona Jurídica' or 'Payment Gateway'.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/quotes/create-with-pdf (elif branch when pdf_data is absent, GATEWAY/LINK_PAGO with pg_setup_items)", "issue": "The fallback TemplateQuotePDFRequest does not pass include_tokenizador/include_link_pago/lp_standalone, so API callers that omit pdf_data get a PDF without the add-on pages. The frontend always sends pdf_data, so the UI is not affected. A standalone LP without pdf_data gets no PDF at all because pg_setup_items is empty."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Modificar Cotización (PG/LP)", "issue": "Existed before this change, not a regression: handleSubmitPGQuote always POSTs /quotes/create-with-pdf, even in edit mode with 'Mantener cotización original' (modify-choice-in-place). Result: a new quote number is created (058 -> 059), the original stays unchanged, and the wizard title says '(Nueva Versión)'. The flags carry over correctly to the new quote.", "selector": "[data-testid='pg-submit-quote-button']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Wizard PG – parameter block", "issues": ["The Tokenizador/Link toggles wrap onto a second row with a leftover border-l divider on the left edge, so they look slightly misaligned against the first row (Patrocinada / IVA / Express)."]},
+      {"screen": "Wizard LINK_PAGO standalone", "issues": ["'Implementación Patrocinada' is still shown even though standalone LP has no setup cost, which may confuse users. Product decision needed.", "In edit mode the Cliente Select trigger shows as empty, although the green summary shows EKONOMAR. Existed before this change."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter363_pg_tok_link_flags.py", "/app/test_reports/pytest/pytest_iter363.xml"],
+  "action_items": [
+    "(Optional) Pass include_tokenizador/include_link_pago/lp_standalone in the create-with-pdf fallback branch (routes/quotes.py ~L356) for consistency",
+    "(Existed before) Make the PG/LP wizard save honor editMode (in_place vs new_version), as handleSaveEditedQuote does for VPOS",
+    "(Optional) Decide whether 'Implementación Patrocinada' should be hidden for standalone LINK_PAGO"
+  ],
+  "critical_code_review_comments": [
+    "routes/quotes.py create-with-pdf fallback branch ignores the new flags (see minor backend issue).",
+    "routes/quotes.py is over 3100 lines and QuoteWizardDialog.jsx is over 2600 lines; they should be split.",
+    "Auth observations from playbook checks, existed before and out of scope: the admin password hash is not bcrypt (prefix 'e2fd'); the token is a Bearer token in localStorage, not an httpOnly cookie; CORS returns allow-origin '*' with allow-credentials true."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter363_pg_tok_link_flags.py"],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "100% of the requested flows (the Modificar in-place issue existed before this change)"},
+  "seed_data_creation": "Created TEST quotes via pytest (notes=TEST_iter363) and 3 via the UI (COT-2026-11-058/059/060-PYME). All were deleted by id. The quote numbers in the sequence were consumed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && REACT_APP_BACKEND_URL=... python -m pytest tests/test_iter363_pg_tok_link_flags.py -p no:xdist. PYME client cli_883fcd784734 (EKONOMAR). The browser automation env has no PyPDF2: capture the preview request post_data, write it to /tmp, and replay it locally with PyPDF2. The Bigwise integrator needs select-integrator-app to be picked before isHeaderComplete becomes true. Login token comes from session_token in localStorage."
+}

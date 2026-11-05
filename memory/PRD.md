@@ -4689,3 +4689,11 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Archivos: backend/routes/quote_actions.py (is_mpos_license, _configure_mpos_license), action_notifications.py, QuotesTable.jsx (MposConfigureItem), QuoteStatusStepper.jsx (FLOWS.mpos).
 - Probado: iteration_362.json (100% backend/frontend). Idempotencia de configure corregida después.
 - Backlog: aplicar en el backend los permisos de overrides (hoy solo en frontend, igual que en las demás acciones).
+
+## 2026-06 — Payment Gateway + Tokenizador / Link de Pago (unificación)
+- GATEWAY: toggles "¿Se incluye Tokenizador?" / "¿Se incluye Link de Pago?" (include_tokenizador / include_link_pago, default NO). El PDF agrega las páginas de tarifas (static/anexos) antes de los Términos; los totales no cambian.
+- LINK_PAGO nuevo (lp_standalone=true): sin setup/recurrentes PG ni Servicio Express; el PDF lleva portada, carta, "Servicios Cotizados", tarifas y Términos; total 0. Las LINK_PAGO legacy (sin flag) quedan como estaban.
+- Línea de facturación del Tokenizador y additional_components del proyecto también para GATEWAY con flags.
+- Archivos: pdf_generator.py (_insert_anexos_before_terms, _lp_standalone_body, _pg_terms_elements), routes/quotes.py, models.py, quote_transitions.py, PgAdditionalServices.jsx, QuoteWizardDialog.jsx, Quotes.jsx.
+- Probado: iteration_363.json (15/15 backend, frontend OK).
+- Pendiente conocido (anterior a este cambio): "Modificar" en PG/LP siempre crea una nueva versión aunque se elija mantener la original.

@@ -24,7 +24,7 @@ const YesNo = ({ value, onChange, testid }) => (
 
 // Payment Gateway: servicios adicionales que anexan sus páginas de tarifas al PDF.
 export const PgAdditionalServicesToggles = ({ quoteData, setQuoteData }) => (
-  <div className="flex-shrink-0 border-l border-slate-200 pl-4 flex gap-6" data-testid="pg-additional-services-block">
+  <div className="basis-full border-t border-slate-200 pt-3 flex flex-wrap gap-8" data-testid="pg-additional-services-block">
     <div>
       <Label className="text-sm font-semibold text-slate-800 block mb-2">¿Se incluye Tokenizador?</Label>
       <p className="text-[11px] text-slate-500 mb-2 leading-tight max-w-[200px]">Anexa la sección de tarifas del Tokenizador al PDF.</p>

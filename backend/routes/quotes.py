@@ -369,6 +369,9 @@ async def create_quote_with_pdf(data: QuoteCreateWithPDF, authorization: Optiona
                         production_items=[],
                         notes=data.notes or '',
                         iva_exempt=bool(data.iva_exempt),
+                        include_tokenizador=bool(data.include_tokenizador),
+                        include_link_pago=bool(data.include_link_pago),
+                        lp_standalone=bool(data.lp_standalone),
                     )
                     
                     logo_path = None
