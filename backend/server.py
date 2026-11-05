@@ -218,7 +218,9 @@ async def preliminary_quote_guard(request: Request, call_next):
     """Bloquea acciones de flujo sobre cotizaciones preliminares (PRE)."""
     from routes.preliminary_quotes import BLOCKED_PRE_ACTIONS, PRE_BLOCK_MSG, is_preliminary
     m = BLOCKED_PRE_ACTIONS.match(request.url.path)
-    if m and request.method in ("POST", "PUT", "GET"):
+    if m and request.method in ("POST", "PUT", "GET") and not (
+        m.group(2) == "duplicate" and request.query_params.get("mode") in ("in_place", "new_version")
+    ):
         q = await db.quotes.find_one({"quote_id": m.group(1)}, {"_id": 0, "quote_number": 1, "client_id": 1})
         if q and is_preliminary(q):
             return JSONResponse(status_code=400, content={"detail": PRE_BLOCK_MSG})

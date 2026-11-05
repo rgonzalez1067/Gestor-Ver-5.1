@@ -767,11 +767,12 @@ async def update_client_imple_data(client_id: str, payload: ImpleDataUpdate, aut
 
 
 @router.get("/clients/search")
-async def search_clients(q: str = "", authorization: Optional[str] = Header(None)):
+async def search_clients(q: str = "", include_placeholder: bool = False, authorization: Optional[str] = Header(None)):
     """Búsqueda server-side de clientes por nombre o RIF"""
     await get_current_user(authorization)
+    hide = {} if include_placeholder else {"is_placeholder": {"$ne": True}}
     if not q or len(q) < 2:
-        clients = await db.clients.find({}, {"_id": 0, "client_id": 1, "fantasy_name": 1, "legal_name": 1, "rif": 1}).to_list(50)
+        clients = await db.clients.find(hide, {"_id": 0, "client_id": 1, "fantasy_name": 1, "legal_name": 1, "rif": 1}).to_list(50)
         return clients
     import re
     # Limpiar caracteres especiales para búsqueda de RIF (J-12345678-9 → J12345679)
@@ -779,6 +780,7 @@ async def search_clients(q: str = "", authorization: Optional[str] = Header(None
     # Construir regex flexible para RIF: insertar .? entre cada carácter para ignorar puntos/guiones
     rif_pattern = '.?'.join(re.escape(c) for c in q_clean) if q_clean else q
     query = {
+        **hide,
         "$or": [
             {"fantasy_name": {"$regex": q, "$options": "i"}},
             {"legal_name": {"$regex": q, "$options": "i"}},

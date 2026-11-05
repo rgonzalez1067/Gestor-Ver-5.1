@@ -795,6 +795,7 @@ export const Quotes = () => {
       // Ordenar clientes alfabéticamente por legal_name (Razón Social) con
       // fallback a fantasy_name para mejorar la búsqueda en el filtro.
       const sortedClients = [...(clientsRes.data || [])].sort((a, b) => {
+        if (!!a.is_placeholder !== !!b.is_placeholder) return a.is_placeholder ? -1 : 1;
         const an = (a.legal_name || a.fantasy_name || '').toLowerCase();
         const bn = (b.legal_name || b.fantasy_name || '').toLowerCase();
         return an.localeCompare(bn, 'es', { sensitivity: 'base' });

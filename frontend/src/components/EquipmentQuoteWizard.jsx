@@ -62,7 +62,7 @@ export const EquipmentQuoteWizard = ({ open, onClose, onQuoteCreated, clients, h
     if (clientSearchTimer.current) clearTimeout(clientSearchTimer.current);
     clientSearchTimer.current = setTimeout(async () => {
       try {
-        const res = await api.get(`/clients/search?q=${encodeURIComponent(clientSearchQuery)}`);
+        const res = await api.get(`/clients/search?include_placeholder=true&q=${encodeURIComponent(clientSearchQuery)}`);
         setClientSearchResults(res.data);
       } catch {
         const q = clientSearchQuery.toLowerCase().replace(/[.\-\s]/g, '');

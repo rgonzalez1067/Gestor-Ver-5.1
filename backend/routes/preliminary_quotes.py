@@ -117,6 +117,16 @@ async def send_preliminary(quote_id: str, data: SendPreliminaryRequest, authoriz
     from services.pdf_storage import load_attachment_bytes
     pdf_bytes = load_attachment_bytes(url) if url else None
     if not pdf_bytes:
+        try:
+            if quote.get("quote_type") in {"VPOS", "MPOS", "GATEWAY", "LINK_PAGO", "FAST_TRACK", "VPOS_MULTIRIF"}:
+                from routes.quotes import regenerate_quote_pdf as regen_fn
+            else:
+                from routes.quotes import regenerate_equipment_pdf as regen_fn
+            regen = await regen_fn(quote_id, {}, authorization)
+            pdf_bytes = load_attachment_bytes(regen.get("pdf_url", ""))
+        except Exception as e:
+            logging.warning(f"[send-preliminary] no se pudo generar el PDF: {e}")
+    if not pdf_bytes:
         raise HTTPException(status_code=400, detail="La cotización no tiene PDF generado. Modifíquela y guárdela para generarlo.")
     pdf = _watermark(pdf_bytes)
 

@@ -3402,7 +3402,7 @@ async def duplicate_quote(
 
     # mode == "new_version" (default) — crea nueva cotización con nuevo número
     quote_sede = original_quote.get("sede", "PYME")
-    new_quote_number = await generate_quote_number(quote_sede)
+    new_quote_number = await generate_quote_number(quote_sede, original_quote.get("client_id"))
 
     original_version = original_quote.get("version", 1)
     parent_id = original_quote.get("parent_quote_id") or quote_id

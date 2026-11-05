@@ -1,0 +1,41 @@
+{
+  "summary": "Iter360 – Cotizaciones Preliminares (Cliente Sin Rif / PRE). Backend con pytest (22 tests, 20 OK) y UI E2E con Playwright (rgonzalez admin). Funcionan: el directorio /clients oculta Sin Rif; crear desde la UI VPOS PYME, VPOS CORP y Equipos con Sin Rif da PRE-YYYY-MM-NNNN y genera PDF; el menú PRE trae solo 3 opciones (Asignar/Modificar/Enviar), sin Anexos y con badge PRELIMINAR; las 11 acciones de flujo bloqueadas devuelven el mensaje exacto; Enviar a un correo (validación, toast, email_logs preliminary_quote con adjunto -PRELIMINAR.pdf); Asignar a un cliente (nuevo COT, cliente real, sin badge, menú normal y Anexos de vuelta, auditoría, PDF regenerado; segunda asignación da 400 'no es preliminar'); regresión COT normal. FALLAN: (1) CRÍTICO: Modificar Cotización en una PRE devuelve 400 en ambos modos, porque usa POST /quotes/{id}/duplicate y ese endpoint está en BLOCKED_PRE_ACTIONS; (2) 'Cliente Sin Rif' NO aparece primero en los selectores de cliente de Cotizaciones.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/quotes/{id}/duplicate?mode=in_place|new_version", "issue": "'Modificar Cotización' de una PRE (wizard de implementación y EditEquipRepairDialog) llama a /duplicate. El middleware preliminary_quote_guard lo bloquea porque 'duplicate' está en BLOCKED_PRE_ACTIONS, y responde 400 con PRE_BLOCK_MSG. Se reprodujo en la UI con PRE-2026-11-0006 (Equipos) en ambos modos y en pytest. Además, aunque se desbloquee, el modo new_version (quote_actions.py ~L3405) llama a generate_quote_number(quote_sede) sin client_id, así que la nueva versión recibiría un COT y saldría de la serie PRE sin asignar cliente.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "GET /api/clients/search", "issue": "No filtra is_placeholder: 'Cliente Sin Rif' sale en las búsquedas de TallerRecepcion.jsx (recepción de taller), no solo en Cotizaciones."},
+      {"endpoint": "generate_quote_number / assign-client", "issue": "El sufijo depende de la sede del USUARIO, no de la opción elegida. El admin (sede TBP) crea por 'Clientes Corporativos' y obtiene PRE-2026-11-0005-PYME (segmento Corp), y al asignar queda COT-...-048-PYME. El requisito pedía PRE-...-CORP. Es el mismo comportamiento que ya tienen los COT normales, pero hay que confirmar si se acepta."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Quotes.jsx fetchData (selector de cliente del wizard de Implementaciones) y EquipmentQuoteWizard", "issue": "'Cliente Sin Rif' no aparece primero. El backend lo devuelve en la posición 0 con include_placeholder=true, pero Quotes.jsx (~L797) ordena alfabéticamente por legal_name y el selector muestra clients.slice(0,50); la primera opción es 'Grupo Abreu', y en Equipos 'J500686552 - Grupo Abreu'. Solo se llega a Sin Rif buscando 'Sin Rif'. Solución: ordenar dejando is_placeholder primero.", "selector": "[data-testid=select-client] / [data-testid=equipment-select-client]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Modificar Cotización en PRE", "issue": "Tras elegir el modo y confirmar la justificación, /duplicate responde 400 y no se guarda nada; la cotización sigue sin cambios.", "affected_selectors": ["modify-quote-btn-{id}", "modify-choice-in-place", "modify-choice-new-version", "save-version-btn"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_iter360_preliminary_quotes.py", "/app/test_reports/pytest/iter360.xml"],
+  "action_items": [
+    "Permitir /duplicate para PRE: sacar 'duplicate' de BLOCKED_PRE_ACTIONS o dejarlo pasar cuando la petición trae mode. En new_version pasar client_id a generate_quote_number(quote_sede, original_quote.get('client_id')) para que la nueva versión siga siendo PRE (secuencia pre_*), y revisar que regenerate-pdf/regenerate-equipment-pdf y PUT /quotes/{id} no estén bloqueados para PRE (hoy no lo están).",
+    "Quotes.jsx ~L797: en el sort de clientes poner primero los is_placeholder, para que 'Cliente Sin Rif' salga primero en select-client y en equipment-select-client.",
+    "Opcional: filtrar is_placeholder en GET /clients/search salvo que se pida include_placeholder, para que no salga en Recepción de Taller.",
+    "Confirmar con negocio si el sufijo de PRE/COT debe salir del segmento elegido (CORP) y no de la sede del usuario."
+  ],
+  "critical_code_review_comments": [
+    "Guard: is_preliminary también se cumple con client_id == cli_sin_rif; está bien, pero el bloqueo de /duplicate impide justo el 'Modificar' que el requisito permite.",
+    "assign_client toma la sede del sufijo del número PRE; está bien, pero hereda el problema de la sede del usuario.",
+    "Una PRE creada con POST /quotes (sin PDF) no se puede enviar por correo (400 'no tiene PDF'), y como Modificar está bloqueado no hay forma de generarle el PDF. Desde la UI no pasa porque create-with-pdf siempre genera PDF.",
+    "Quotes.jsx (>4600 líneas) y QuotesTable.jsx (741 líneas) superan el tamaño recomendado."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter360_preliminary_quotes.py"],
+  "success_rate": {"backend": "91% (20/22; fallan los 2 casos de Modificar)", "frontend": "~85% (falla Modificar en PRE y el orden de Sin Rif)"},
+  "seed_data_creation": "Se crearon 7 cotizaciones de prueba (PRE-2026-11-0001..0006 y COT-2026-11-046..048) y todas se eliminaron por quote_id, junto con sus 2 audit_exceptions. Contadores restaurados al snapshot previo: quote_PYME_2026_11=45 y pre_PYME_2026_11 eliminado (no existía). Quedan 2 registros en email_logs (action preliminary_quote, enviados a rgonzalez@megasoft.com.ve) y los PDF generados en /uploads.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login: POST /api/auth/login devuelve session_token (no token). rgonzalez es admin con sede TBP, así que sus números llevan sufijo PYME. UI: Implementaciones = create-quote-button > new-impl-pyme/corp, select-quote-type 'VPOS (Cajas)', select-client con búsqueda client-search-input 'Sin Rif' > client-option-cli_sin_rif, select-pricing-model y select-integrator (primera opción) y submit-quote-button. Equipos = create-equipment-quote-button > new-equipment-pyme > equipment-select-client > equipment-step1-next > equipment-category-* > equipment-add-* > equipment-confirm-btn > equipment-confirm-generate. Modificar en Equipos: modify-choice-* > save-version-btn > textarea de justificación (>=20 caracteres) > 'Confirmar y Guardar'. Antes de limpiar, sacar snapshot de db.counters.",
+  "rca of the issue": "Modificar PRE: QuotesTable muestra modify-quote-btn para PRE, pero tanto handleSaveEditedQuote (Quotes.jsx ~L3947) como EditEquipRepairDialog (~L195) hacen POST /quotes/{id}/duplicate?mode=..., y preliminary_quotes.BLOCKED_PRE_ACTIONS incluye 'duplicate', así que el middleware responde 400. Reproducción: crear una PRE de Equipos > ⋯ > Modificar Cotización > cualquier modo > Generar Nueva Versión > justificación > Confirmar y Guardar, y la llamada devuelve 400. Mitigación: permitir duplicate en PRE y conservar el prefijo PRE en new_version pasando client_id a generate_quote_number."
+}
