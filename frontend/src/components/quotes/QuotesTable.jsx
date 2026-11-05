@@ -56,7 +56,7 @@ const MposConfigureItem = ({ quote, meta, onConfigure }) => {
       <Settings size={16} className={`mr-2 ${isDisabled ? 'text-slate-400' : 'text-indigo-600'}`} />
       {meta.label}
       {!isDisabled && <span className="ml-auto text-xs text-indigo-500">&#x25CF;</span>}
-      {notSent && <span className="ml-auto text-[9px] bg-amber-100 text-amber-700 px-1 rounded">Enviar a Imple primero</span>}
+      {notSent && <span className="ml-auto whitespace-nowrap text-[10px] bg-amber-100 text-amber-700 px-1 rounded">Enviar a Imple primero</span>}
     </DropdownMenuItem>
   );
 };

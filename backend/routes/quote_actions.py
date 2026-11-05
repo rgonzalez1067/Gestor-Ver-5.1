@@ -1029,6 +1029,8 @@ def is_mpos_license(quote: dict) -> bool:
 
 async def _configure_mpos_license(quote: dict, current_user: dict, custom_message, additional_recipients, manual_attachment_ids):
     quote_id = quote["quote_id"]
+    if quote.get("archived") or quote.get("configured_at"):
+        raise HTTPException(status_code=400, detail="Esta cotización MPOS ya fue configurada y enviada al Histórico")
     if not quote.get("sent_to_implementation_at"):
         raise HTTPException(status_code=400, detail="Primero debe Enviar a Implementación antes de marcar la cotización MPOS como Configurada")
     now = datetime.now(timezone.utc).isoformat()

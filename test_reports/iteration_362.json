@@ -1,0 +1,36 @@
+{
+  "summary": "Tested the new MPOS quote type (no equipment; VPOS-style flow plus Configuración after Enviar a Imple, then automatic move to Histórico). Backend: 11 of 11 pytest tests passed. Covered: the catalog shows 'MPOS' for mpos_tablet, with 'configure' listed after send_to_implementation for pyme and corp. Configure before sending returns 400. Send without a reason returns 422 IRREGULAR. Send with x-exception-reason returns 200; the quote stays active (Enviada a Imple, sent_to_implementation_at set, not archived), a project is created and nothing goes to history. A second send returns 400 'ya fue enviada'. Configure then returns 200 (Configurada, archived=true); the quote is no longer in GET /api/quotes and appears in /api/quote-history; the email_log configure_mpos_seller exists. Regression: VPOS still archives and deletes the quote on send, and configure on VPOS returns 400. fast_track configure still works and the quote is not archived. Frontend (Playwright, admin): the wizard offers 'MPOS' as a type and selecting it shows no 'Equipos a Despachar'; saving through the UI creates quote_type=MPOS, quote_category=implementation with empty equipment. The grid menu shows send-to-impl-btn plus configure-mpos-btn, disabled with the 'Enviar a Imple primero' badge before sending; after sending, Enviar a Impl. is disabled with a check mark and Configuración is enabled. The stepper shows Enviada, Aprobada, Factura, Pagada, Imple., Config. Configuración opens the Personalizar Comunicación modal; Continuar shows a success toast, the grid refreshes without the quote, and the quote appears in Histórico with an MPOS badge. On the Configuración de Acciones page, the Matrix and Override tabs show 'MPOS' (no 'MPOS Tablet' anywhere) with 6 actions, including Configuración. All test data was cleaned up.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/quotes/{id}/configure (MPOS)", "issue": "Not idempotent. Calling it again on an MPOS quote that is already Configurada and archived returns 200 and sends the seller email again. It should return 400 or skip the email when quote_status is already 'Configurada' or archived=True. The UI hides archived quotes, so only direct API calls or double-clicks can trigger this."},
+      {"endpoint": "POST /api/quotes/{id}/configure", "issue": "The 'configure' override (which roles/users may mark Configurada) is enforced only in the frontend (getActionMeta). The backend does not check quote_action_overrides. This matches how other actions work, but any authenticated user can call the API directly."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Quotes grid actions menu (MPOS)", "issues": ["The 'Enviar a Imple primero' badge (text-[9px], amber-100/amber-700) wraps to 2 lines next to the disabled 'Configuración' item and is very small. Use whitespace-nowrap and a 10–11px size, or a tooltip only."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter362_mpos_license.py", "/app/backend/tests/ui_fixture_iter362.py", "/app/test_reports/pytest/iter362.xml"],
+  "action_items": [
+    "Make _configure_mpos_license idempotent: if quote_status=='Configurada' or archived, return 400 (or 200 without re-sending the email).",
+    "Use one sub-type rule for MPOS vs MPOS Imple+POS everywhere. Today the backend is_mpos_license checks 'IMPLE' in sub_quote_type, notification_engine treats 'IMPLE' OR 'POS' as mpos_imple_pos, and QuotesTable.resolveBizSub requires an exact 'IMPLE_POS' match. Edge-case sub_quote_type values could get flow X with notification config Y.",
+    "Quotes.jsx buildTemplatePdfData (~line 1806) looks up the pinpad only in pinpads for MPOS, but the save path (~line 2034) uses posDevices for MPOS. The POS model may be missing from Preview/Export PDF compared with the saved PDF. Please align them.",
+    "Quotes.jsx getCompatibilityField has duplicate case labels ('VPOS' twice, 'MPOS' twice), so 'mpos_available' can never be reached and MPOS uses vpos_available. Confirm this is intended and remove the dead cases.",
+    "Optional: enforce the 'configure' override (allowed users/roles) in the backend as well."
+  ],
+  "critical_code_review_comments": [
+    "Quotes.jsx (>4700 lines) and quote_actions.py (>3500 lines) are far over the 700-line guideline. Consider extracting the MPOS configure logic into its own module.",
+    "_configure_mpos_license sets the status to Configurada before calling the engine or email. If archive_quote_to_history fails, the error is only logged and the response still says archived=True, so the response can misreport the state."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter362_mpos_license.py", "/app/backend/tests/ui_fixture_iter362.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Created TEST_ITER362 MPOS, VPOS and FAST_TRACK quotes, plus their projects and history entries, through the API and UI (including COT-2026-11-053-PYME from the wizard). All were deleted by quote_id. Email logs were left in place. Quote and project number counters advanced.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Admin rgonzalez@megasoft.com.ve / MegaSoft2026* worked; no 2FA prompt.",
+  "context_for_next_testing_agent": "Run with: cd /app/backend && set -a; . ./.env; . ../frontend/.env; set +a; python -m pytest tests/test_iter362_mpos_license.py -v. For UI tests, ui_fixture_iter362.py create writes the token/user and an MPOS quote to stdout (inject into localStorage session_token/user); cleanup <qid...> removes the quotes, projects and history. No dynamic config exists for implementacion_pyme|mpos_tablet|configure, so the legacy email is used. The Mega Soft sponsor option was not in the first 15 entries of the sponsor list; MPOS 'Equipos a Despachar' absence was verified with no sponsor selected (the code gates that section on isFastTrackType)."
+}

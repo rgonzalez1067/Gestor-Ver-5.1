@@ -4681,3 +4681,11 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-11 Copias de comunicación masiva: envío aparte (1 sola vez, BCC) con variables de plantilla en blanco (_blank_template_vars). Testing iter347.
 - 2026-11 'Notas adicionales' → 'Características particulares del Proyecto' (ProjectFeaturesField: RichTextEditor 1000 chars, H1-H3, listas, colores) en todos los wizards (Implementación, PG/LP, Equipos, Reparación, EditEquipRepair). PDF: página propia (services/project_features_pdf.py) antes de Términos/condiciones (VPOS, VPOS CORP, PG, LP, PG/LP CORP vía detección de 'TÉRMINOS DE LA COTIZACIÓN', Equipos/Reparación antes de append_equipment_conditions). Fix generate_quote_number salta números existentes. Estilos ul/ol/h en index.css (.rte-root). Testing iter348/349.
 - 2026-11 Configuración reestructurada: eliminadas 'Configuración de Correos de Notificación' y pie 'Historial de Correos'; nuevos tiles en Configuración General: Plantillas de Correo (/settings/email-templates) e Historial de Correos (/settings/email-history, admin; GET /api/email-logs con filtros+paginación+total_db, /api/email-logs/actions; fechas en hora VE). Contingencia · Migración movida a cabecera del Centro de Respaldos (2 botones + callout). Testing iter350.
+
+## 2026-06 — Nuevo tipo de Cotización MPOS (sin equipos)
+- QUOTE_TYPES 'MPOS' habilitado (quote_category=implementation, sin "Equipos a Despachar").
+- Flujo: Enviar al Cliente → Aprobación → Factura → Cobranza → Enviar a Imple (crea proyecto, cotización sigue activa) → Configuración (requiere envío previo) → archivo automático en Histórico + email al vendedor (Motor de Acciones o fallback legacy `configure_mpos_seller`).
+- Subcategoría `mpos_tablet` renombrada a "MPOS" en Configuración de Acciones, con acción `configure` añadida (Pyme y Corp).
+- Archivos: backend/routes/quote_actions.py (is_mpos_license, _configure_mpos_license), action_notifications.py, QuotesTable.jsx (MposConfigureItem), QuoteStatusStepper.jsx (FLOWS.mpos).
+- Probado: iteration_362.json (100% backend/frontend). Idempotencia de configure corregida después.
+- Backlog: aplicar en el backend los permisos de overrides (hoy solo en frontend, igual que en las demás acciones).
