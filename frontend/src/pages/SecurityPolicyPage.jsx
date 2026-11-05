@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck, KeyRound, Lock, Clock, History, Mail, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, ScrollText, ShieldCheck, KeyRound, Lock, Clock, History, Mail, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Sidebar } from '../components/Sidebar';
 import { Button } from '../components/ui/button';
@@ -64,6 +64,9 @@ export default function SecurityPolicyPage() {
       <main className="flex-1 p-8 max-w-5xl" data-testid="security-policy-page">
         <button onClick={() => navigate('/settings')} className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1 mb-4" data-testid="sec-back-btn"><ArrowLeft size={14} />Configuración</button>
         <div className="flex items-center gap-3 mb-6">
+          <Button variant="outline" onClick={() => navigate('/settings/audit-trails')} className="order-last ml-auto" data-testid="open-audit-trails-btn">
+            <ScrollText size={16} className="mr-2" />Pistas de Auditoría
+          </Button>
           <div className="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><ShieldCheck size={22} /></div>
           <div>
             <h1 className="text-2xl font-semibold text-slate-900 font-manrope">Seguridad y Control de Acceso</h1>

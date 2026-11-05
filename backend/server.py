@@ -63,6 +63,8 @@ from routes.connected_users import router as connected_users_router
 from routes.other_actions_config import router as other_actions_router
 from routes.bank_payment_conditions import router as bank_payment_conditions_router
 from routes.economic_groups import router as economic_groups_router
+from routes.audit_trails import router as audit_trails_router
+from services.audit_trail import AuditContextMiddleware, ensure_audit_indexes
 from services.notification_scheduler import start_scheduler, stop_scheduler
 from services.notification_service import start_ws_dispatcher, stop_ws_dispatcher, start_ws_reaper, stop_ws_reaper
 
@@ -70,6 +72,10 @@ app = FastAPI(title="Cotizador Merchant Server API")
 
 @app.on_event("startup")
 async def _on_startup():
+    try:
+        await ensure_audit_indexes(db.raw)
+    except Exception as e:
+        logging.warning(f"audit indexes: {e}")
     try:
         start_scheduler()
     except Exception as e:
@@ -390,7 +396,10 @@ api_router.include_router(project_sla_router)
 api_router.include_router(calendar_router)
 api_router.include_router(bank_payment_conditions_router)
 api_router.include_router(economic_groups_router)
+api_router.include_router(audit_trails_router)
 app.include_router(api_router)
+# Debe quedar como middleware más externo (contexto IP/UA/endpoint de las Pistas de Auditoría).
+app.add_middleware(AuditContextMiddleware)
 
 
 @app.on_event("startup")

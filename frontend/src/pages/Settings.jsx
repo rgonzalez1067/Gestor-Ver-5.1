@@ -4,7 +4,7 @@ import { Sidebar } from '../components/Sidebar';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Upload, Trash2, Image, FileText, Check, X, Download, Mail, Save, Building2, Warehouse, FileCode, Key, Eye, EyeOff, CheckCircle, AlertCircle, MapPin, TrendingUp, RefreshCw, Clock, Settings2, ChevronRight, ShieldCheck, ChevronDown, Wifi, DatabaseBackup, PenLine, CalendarDays, Bell, Gauge, Inbox } from 'lucide-react';
+import { Upload, Trash2, Image, FileText, Check, X, Download, Mail, Save, Building2, Warehouse, FileCode, Key, Eye, EyeOff, CheckCircle, AlertCircle, MapPin, TrendingUp, RefreshCw, Clock, Settings2, ChevronRight, ShieldCheck, ChevronDown, Wifi, DatabaseBackup, PenLine, CalendarDays, Bell, Gauge, Inbox, ScrollText } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import api from '../utils/api';
 import { toast } from 'sonner';
@@ -608,9 +608,11 @@ export const Settings = () => {
           {/* ===== Grid moderno de accesos de configuración (2 por fila) ===== */}
           {(() => {
             let isAdminUser = false;
+            let isAuditor = false;
             try {
               const u = JSON.parse(localStorage.getItem('user') || '{}');
               isAdminUser = u?.role === 'admin' || u?.is_admin === true;
+              isAuditor = isAdminUser || (u?.special_permissions || []).includes('configuracion:auditor');
             } catch { /* noop */ }
 
             const ACCENTS = {
@@ -625,6 +627,7 @@ export const Settings = () => {
 
             const tiles = [
               { key: 'security', adminOnly: true, icon: ShieldCheck, accent: 'emerald', title: 'Seguridad y Control de Acceso', desc: 'Políticas de contraseñas, bloqueo por intentos fallidos y 2FA por correo.', route: '/settings/security', testid: 'open-security-policy-btn' },
+              { key: 'audit-trails', auditorOnly: true, icon: ScrollText, accent: 'slate', title: 'Pistas de Auditoría', desc: 'Consulta global de creaciones, modificaciones y eliminaciones con visor de diferencias.', route: '/settings/audit-trails', testid: 'open-audit-trails-tile' },
               { key: 'footer', icon: FileText, accent: 'slate', title: 'Footer Global', desc: 'Pie de página institucional anexado a cada correo del ecosistema.', route: '/settings/email-footer', testid: 'open-email-footer-btn' },
               { key: 'email-templates', icon: FileCode, accent: 'blue', title: 'Plantillas de Correo Electrónico', desc: 'Gestor y editor de las plantillas HTML predeterminadas del sistema por sede.', route: '/settings/email-templates', testid: 'open-email-templates-btn' },
               { key: 'email-history', adminOnly: true, icon: Mail, accent: 'indigo', title: 'Historial de Correos', desc: 'Auditoría de correos despachados con filtros y total de registros.', route: '/settings/email-history', testid: 'open-email-history-btn' },
@@ -641,7 +644,7 @@ export const Settings = () => {
 
             return (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4" data-testid="config-tiles-grid">
-                {tiles.filter((t) => !t.adminOnly || isAdminUser).map((t) => {
+                {tiles.filter((t) => (!t.adminOnly || isAdminUser) && (!t.auditorOnly || isAuditor)).map((t) => {
                   const a = ACCENTS[t.accent] || ACCENTS.slate;
                   const Icon = t.icon;
                   return (

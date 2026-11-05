@@ -114,6 +114,9 @@ SPECIAL_PERMISSIONS = [
      "label": "Comunicación Masiva a Integradores",
      "description": "Habilita el envío de comunicaciones masivas en copia oculta (BCC) a grupos de integradores, con plantilla de la biblioteca y adjuntos (repositorio + archivos locales)."},
     # Integradores — Cierre de Proyecto de Integración
+    {"id": "configuracion:auditor", "module": "configuracion",
+     "label": "Auditor (Pistas de Auditoría)",
+     "description": "Permite consultar y exportar las Pistas de Auditoría globales (solo lectura)."},
     {"id": "integradores:cerrar_proyecto", "module": "integradores",
      "label": "Cerrar Proyecto de Integración",
      "description": "Habilita el botón del candado para cerrar Proyectos de Integración (genera certificado y correo de cierre). Sin este permiso, solo el Administrador puede cerrar proyectos."},
