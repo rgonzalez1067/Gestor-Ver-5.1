@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { MessageSquare, AlertCircle } from 'lucide-react';
 
-export const JustificationModal = ({ open, onClose, onConfirm, quoteNumber, version }) => {
+export const JustificationModal = ({ open, onClose, onConfirm, quoteNumber, version, inPlace = false }) => {
   const [justification, setJustification] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -27,7 +27,9 @@ export const JustificationModal = ({ open, onClose, onConfirm, quoteNumber, vers
             <MessageSquare className="w-5 h-5 text-blue-500" /> Justificación de Cambio
           </DialogTitle>
           <DialogDescription>
-            Se generará la versión <span className="font-bold text-blue-600">v{(version || 1) + 1}</span> de {quoteNumber}. Indique el motivo del cambio.
+            {inPlace
+              ? <>Se actualizará {quoteNumber} manteniendo su número. Indique el motivo del cambio.</>
+              : <>Se generará la versión <span className="font-bold text-blue-600">v{(version || 1) + 1}</span> de {quoteNumber}. Indique el motivo del cambio.</>}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">

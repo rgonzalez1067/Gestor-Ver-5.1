@@ -1890,6 +1890,14 @@ Antes, usuarios con permisos limitados no cargaban catálogos en el frontend →
 - Frontend: /settings/security, TwoFactorStep, ExpiredPasswordStep, PasswordChecklist dinámico, PasswordExpiryBanner, botón Desbloquear en Usuarios.
 - Testing: iteration_359 (100%) + tests/test_security_policy_iter359.py (13/13).
 
+## 2026-06 — Cotizaciones Preliminares (Cliente Sin Rif / PRE)
+- Cliente genérico `cli_sin_rif` (J000000000, is_placeholder, oculto de /clients y /clients/search salvo include_placeholder=true; primero en selectores de Cotizaciones/Equipos).
+- `generate_quote_number(sede, client_id)`: Sin Rif → PRE-YYYY-MM-NNNN-SEDE (contador pre_*). Nueva versión de una PRE sigue PRE.
+- routes/preliminary_quotes.py: POST /quotes/{id}/assign-client (→ COT, auditoría, PDF regenerado), POST /quotes/{id}/send-preliminary (PDF con marca PRELIMINAR). Middleware `preliminary_quote_guard` bloquea acciones de flujo (permite duplicate?mode=in_place|new_version).
+- UI: badge PRELIMINAR, menú de 3 acciones, Anexos oculto, PreliminaryQuoteDialogs.jsx.
+- Testing: iteration_360/361 (tests/test_iter360_preliminary_quotes.py NO limpia datos: notes TEST_ITER360).
+
+
 
 
 - Testing: iteration_355/356; tests/test_master_branches_iter355.py + iter356.py (28/28).

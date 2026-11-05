@@ -410,7 +410,7 @@ export const Quotes = () => {
     if (clientSearchTimer.current) clearTimeout(clientSearchTimer.current);
     clientSearchTimer.current = setTimeout(async () => {
       try {
-        const res = await api.get(`/clients/search?q=${encodeURIComponent(clientSearchQuery)}`);
+        const res = await api.get(`/clients/search?include_placeholder=true&q=${encodeURIComponent(clientSearchQuery)}`);
         setClientSearchResults(res.data);
       } catch {
         // Fallback: filtrar localmente
@@ -4099,7 +4099,9 @@ export const Quotes = () => {
         servicio_express: !!quoteData.servicio_express,
       });
       
-      toast.success(`Nueva versión ${duplicateResponse.data.new_quote_number} creada exitosamente`);
+      toast.success(editMode === 'in_place'
+        ? `Cotización ${duplicateResponse.data.new_quote_number} actualizada exitosamente`
+        : `Nueva versión ${duplicateResponse.data.new_quote_number} creada exitosamente`);
       
       // Registrar justificación en bitácora del cliente
       const implJustification = window.__implEditJustification;
@@ -4694,6 +4696,7 @@ export const Quotes = () => {
 
           {/* Modal de justificación para Implementaciones */}
           <JustificationModal
+            inPlace={editMode === 'in_place'}
             open={implJustifyOpen}
             onClose={() => { setImplJustifyOpen(false); setImplJustifyCallback(null); }}
             onConfirm={async (justification) => {

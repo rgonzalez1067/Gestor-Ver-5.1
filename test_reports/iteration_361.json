@@ -1,0 +1,38 @@
+{
+  "summary": "Iter361: retest de Cotizaciones Preliminares (PRE). Backend: pytest nuevo test_iter361_pre_retest.py, 9/9 OK, más 13/13 de los bloqueos y del placeholder de iter360. UI E2E con Playwright (admin rgonzalez). Los 2 fallos de iter360 quedaron CORREGIDOS: (1) 'Modificar Cotización' en PRE funciona en ambos modos. En Equipos (EditEquipRepairDialog), 'mantener original' conserva PRE-0009 y 'nueva versión' crea PRE-0010 v2. En Implementación VPOS (wizard), 'mantener original' conserva PRE-0011 (duplicate?mode=in_place, luego PUT y regenerate-pdf, todo 200) y 'nueva versión' crea PRE-0012 v2. Todas siguen con Cliente Sin Rif y PRELIMINAR, con PDF regenerado. (2) 'Cliente Sin Rif' sale primero sin buscar en select-client y en equipment-select-client. GET /clients/search ya no lo devuelve salvo con include_placeholder=true. Una PRE de Equipos sin PDF se envió por correo desde la UI: se regeneró el PDF y llegó a rgonzalez@megasoft.com.ve. Regresión OK: menú PRE de 3 acciones; Asignar a un cliente da PRE-0009 → COT-2026-11-047 con menú completo y Anexos; los bloqueos devuelven el mensaje exacto; duplicate sin mode sigue bloqueado. Hallazgo nuevo (regresión menor): en el wizard de Implementación, buscar 'Sin Rif' devuelve 0 resultados.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/quotes/{id}/duplicate?mode=new_version", "issue": "La nueva versión copia **original_quote y arrastra modified_in_place_at/by de la original (se vio en PRE-0012 v2). No afecta al flujo; ya pasaba antes."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Quotes.jsx ~L413 (búsqueda server-side del selector de cliente del wizard de Implementación)", "issue": "Llama a /clients/search?q=... sin include_placeholder=true. Como el backend ahora oculta el placeholder, al escribir 'Sin Rif' o 'J000000000' en client-search-input no aparece nada (0 opciones). Sin buscar sí sale primero. EquipmentQuoteWizard sí manda include_placeholder=true y funciona.", "selector": "[data-testid=client-search-input]", "priority": "MEDIUM"},
+      {"component": "JustificationModal / toast de Modificar en Implementación (modo in_place)", "issue": "En el modo 'Mantener cotización original' el modal dice 'Se generará la versión v2 de PRE-...' y el toast final dice 'Nueva versión PRE-2026-11-0011-PYME creada exitosamente', aunque no se creó ninguna versión. Ese texto es para new_version. En Equipos el toast sí es correcto ('actualizada exitosamente').", "selector": "[data-testid=impl-justify-modal]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Cotizaciones > Filtros Rápidos", "issues": ["'Desde'/'Hasta' usan el date picker nativo del navegador (mm/dd/yyyy) en vez del calendario de shadcn. Ya estaba así."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter361_pre_retest.py", "/app/test_reports/pytest/iter361.xml", "/app/backend/tests/test_iter360_preliminary_quotes.py"],
+  "action_items": [
+    "Quotes.jsx ~L413: agregar include_placeholder=true a /clients/search?q=..., para que buscar 'Sin Rif'/J000000000 en el wizard de Implementación lo encuentre (igual que en EquipmentQuoteWizard).",
+    "Ajustar el texto del JustificationModal y el toast de handleSaveEditedQuote cuando editMode === 'in_place' (por ejemplo 'Cotización X actualizada exitosamente').",
+    "Opcional: en duplicate new_version, quitar modified_in_place_at/by al copiar la cotización original."
+  ],
+  "critical_code_review_comments": [
+    "El guard deja pasar /duplicate solo con mode in_place|new_version; sin mode sigue bloqueado para PRE (verificado). Está bien, siempre que el front mande siempre mode (hoy lo hace).",
+    "generate_quote_number(quote_sede, client_id) en new_version mantiene la serie PRE; si la original ya tiene cliente real, sale un COT normal. Está bien.",
+    "send-preliminary regenera el PDF cuando falta: verificado con VPOS (POST /quotes sin PDF) y con Equipos (quote_pdf_url=null).",
+    "Quotes.jsx sigue con más de 4600 líneas; conviene dividirlo."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter361_pre_retest.py"],
+  "success_rate": {"backend": "100% (9/9 iter361 + 13/13 bloqueos y placeholder de iter360)", "frontend": "~93% (los 5 flujos pedidos OK; falla la búsqueda de 'Sin Rif' en el wizard de Implementación y el texto in_place es engañoso)"},
+  "seed_data_creation": "Se crearon 13 cotizaciones de prueba (PRE-2026-11-0001..0013 y COT-2026-11-046/047, que venían de asignaciones) y se ELIMINARON todas por quote_id, junto con sus 2 audit_exceptions. Contadores restaurados: pre_PYME_2026_11=0 y quote_PYME_2026_11=45 (no se tocaron contadores CORP). Verificado: 0 cotizaciones con notas TEST_ITER360/361 y 0 PRE-2026-11. Quedan registros de log: 8 en bitacora y 3 en email_logs (todos los correos fueron a rgonzalez@megasoft.com.ve), además de los PDF en /uploads.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login por API: POST /api/auth/login → session_token. En la UI se inyectan localStorage session_token y user. En esta página los locator.click/wait_for de Playwright se cuelgan (el elemento sale 'visible' pero nunca termina); hay que obtener el bounding box con page.evaluate y usar page.mouse.click + keyboard.type. NO borrar toasts por DOM: provoca el error insertBefore de React. Modificar en Implementación: modify-quote-btn-{id} > modify-choice-in-place|new-version > impl-justification-input > impl-confirm-save-btn > wizard > submit-quote-button. En Equipos: modify-choice-* > edit-item-qty-0 > save-version-btn > justification-input > confirm-save-btn. Antes de limpiar, tomar snapshot de db.counters.",
+  "rca of the issue": "Búsqueda de Sin Rif en Implementación: el fix de backend (/clients/search oculta is_placeholder por defecto) no se acompañó de include_placeholder=true en Quotes.jsx L413. Para reproducir: Implementaciones > PYME > select-client > escribir 'Sin Rif' → 0 opciones."
+}
