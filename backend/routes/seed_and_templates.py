@@ -445,7 +445,7 @@ BASE_EMAIL_TEMPLATES = {
                         <td style="padding: 0 40px 40px 40px;">
                             <p style="font-size: 15px; margin-bottom: 5px; color: #718096;">Atentamente,</p>
                             <p style="font-size: 16px; font-weight: bold; color: #003366; margin: 0;">Equipo de Administración</p>
-                            <p style="font-size: 14px; color: #a0aec0; margin-top: 5px;">Aplicación Gestor | MegaNexus</p>
+                            <p style="font-size: 14px; color: #a0aec0; margin-top: 5px;">Aplicación Gestor - CRM</p>
                         </td>
                     </tr>
 
@@ -624,7 +624,7 @@ BASE_EMAIL_TEMPLATES = {
     <p style="margin: 0 0 8px; font-weight: bold; color: #e67e22;">Instrucciones Operativas:</p>
     <ol style="margin: 0; padding-left: 20px; font-size: 14px; color: #555;">
       <li style="margin-bottom: 6px;">Localizar los equipos físicamente en el área de <strong>"Equipos Reparados"</strong>.</li>
-      <li style="margin-bottom: 6px;">Ingresar a la Cotización en MegaNexus y ejecutar la acción <strong>"Marcar como Entregada"</strong>.</li>
+      <li style="margin-bottom: 6px;">Ingresar a la Cotización en Gestor - CRM y ejecutar la acción <strong>"Marcar como Entregada"</strong>.</li>
       <li style="margin-bottom: 6px;">Generar la <strong>Nota de Entrega</strong> (asegurarse de que el sistema indique si es Parcial o Final según la cantidad entregada).</li>
       <li>Adjuntar la Nota de Entrega al paquete antes de la salida.</li>
     </ol>
@@ -666,7 +666,7 @@ PROJECT_EMAIL_TEMPLATES = {
 <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
 <p style="color:#666;font-size:12px;">Generado por: <strong>{usuario_creador}</strong></p>
 <p style="color:#666;font-size:12px;">Fecha de Creacion: {fecha_sistema}</p>
-<p style="color:#999;font-size:11px;">Correo automatico de MegaNexus Gestor.</p></div>""",
+<p style="color:#999;font-size:11px;">Correo automatico de Gestor - CRM.</p></div>""",
         "is_active": True,
         "is_project_template": True,
     },
@@ -693,7 +693,7 @@ PROJECT_EMAIL_TEMPLATES = {
 <h3 style="color:#2c3e50;margin-top:20px;">Bancos y Productos</h3>
 {Matriz_Bancos_Productos}
 <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
-<p style="color:#999;font-size:12px;">Correo automático de MegaNexus Gestor.</p></div>""",
+<p style="color:#999;font-size:12px;">Correo automático de Gestor - CRM.</p></div>""",
         "is_active": True,
         "is_project_template": True,
     },
@@ -720,7 +720,7 @@ PROJECT_EMAIL_TEMPLATES = {
 <h3 style="color:#2c3e50;">Productos</h3>
 <p>{bank_products}</p>
 <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
-<p style="color:#999;font-size:12px;">Correo automático de MegaNexus Gestor.</p></div>""",
+<p style="color:#999;font-size:12px;">Correo automático de Gestor - CRM.</p></div>""",
         "is_active": True,
         "is_project_template": True,
     },
@@ -765,7 +765,7 @@ PROJECT_EMAIL_TEMPLATES = {
 </div>
 
 <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
-<p style="color:#999;font-size:11px;">Correo automático generado por MegaNexus Gestor. Nivel: {notification_level}</p></div>""",
+<p style="color:#999;font-size:11px;">Correo automático generado por Gestor - CRM. Nivel: {notification_level}</p></div>""",
         "is_active": True,
         "is_project_template": True,
     },
@@ -1047,10 +1047,10 @@ SEED_TEMPLATE_COMPROBANTE = {
 <tr><td style="font-weight:bold;font-size:13px;color:#00447C">Contacto</td><td style="font-size:13px">{Contacto_Principal}</td></tr>
 </table>
 <p style="font-size:14px;color:#555">Nuestro equipo procedera a validar el pago y actualizar el estatus de su cotizacion. Si tiene alguna consulta, no dude en comunicarse con nosotros.</p>
-<p style="font-size:14px;color:#333;margin-top:20px">Atentamente,<br><strong>Equipo de Ventas MegaNexus</strong></p>
+<p style="font-size:14px;color:#333;margin-top:20px">Atentamente,<br><strong>Equipo de Ventas Gestor - CRM</strong></p>
 </div>
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fa;border:1px solid #E0E0E0;border-top:none;border-radius:0 0 6px 6px">
-<tr><td style="padding:12px 30px;font-size:11px;color:#999;text-align:center">Este correo fue generado automaticamente por el Gestor MegaNexus.</td></tr>
+<tr><td style="padding:12px 30px;font-size:11px;color:#999;text-align:center">Este correo fue generado automaticamente por el Gestor - CRM.</td></tr>
 </table>
 </div>""",
     "description": "Plantilla para confirmar la recepcion de comprobante de pago al cliente",

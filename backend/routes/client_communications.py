@@ -167,7 +167,7 @@ async def send_client_email(
     <div style="font-family: Arial, sans-serif; width: 95%; max-width: 900px; margin: 0 auto;">
         <p>{message_html}</p>
         <hr>
-        <p style="color: #666; font-size: 11px;">Comunicación enviada desde Gestor MegaNexus | Cliente: {client_name}</p>
+        <p style="color: #666; font-size: 11px;">Comunicación enviada desde Gestor - CRM | Cliente: {client_name}</p>
     </div>
     """
 

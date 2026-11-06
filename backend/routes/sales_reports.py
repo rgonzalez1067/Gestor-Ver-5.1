@@ -5,6 +5,7 @@ Tres reportes principales:
 - Aging: cotizaciones no finalizadas con días en su estado actual (buckets 0-7, 8-15, 16-30, >30).
 - Monthly: cotizado, facturado y cobrado por mes para el año filtrado.
 """
+from services.report_header import html_with_page_header
 from fastapi import APIRouter, HTTPException, Header, Query
 from fastapi.responses import StreamingResponse
 from typing import Optional
@@ -1399,10 +1400,10 @@ async def irregular_quotes_pdf(
 
   {''.join(sections_html)}
 
-  <div class="footer">MegaNexus · Reporte generado automáticamente · Documento confidencial</div>
+  <div class="footer">Gestor - CRM · Reporte generado automáticamente · Documento confidencial</div>
 </body></html>"""
 
-    pdf_bytes = weasyprint.HTML(string=html).write_pdf()
+    pdf_bytes = weasyprint.HTML(string=html_with_page_header(html, "Cotizaciones en Estado Irregular")).write_pdf()
     filename = f"cotizaciones_irregulares_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.pdf"
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
@@ -1547,7 +1548,7 @@ header {{ border-bottom: 2px solid #0f172a; padding-bottom: 6px; margin-bottom: 
 <body>
 <header>
   <h1>Resumen Ejecutivo de Ventas</h1>
-  <div class="subtitle"><span class="brand">MegaNexus</span> · Generado el {now_str} por {user_name}</div>
+  <div class="subtitle"><span class="brand">Gestor - CRM</span> · Generado el {now_str} por {user_name}</div>
   <div style="margin-top:4px">{chips_html}</div>
 </header>
 
@@ -1639,7 +1640,7 @@ header {{ border-bottom: 2px solid #0f172a; padding-bottom: 6px; margin-bottom: 
 
 </body></html>"""
 
-    pdf_bytes = weasyprint.HTML(string=html).write_pdf()
+    pdf_bytes = weasyprint.HTML(string=html_with_page_header(html, "Resumen Ejecutivo de Ventas")).write_pdf()
     filename = f"resumen_ejecutivo_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.pdf"
     return StreamingResponse(
         io.BytesIO(pdf_bytes),

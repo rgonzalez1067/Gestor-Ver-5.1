@@ -471,7 +471,7 @@ def inject_custom_message(html: str, custom_message: str, user_name: str = "", m
 
     Orden buscado:
       1. Marcador `{{Mensaje_Personalizado}}` o `{Mensaje_Personalizado}` en la plantilla → reemplaza (control fino).
-      2. Antes de patrones típicos de cierre/firma ("Atentamente", "Saludos cordiales", "Equipo Mega Soft", "Equipo MegaNexus", etc.) → inserta ANTES.
+      2. Antes de patrones típicos de cierre/firma ("Atentamente", "Saludos cordiales", "Equipo Mega Soft", "Equipo Gestor - CRM", etc.) → inserta ANTES.
       3. Antes de </body> si existe.
       4. Append al final como último recurso.
 

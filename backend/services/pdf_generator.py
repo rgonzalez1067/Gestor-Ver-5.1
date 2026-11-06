@@ -228,7 +228,7 @@ class DynamicQuotePDFGenerator:
         """
         elements = []
         usable_w = self.page_width - 2 * self.margin
-        cover_accent = colors.HexColor("#D4A017")  # dorado MegaNexus
+        cover_accent = colors.HexColor("#D4A017")  # dorado Gestor - CRM
 
         # 1) Espaciado superior tras el encabezado del logo
         elements.append(Spacer(1, 30))

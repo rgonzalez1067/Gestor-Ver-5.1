@@ -232,7 +232,7 @@ async def register_user(user_data: UserRegister):
         verify_html = f"""
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
           <div style="background:#003366;padding:20px;text-align:center;border-radius:8px 8px 0 0;">
-            <h1 style="color:white;margin:0;font-size:22px;">Gestor MegaNexus</h1>
+            <h1 style="color:white;margin:0;font-size:22px;">Gestor - CRM</h1>
           </div>
           <div style="background:#f8fafc;padding:30px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;">
             <h2 style="color:#1e293b;margin-top:0;">Bienvenido a Gestor</h2>
@@ -250,7 +250,7 @@ async def register_user(user_data: UserRegister):
         from services.email_service import send_email
         await send_email(
             to=[user_data.email],
-            subject="Verifica tu Correo - Gestor MegaNexus",
+            subject="Verifica tu Correo - Gestor - CRM",
             html=verify_html,
             action="email_verification"
         )
@@ -579,7 +579,7 @@ async def forgot_password(data: ForgotPasswordRequest):
     html = f"""
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
       <div style="background:#003366;padding:20px;text-align:center;border-radius:8px 8px 0 0;">
-        <h1 style="color:white;margin:0;font-size:22px;">Gestor MegaNexus</h1>
+        <h1 style="color:white;margin:0;font-size:22px;">Gestor - CRM</h1>
       </div>
       <div style="background:#f8fafc;padding:30px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;">
         <h2 style="color:#1e293b;margin-top:0;">Recuperación de Contraseña</h2>
@@ -601,7 +601,7 @@ async def forgot_password(data: ForgotPasswordRequest):
         from services.email_service import send_email
         await send_email(
             to=[data.email],
-            subject="Recuperación de Contraseña — Gestor MegaNexus",
+            subject="Recuperación de Contraseña — Gestor - CRM",
             html=html,
             action="password_reset"
         )
@@ -797,7 +797,7 @@ async def resend_verification(authorization: Optional[str] = Header(None)):
     html = f"""
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
       <div style="background:#003366;padding:20px;text-align:center;border-radius:8px 8px 0 0;">
-        <h1 style="color:white;margin:0;font-size:22px;">Gestor MegaNexus</h1>
+        <h1 style="color:white;margin:0;font-size:22px;">Gestor - CRM</h1>
       </div>
       <div style="background:#f8fafc;padding:30px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;">
         <h2 style="color:#1e293b;margin-top:0;">Verificación de Correo</h2>
@@ -819,7 +819,7 @@ async def resend_verification(authorization: Optional[str] = Header(None)):
         from services.email_service import send_email
         await send_email(
             to=[email],
-            subject="Verifica tu Correo — Gestor MegaNexus",
+            subject="Verifica tu Correo — Gestor - CRM",
             html=html,
             action="email_verification"
         )
@@ -1479,7 +1479,7 @@ async def reset_user_password(user_id: str, authorization: Optional[str] = Heade
         html = f"""
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
           <div style="background:#003366;padding:20px;text-align:center;border-radius:8px 8px 0 0;">
-            <h1 style="color:white;margin:0;font-size:22px;">Gestor MegaNexus</h1>
+            <h1 style="color:white;margin:0;font-size:22px;">Gestor - CRM</h1>
           </div>
           <div style="background:#f8fafc;padding:30px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;">
             <h2 style="color:#1e293b;margin-top:0;">Restablecimiento de Contraseña</h2>
@@ -1496,7 +1496,7 @@ async def reset_user_password(user_id: str, authorization: Optional[str] = Heade
         """
         await send_email(
             to=[user.get("email")],
-            subject="Restablecimiento de Contraseña - Gestor MegaNexus",
+            subject="Restablecimiento de Contraseña - Gestor - CRM",
             html=html,
             action="admin_password_reset"
         )

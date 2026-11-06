@@ -77,6 +77,13 @@ async def _on_startup():
     except Exception as e:
         logging.warning(f"audit indexes: {e}")
     try:
+        from services.rebrand import rebrand_db
+        n = await rebrand_db(db)
+        if n:
+            logging.info(f"Rebranding Gestor - CRM aplicado a {n} documento(s)")
+    except Exception as e:
+        logging.warning(f"rebrand: {e}")
+    try:
         start_scheduler()
     except Exception as e:
         logging.warning(f"[startup] scheduler failed: {e}")

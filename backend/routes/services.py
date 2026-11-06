@@ -1,5 +1,6 @@
 """Route module: services.py"""
 # ruff: noqa: F403, F405
+from services.report_header import html_with_page_header
 from fastapi import APIRouter, HTTPException, Header, Response, status, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse
 from typing import List, Optional
@@ -670,10 +671,10 @@ async def report_banks_by_product_pdf(
 
   {''.join(sections_html)}
 
-  <div class="footer">MegaNexus · Reporte generado automáticamente · Documento confidencial</div>
+  <div class="footer">Gestor - CRM · Reporte generado automáticamente · Documento confidencial</div>
 </body></html>"""
 
-    pdf_bytes = weasyprint.HTML(string=html).write_pdf()
+    pdf_bytes = weasyprint.HTML(string=html_with_page_header(html, "Bancos por Producto")).write_pdf()
     filename = f"bancos_por_producto_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.pdf"
     return StreamingResponse(
         io.BytesIO(pdf_bytes),

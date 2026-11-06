@@ -220,7 +220,7 @@ export const EntityEmailDialog = ({
                     {activeRecipientIdx === idx && filteredInternalUsers.length > 0 && (
                       <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-30 max-h-52 overflow-y-auto" data-testid={`entity-autocomplete-${idx}`}>
                         <div className="px-3 py-1.5 text-[10px] uppercase text-slate-400 font-bold flex items-center gap-1 border-b border-slate-100">
-                          <UserCheck size={10} /> Usuarios internos MegaNexus
+                          <UserCheck size={10} /> Usuarios internos Gestor - CRM
                         </div>
                         {filteredInternalUsers.map(u => (
                           <button

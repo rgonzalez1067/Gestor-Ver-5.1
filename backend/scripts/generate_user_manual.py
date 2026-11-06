@@ -1,5 +1,5 @@
 """
-Genera el Manual Funcional / de Usuario de MegaNexus (Gestor) en Word (.docx),
+Genera el Manual Funcional / de Usuario de Gestor - CRM en Word (.docx),
 con capturas de pantalla reales y detalle ampliado del módulo de Proyectos.
 Uso: python -m scripts.generate_user_manual
 Requiere capturas previas en /app/docs/screenshots (ver scripts/capture_screenshots.py).
@@ -112,7 +112,7 @@ def figure(filename, caption, width=6.3):
 # ================= PORTADA =================
 for _ in range(4): doc.add_paragraph()
 p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-r = p.add_run('MegaNexus'); r.bold = True; r.font.size = Pt(40); r.font.color.rgb = BRAND
+r = p.add_run('Gestor - CRM'); r.bold = True; r.font.size = Pt(40); r.font.color.rgb = BRAND
 p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 r = p.add_run('Work Flow de Procesos Integrales'); r.font.size = Pt(14); r.font.color.rgb = LIGHT
 doc.add_paragraph()
@@ -130,8 +130,8 @@ doc.add_page_break()
 # ================= CONTROL DE VERSIONES =================
 h1('Control de versiones')
 table(['Versión', 'Fecha', 'Descripción', 'Autor'],
-      [['1.0', datetime.now().strftime('%d/%m/%Y'), 'Versión inicial', 'Equipo MegaNexus'],
-       ['2.0', datetime.now().strftime('%d/%m/%Y'), 'Edición ilustrada con capturas y detalle ampliado de Proyectos', 'Equipo MegaNexus']])
+      [['1.0', datetime.now().strftime('%d/%m/%Y'), 'Versión inicial', 'Equipo Gestor - CRM'],
+       ['2.0', datetime.now().strftime('%d/%m/%Y'), 'Edición ilustrada con capturas y detalle ampliado de Proyectos', 'Equipo Gestor - CRM']])
 
 h1('Contenido')
 bullets([
@@ -145,7 +145,7 @@ doc.add_page_break()
 
 # ================= 1. INTRODUCCIÓN =================
 h1('1. Introducción')
-para('MegaNexus ("Gestor") es la plataforma integral de MegaSoft para administrar el ciclo comercial y de '
+para('Gestor - CRM es la plataforma integral de MegaSoft para administrar el ciclo comercial y de '
      'implementación de soluciones de pago: desde el primer contacto, la cotización, hasta la ejecución y '
      'seguimiento de los proyectos. Este manual hace énfasis en el módulo de Proyectos, el más usado por los '
      'Implementadores y donde se concentran las operaciones sensibles: actualizaciones individuales y masivas, '

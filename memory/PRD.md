@@ -4714,3 +4714,9 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 
 ## 2026-06 — Fix: filtro Cliente por nombre de fantasía (Cotizaciones)
 - QuoteFilters.jsx SearchableSelect `allowQueryMatch`: al escribir, la opción "Ver todas las coincidencias de 'x' (N)" o Enter aplica a la grilla todas las cotizaciones de los clientes que coinciden (razón social o fantasía). Etiqueta `Coincidencias: "x" (N)`. Verificado con capturas de pantalla ("shoes" → 3 clientes, 4 cotizaciones).
+
+## 2026-06 — Logo, cambio de marca y encabezados por página
+- Cambio de marca: todo texto visible "MegaNexus" pasó a "Gestor - CRM" (PDFs, reportes, correos, pantallas). En BD (email_templates, etc.) lo aplica `services/rebrand.py` en el arranque (idempotente). No se tocó lo técnico (APP_NAME/rutas de almacenamiento 'meganexus').
+- `services/report_header.py`: html_with_page_header (WeasyPrint, elemento running) y draw_page_header (ReportLab). Se aplica en Productos por Banco, Bancos por Producto, Carga de Proyectos, Avance de Proyecto, Cotizaciones Irregulares, Resumen Ejecutivo, Integradores, Grupo Económico, Implementadores y Asignación Temporal.
+- Nota de Entrega y Nota de Transferencia: encabezado con logo y título en cada página (topMargin 3 cm, sin solaparse). Si falta el logo indicado se usa uploads/logo.png.
+- Fix: el export PDF de Integradores daba 500 (faltaban los imports de reportlab).

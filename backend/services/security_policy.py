@@ -241,7 +241,7 @@ async def send_2fa_email(user: dict, code: str, ttl: int):
     html = f"""
     <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:20px;">
       <div style="background:#003366;padding:18px;text-align:center;border-radius:8px 8px 0 0;">
-        <h1 style="color:white;margin:0;font-size:20px;">Gestor MegaNexus</h1>
+        <h1 style="color:white;margin:0;font-size:20px;">Gestor - CRM</h1>
       </div>
       <div style="background:#f8fafc;padding:28px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;">
         <p style="color:#475569;">Hola <strong>{user.get('first_name') or user.get('name', '')}</strong>,</p>
@@ -250,7 +250,7 @@ async def send_2fa_email(user: dict, code: str, ttl: int):
         <p style="color:#94a3b8;font-size:13px;">El código vence en {ttl} minutos. Si no intentaste ingresar, cambia tu contraseña.</p>
       </div>
     </div>"""
-    await send_email(to=[user["email"]], subject="Código de verificación — Gestor MegaNexus", html=html, action="login_2fa")
+    await send_email(to=[user["email"]], subject="Código de verificación — Gestor - CRM", html=html, action="login_2fa")
     # No dejar el código legible en el historial de correos.
     async for log in db.email_logs.find({"action": "login_2fa", "html_preview": {"$regex": code}}, {"_id": 1, "html_preview": 1}):
         await db.email_logs.update_one({"_id": log["_id"]}, {"$set": {"html_preview": log["html_preview"].replace(code, "••••••")}})

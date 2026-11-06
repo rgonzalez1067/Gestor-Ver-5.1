@@ -1,4 +1,5 @@
 """Route module: projects.py - Módulo de Proyectos (Post-Venta)"""
+from services.report_header import html_with_page_header
 from fastapi import APIRouter, HTTPException, Header, UploadFile, File, Form, Query
 from fastapi.responses import Response, FileResponse, StreamingResponse
 from typing import Optional, List
@@ -454,7 +455,7 @@ async def assign_project(project_id: str, assignment: ProjectAssign, authorizati
 
     await db.projects.update_one({"project_id": project_id}, {"$set": update_data, "$push": {"notes": note}})
 
-    # Notificar al implementador con la nueva plantilla MegaNexus (asíncrono,
+    # Notificar al implementador con la nueva plantilla Gestor - CRM (asíncrono,
     # no bloquea la respuesta HTTP)
     try:
         # Refrescamos el proyecto con los datos de asignación recién aplicados
@@ -1550,7 +1551,7 @@ async def _resolve_notification_email(project: dict, target: str, bank_name: Opt
 <h3 style="color:#2c3e50;margin-top:20px;">Bancos y Productos</h3>
 {template_vars.get('Matriz_Bancos_Productos', '')}
 <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
-<p style="color:#999;font-size:12px;">Correo automático de MegaNexus Gestor.</p></div>"""
+<p style="color:#999;font-size:12px;">Correo automático de Gestor - CRM.</p></div>"""
     elif target == "bank_client":
         # === Notificación Única (Cliente + Banco) para proyectos Single de un solo banco ===
         client = None
@@ -1621,7 +1622,7 @@ async def _resolve_notification_email(project: dict, target: str, bank_name: Opt
 <ul>{products_html}</ul>
 {template_vars.get('Matriz_Bancos_Productos', '')}
 <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
-<p style="color:#999;font-size:12px;">Correo automático de MegaNexus Gestor.</p></div>"""
+<p style="color:#999;font-size:12px;">Correo automático de Gestor - CRM.</p></div>"""
     else:
         # === DATA BINDING CORRECTO: extraer emails del banco ===
         bank = await db.banks.find_one({"name": bank_name}, {"_id": 0})
@@ -1679,7 +1680,7 @@ async def _resolve_notification_email(project: dict, target: str, bank_name: Opt
 <h3 style="color:#2c3e50;">Productos del Banco</h3>
 <ul>{products_html}</ul>
 <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
-<p style="color:#999;font-size:12px;">Correo automático de MegaNexus Gestor.</p></div>"""
+<p style="color:#999;font-size:12px;">Correo automático de Gestor - CRM.</p></div>"""
 
     return {"to_list": to_list, "subject": subject, "html": html, "entity_label": entity_label, "prefix": prefix_label}
 
@@ -4246,14 +4247,14 @@ async def projects_workload_pdf(
       {''.join(section_html_parts) if section_html_parts else '<p style="color:#64748b;font-style:italic">No hay proyectos registrados.</p>'}
       {ranking_html}
       <div class="footer">
-        <span>MegaNexus · Departamento de Implementación</span>
+        <span>Gestor - CRM · Departamento de Implementación</span>
         <span>{now_str}</span>
       </div>
     </body>
     </html>
     """
 
-    pdf_bytes = weasyprint.HTML(string=html).write_pdf()
+    pdf_bytes = weasyprint.HTML(string=html_with_page_header(html, "Reporte de Carga y Estatus de Proyectos")).write_pdf()
     filename = f"carga_implementadores_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.pdf"
     return Response(
         content=pdf_bytes,

@@ -8,6 +8,7 @@ Fuentes de fecha por evento:
 - Notificaciones Cliente/Banco: bitácora type='notification' (created_by = emisor, email_detail.target)
 """
 import io
+from services.report_header import draw_page_header
 from fastapi import APIRouter, Header, HTTPException
 from typing import Optional, List
 from datetime import datetime, date, timezone
@@ -308,7 +309,7 @@ def _render_report_pdf(data: dict) -> bytes:
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
         leftMargin=18 * mm, rightMargin=18 * mm,
-        topMargin=16 * mm, bottomMargin=16 * mm,
+        topMargin=26 * mm, bottomMargin=16 * mm,
         title="Reporte de Gestión de Implementadores",
     )
 
@@ -409,6 +410,7 @@ def _render_report_pdf(data: dict) -> bytes:
         canvas.drawString(18 * mm, 10 * mm, "Megasoft · Reporte de Gestión de Implementadores")
         canvas.drawRightString(A4[0] - 18 * mm, 10 * mm, f"Página {doc_.page}")
         canvas.restoreState()
+        draw_page_header(canvas, doc_, "Reporte de Gestión de Implementadores")
 
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
     buf.seek(0)

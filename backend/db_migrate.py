@@ -1,5 +1,5 @@
 """
-Script de Exportación/Importación de datos MongoDB para MegaNexus.
+Script de Exportación/Importación de datos MongoDB para Gestor - CRM.
 Uso:
   Exportar:  python3 db_migrate.py export
   Importar:  python3 db_migrate.py import

@@ -3,6 +3,7 @@ Generador de PDF "Comprobante de Asignación Temporal de Equipos".
 Documento de respaldo para entrega transitoria de inventario a personal
 interno o terceros (integradores, contratistas). Incluye firma del responsable.
 """
+from services.report_header import draw_page_header
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -19,7 +20,7 @@ COLOR_AZUL = colors.HexColor("#00447C")
 COLOR_GRIS = colors.HexColor("#6B7280")
 COLOR_GRIS_CLARO = colors.HexColor("#F3F4F6")
 COLOR_BORDE = colors.HexColor("#D1D5DB")
-FOOTER_TEXT = "Documento generado por MegaNexus — Asignación Temporal de Inventario"
+FOOTER_TEXT = "Documento generado por Gestor - CRM — Asignación Temporal de Inventario"
 
 
 def generate_temporary_assignment_pdf(assignment: dict, items_detail: list = None) -> bytes:
@@ -37,7 +38,7 @@ def generate_temporary_assignment_pdf(assignment: dict, items_detail: list = Non
 
     doc = SimpleDocTemplate(
         buffer, pagesize=letter,
-        topMargin=2 * cm, bottomMargin=2 * cm,
+        topMargin=2.6 * cm, bottomMargin=2 * cm,
         leftMargin=1.8 * cm, rightMargin=1.8 * cm,
     )
 
@@ -139,7 +140,7 @@ def generate_temporary_assignment_pdf(assignment: dict, items_detail: list = Non
             Paragraph(str(it.get("quantity", 0)), s_cell),
             Paragraph(serials_text, s_cell),
         ])
-    t = Table(rows, colWidths=[5.5 * cm, 2.5 * cm, 1.5 * cm, None])
+    t = Table(rows, colWidths=[5.5 * cm, 2.5 * cm, 1.5 * cm, None], repeatRows=1)
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), COLOR_AZUL),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -159,7 +160,7 @@ def generate_temporary_assignment_pdf(assignment: dict, items_detail: list = Non
         "<b>DECLARACIÓN:</b> El responsable identificado en este documento recibe en su poder, en calidad "
         "de asignación temporal, los equipos arriba detallados. Se compromete a su custodia, buen uso y "
         "devolución íntegra. Cualquier daño, pérdida o demora en la devolución será de su entera "
-        "responsabilidad. La devolución debe realizarse a través del sistema MegaNexus generando el "
+        "responsabilidad. La devolución debe realizarse a través del sistema Gestor - CRM generando el "
         "movimiento correspondiente.",
         s_cell,
     ))
@@ -184,5 +185,8 @@ def generate_temporary_assignment_pdf(assignment: dict, items_detail: list = Non
         textColor=COLOR_GRIS, alignment=TA_CENTER,
     )))
 
-    doc.build(story)
+    def _hdr(canvas, doc_):
+        if doc_.page > 1:
+            draw_page_header(canvas, doc_, "Asignación Temporal de Inventario")
+    doc.build(story, onFirstPage=_hdr, onLaterPages=_hdr)
     return buffer.getvalue()

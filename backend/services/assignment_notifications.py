@@ -8,7 +8,7 @@ Provee:
   Proyecto (con datos del encabezado: ID, cliente, sede, fecha, ejecutivo).
 
 Diseño:
-- Templates HTML con identidad MegaNexus (azul corporativo #00447C).
+- Templates HTML con identidad Gestor - CRM (azul corporativo #00447C).
 - Envío asíncrono via `asyncio.create_task(...)` — el handler que asigna NO
   espera a que el correo se envíe. La interfaz responde de inmediato.
 - Bitácora: cada envío (éxito o fallo) se registra en `db.bitacora` para
@@ -24,10 +24,10 @@ from services.email_service import send_email
 
 logger = logging.getLogger(__name__)
 
-# Identidad MegaNexus
+# Identidad Gestor - CRM
 BRAND_COLOR = "#00447C"
 BRAND_COLOR_LIGHT = "#E8F0F8"
-BRAND_NAME = "MegaNexus"
+BRAND_NAME = "Gestor - CRM"
 SYSTEM_URL_FALLBACK = "https://admin-control-center-21.emergent.host"
 
 
@@ -40,7 +40,7 @@ def _esc(s) -> str:
 
 
 def _wrap_html(title: str, intro: str, rows: list, footer_cta: str = "") -> str:
-    """Envuelve filas {label, value} en el layout corporativo MegaNexus."""
+    """Envuelve filas {label, value} en el layout corporativo Gestor - CRM."""
     rows_html = ""
     for r in rows:
         rows_html += (

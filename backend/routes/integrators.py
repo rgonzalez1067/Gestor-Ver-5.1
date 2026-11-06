@@ -1,5 +1,6 @@
 """Route module: integrators.py"""
 # ruff: noqa: F403, F405
+from services.report_header import draw_page_header
 from fastapi import APIRouter, HTTPException, Header, Response, status, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse
 from typing import List, Optional
@@ -1992,6 +1993,11 @@ async def export_integrators_excel(authorization: Optional[str] = Header(None)):
 @router.get("/integrators/export/pdf")
 async def export_integrators_pdf(authorization: Optional[str] = Header(None)):
     await get_current_user(authorization)
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.units import inch
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     
     integrators = await db.integrators.find({}, {"_id": 0}).to_list(1000)
     
@@ -1999,7 +2005,7 @@ async def export_integrators_pdf(authorization: Optional[str] = Header(None)):
         raise HTTPException(status_code=404, detail="No integrators to export")
     
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=72)
     elements = []
     styles = getSampleStyleSheet()
     
@@ -2017,7 +2023,7 @@ async def export_integrators_pdf(authorization: Optional[str] = Header(None)):
             intg.get('integrator_status', '')
         ])
     
-    table = Table(table_data, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.3*inch, 1*inch])
+    table = Table(table_data, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.3*inch, 1*inch], repeatRows=1)
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.2, 0.3, 0.5)),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -2028,8 +2034,10 @@ async def export_integrators_pdf(authorization: Optional[str] = Header(None)):
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.Color(0.95, 0.95, 0.95)]),
     ]))
     elements.append(table)
-    
-    doc.build(elements)
+
+    def _hdr(canvas, doc_):
+        draw_page_header(canvas, doc_, "Reporte de Integradores")
+    doc.build(elements, onFirstPage=_hdr, onLaterPages=_hdr)
     buffer.seek(0)
     
     return Response(

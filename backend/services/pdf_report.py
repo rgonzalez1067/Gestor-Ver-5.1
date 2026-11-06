@@ -55,10 +55,10 @@ def _make_decorator(title, header_color):
                 )
         except Exception:
             pass
-        # "CRM - Gestor" esquina superior derecha (11pt)
+        # "Gestor - CRM" esquina superior derecha (11pt)
         canvas.setFont("Helvetica-Bold", 11)
         canvas.setFillColor(header_color)
-        canvas.drawRightString(page_w - doc.rightMargin, page_h - 0.45 * inch, "CRM - Gestor")
+        canvas.drawRightString(page_w - doc.rightMargin, page_h - 0.45 * inch, "Gestor - CRM")
         # Título centrado bajo el header band
         canvas.setFont("Helvetica-Bold", 13)
         canvas.setFillColor(colors.HexColor("#0f172a"))
@@ -70,7 +70,7 @@ def _make_decorator(title, header_color):
             page_w - doc.rightMargin, 0.4 * inch,
             f"Pág. {doc.page}",
         )
-        canvas.drawString(doc.leftMargin, 0.4 * inch, "MegaNexus · Documento confidencial")
+        canvas.drawString(doc.leftMargin, 0.4 * inch, "Gestor - CRM · Documento confidencial")
         canvas.restoreState()
     return _decorate
 

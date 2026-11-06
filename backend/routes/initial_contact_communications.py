@@ -77,7 +77,7 @@ async def send_initial_contact_email(
     <div style="font-family: Arial, sans-serif; width: 95%; max-width: 900px; margin: 0 auto;">
         <p>{message_html}</p>
         <hr>
-        <p style="color: #666; font-size: 11px;">Comunicación enviada desde Gestor MegaNexus | Contacto: {contact_label}</p>
+        <p style="color: #666; font-size: 11px;">Comunicación enviada desde Gestor - CRM | Contacto: {contact_label}</p>
     </div>
     """
 

@@ -2,7 +2,7 @@
 
 Este módulo expone endpoints que NO requieren autenticación de usuario,
 protegidos únicamente por API Key. Permite a widgets web, aliados comerciales
-y sistemas externos enviar leads directamente a MegaNexus.
+y sistemas externos enviar leads directamente a Gestor - CRM.
 """
 from fastapi import APIRouter, HTTPException, Header, Request
 from typing import Optional
@@ -76,7 +76,7 @@ async def create_external_contact(
     """
     Endpoint público para recibir contactos desde fuentes externas.
     
-    **Autenticación**: Header `X-API-Key` con la clave proporcionada por MegaNexus.
+    **Autenticación**: Header `X-API-Key` con la clave proporcionada por Gestor - CRM.
     
     **Rate Limit**: 30 peticiones por hora por IP.
     """
@@ -163,7 +163,7 @@ async def create_external_contact(
     
     return {
         "status": "created",
-        "message": "Contacto registrado exitosamente en MegaNexus.",
+        "message": "Contacto registrado exitosamente en Gestor - CRM.",
         "contact_id": contact_id,
         "assigned_to": assigned_name,
     }
@@ -172,4 +172,4 @@ async def create_external_contact(
 @router.get("/external/health")
 async def external_health():
     """Health check para verificar disponibilidad de la API externa."""
-    return {"status": "ok", "service": "MegaNexus External API", "version": "1.0"}
+    return {"status": "ok", "service": "Gestor - CRM External API", "version": "1.0"}

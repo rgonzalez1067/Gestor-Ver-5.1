@@ -342,7 +342,7 @@ async def _send_and_log(
     <div style=\"font-family: Arial, sans-serif; width: 95%; max-width: 900px; margin: 0 auto;\">
         <p>{rendered_message_html}</p>
         <hr>
-        <p style=\"color: #666; font-size: 11px;\">Comunicación enviada desde Gestor MegaNexus</p>
+        <p style=\"color: #666; font-size: 11px;\">Comunicación enviada desde Gestor - CRM</p>
     </div>
     """
 

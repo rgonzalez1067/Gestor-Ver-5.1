@@ -24,7 +24,7 @@ COLOR_AZUL = colors.HexColor("#00447C")
 COLOR_GRIS = colors.HexColor("#6B7280")
 COLOR_GRIS_CLARO = colors.HexColor("#F3F4F6")
 COLOR_BORDE = colors.HexColor("#D1D5DB")
-FOOTER_TEXT = "Documento generado por MegaNexus - Trazabilidad de Inventario"
+FOOTER_TEXT = "Documento generado por Gestor - CRM - Trazabilidad de Inventario"
 
 PAGE_W, PAGE_H = letter
 MARGIN_L = 1.8 * cm
@@ -158,6 +158,8 @@ def generate_nota_entrega_pdf(
     courier_office: str = "",
     is_final_delivery: bool = True,
 ):
+    from services.report_header import logo_path_or_none
+    logo_path = logo_path if (logo_path and os.path.exists(logo_path)) else logo_path_or_none()
     buffer = io.BytesIO()
 
     now = datetime.now(timezone.utc)
@@ -179,7 +181,7 @@ def generate_nota_entrega_pdf(
     doc = SimpleDocTemplate(
         buffer,
         pagesize=letter,
-        topMargin=2.2 * cm,
+        topMargin=3.0 * cm,
         bottomMargin=2 * cm,
         leftMargin=MARGIN_L,
         rightMargin=MARGIN_R,

@@ -1,7 +1,7 @@
 """
 Reporte Dinámico de Estatus / Avance de Proyectos.
 - GET /api/projects/{project_id}/report/avance        → JSON consolidado con filtros.
-- GET /api/projects/{project_id}/report/avance/pdf    → PDF elegante (línea gráfica MegaNexus).
+- GET /api/projects/{project_id}/report/avance/pdf    → PDF elegante (línea gráfica Gestor - CRM).
 
 Filtros (query params, opcionales y combinables):
   - banks=Banco1,Banco2          (lista coma-separada de bank_name)
@@ -9,6 +9,7 @@ Filtros (query params, opcionales y combinables):
   - store_id=st_xxx | all         (solo aplica a proyectos multistore)
 """
 import io
+from services.report_header import html_with_page_header
 from datetime import datetime, timezone
 from typing import Optional, List
 
@@ -302,7 +303,7 @@ async def project_progress_report_pdf(
     store_id: Optional[str] = Query(None),
     authorization: Optional[str] = Header(None),
 ):
-    """Genera PDF elegante con membrete MegaNexus."""
+    """Genera PDF elegante con membrete Gestor - CRM."""
     user = await get_current_user(authorization)
     stores_csv = stores or store_id
     proj, matrices_by_label, filters = await _load_project_with_filters(project_id, banks, products, stores_csv, rifs)
@@ -417,7 +418,7 @@ async def project_progress_report_pdf(
 <body>
   <div class="header">
     <div>
-      <div class="brand">MegaNexus<span class="sub">GESTIÓN DE IMPLEMENTACIÓN</span></div>
+      <div class="brand">Gestor - CRM<span class="sub">GESTIÓN DE IMPLEMENTACIÓN</span></div>
     </div>
     <div class="meta-right">
       <div class="title">Reporte de Estatus / Avance</div>
@@ -460,10 +461,10 @@ async def project_progress_report_pdf(
     <tbody>{body_rows_html}</tbody>
   </table>
 
-  <div class="footer">MegaNexus · Reporte de Avance generado automáticamente · Documento confidencial</div>
+  <div class="footer">Gestor - CRM · Reporte de Avance generado automáticamente · Documento confidencial</div>
 </body></html>"""
 
-    pdf_bytes = weasyprint.HTML(string=html).write_pdf()
+    pdf_bytes = weasyprint.HTML(string=html_with_page_header(html, "Reporte de Avance del Proyecto")).write_pdf()
     filename = f"avance_{(header.get('project_number') or 'proyecto')}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.pdf"
     return StreamingResponse(
         io.BytesIO(pdf_bytes),

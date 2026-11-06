@@ -7,6 +7,7 @@ import io
 import re
 import uuid
 import logging
+from services.report_header import draw_page_header
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -181,7 +182,7 @@ async def export_economic_group_pdf(group_id: str, authorization: Optional[str] 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
-        topMargin=16 * mm, bottomMargin=16 * mm,
+        topMargin=26 * mm, bottomMargin=16 * mm,
         title=f"Grupo Económico - {group.get('name', '')}",
     )
     styles = getSampleStyleSheet()
@@ -246,6 +247,7 @@ async def export_economic_group_pdf(group_id: str, authorization: Optional[str] 
         canvas.drawString(18 * mm, 10 * mm, "Megasoft · Grupo Económico")
         canvas.drawRightString(A4[0] - 18 * mm, 10 * mm, f"Página {doc_.page}")
         canvas.restoreState()
+        draw_page_header(canvas, doc_, f"Grupo Económico - {group.get('name', '')}")
 
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
     buf.seek(0)

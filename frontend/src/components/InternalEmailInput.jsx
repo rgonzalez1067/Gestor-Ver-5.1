@@ -13,7 +13,7 @@ const TEAM_SECTIONS = [
 ];
 
 /**
- * Campo de email con autocomplete de usuarios internos MegaNexus.
+ * Campo de email con autocomplete de usuarios internos Gestor - CRM.
  *
  * Props:
  *   value: string (email actual)
