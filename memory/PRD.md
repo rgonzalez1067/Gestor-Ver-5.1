@@ -4711,3 +4711,6 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - UI: /settings/audit-trails (AuditTrailsPage + components/audit/*), tile en Configuración y botón en Seguridad.
 - Probado: iteration_364.json (18/18 backend, frontend OK). Ajustes posteriores: enmascarado por nombre exacto, usuario en login, export en hilo, redirección para quien no es auditor.
 - Limitaciones: update_many/delete_many registran máx. 500 docs por operación; bulk_write y aggregate $out no se auditan (hoy no se usan).
+
+## 2026-06 — Fix: filtro Cliente por nombre de fantasía (Cotizaciones)
+- QuoteFilters.jsx SearchableSelect `allowQueryMatch`: al escribir, la opción "Ver todas las coincidencias de 'x' (N)" o Enter aplica a la grilla todas las cotizaciones de los clientes que coinciden (razón social o fantasía). Etiqueta `Coincidencias: "x" (N)`. Verificado con capturas de pantalla ("shoes" → 3 clientes, 4 cotizaciones).
