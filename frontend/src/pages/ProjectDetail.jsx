@@ -1231,6 +1231,11 @@ const ProjectDetail = () => {
                   project.status === 'Implementado parcial' ? 'bg-orange-100 text-orange-800 border-orange-200' :
                   'bg-emerald-100 text-emerald-800 border-emerald-200'
                 }`} data-testid="project-status">{project.status}</span>
+                {project.tipologia_proyecto && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full bg-teal-100 text-teal-700 border border-teal-200" data-testid="project-tipologia" title={project.patrocinador_nombre ? `Patrocinador: ${project.patrocinador_nombre}` : ''}>
+                    {project.tipologia_proyecto}
+                  </span>
+                )}
                 {isMultistore && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 border border-blue-200">
                     <Store size={12} />Multitienda ({project.stores?.length || 0})

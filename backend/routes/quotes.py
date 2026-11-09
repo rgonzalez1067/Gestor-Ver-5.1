@@ -28,6 +28,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 import traceback
 
+from services.quote_scope import compute_scope, clean_tree, to_distribution, is_multi
 router = APIRouter()
 
 # ==================== QUOTES ENDPOINTS ====================
@@ -206,6 +207,15 @@ class QuoteCreateWithPDF(BaseModel):
     # VPOS Multi-RIF
     is_multirif: Optional[bool] = False
     multirif_distribution: Optional[List[dict]] = None
+    # Alcance jerárquico VPOS/MPOS (Grupo → Marcas → RIFs → Sucursales) y patrocinio
+    nivel_cotizacion: Optional[str] = None
+    grupo_economico_id: Optional[str] = None
+    grupo_economico_name: Optional[str] = None
+    scope_tree: Optional[List[dict]] = None
+    cajas_desglose: Optional[bool] = None
+    patrocinador_tipo: Optional[str] = None
+    patrocinador_id: Optional[str] = None
+    patrocinador_nombre: Optional[str] = None
     # Override del total calculado por el wizard del frontend
     override_total_usd: Optional[float] = None
 
@@ -282,6 +292,9 @@ async def create_quote_with_pdf(data: QuoteCreateWithPDF, authorization: Optiona
                 pdf_request.is_multirif = bool(getattr(pdf_request, "is_multirif", False) or data.is_multirif)
                 if not getattr(pdf_request, "multirif_distribution", None):
                     pdf_request.multirif_distribution = data.multirif_distribution or []
+                if not data.is_multirif and data.scope_tree:
+                    _tree = clean_tree(data.scope_tree)
+                    pdf_request.multirif_distribution = to_distribution(_tree, bool(data.cajas_desglose)) if is_multi(_tree) else []
                 pdf_request.sponsoring_bank_id = pdf_request.sponsoring_bank_id or data.sponsoring_bank_id
                 pdf_request.sponsoring_bank_name = pdf_request.sponsoring_bank_name or data.sponsoring_bank_name
                 await hydrate_pdf_request(pdf_request)
@@ -478,6 +491,7 @@ async def create_quote_with_pdf(data: QuoteCreateWithPDF, authorization: Optiona
             branch_details=data.branch_details,
             is_multirif=bool(data.is_multirif),
             multirif_distribution=data.multirif_distribution,
+            **compute_scope(data.model_dump()),
             requires_pinpad_config=data.requires_pinpad_config,
             requires_vpn=data.requires_vpn,
             communication_type=data.communication_type,
@@ -1129,6 +1143,15 @@ class QuoteUpdate(BaseModel):
     # Segmento PyME/Corporativo — debe transportarse en el flujo "Modificar"
     # (duplicar+PUT) para que una cotización CORP no se degrade a PYME.
     client_segment: Optional[str] = None
+    # Alcance jerárquico VPOS/MPOS (Grupo → Marcas → RIFs → Sucursales) y patrocinio
+    nivel_cotizacion: Optional[str] = None
+    grupo_economico_id: Optional[str] = None
+    grupo_economico_name: Optional[str] = None
+    scope_tree: Optional[List[dict]] = None
+    cajas_desglose: Optional[bool] = None
+    patrocinador_tipo: Optional[str] = None
+    patrocinador_id: Optional[str] = None
+    patrocinador_nombre: Optional[str] = None
 
 @router.put("/quotes/{quote_id}")
 async def update_quote(quote_id: str, quote_update: QuoteUpdate, authorization: Optional[str] = Header(None)):
@@ -1151,6 +1174,8 @@ async def update_quote(quote_id: str, quote_update: QuoteUpdate, authorization: 
     for field, value in update_fields.items():
         if value is not None:
             update_data[field] = value
+    if "scope_tree" in update_data:
+        update_data.update(compute_scope(update_data))
 
     # Normalizar segmento si viene en el update (evita degradación a PYME por
     # variantes 'Corporativo'/'Corp' y garantiza que CORP se conserve).

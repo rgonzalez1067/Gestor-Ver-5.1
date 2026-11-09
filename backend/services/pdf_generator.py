@@ -1293,7 +1293,7 @@ class DynamicQuotePDFGenerator:
             elements.append(branch_table)
         
         # ==================== PÁGINA 5 (Multi-RIF): DETALLE DE TIENDAS Y SUCURSALES ====================
-        if getattr(self.data, 'is_multirif', False):
+        if getattr(self.data, 'is_multirif', False) or getattr(self.data, 'multirif_distribution', None):
             self._build_multirif_section(elements)
 
         # Características particulares del Proyecto → página propia antes de los Términos
@@ -1851,7 +1851,7 @@ class DynamicQuotePDFGenerator:
             elements.append(branch_table)
         
         # ==================== Multi-RIF (CORP): DETALLE DE TIENDAS Y SUCURSALES ====================
-        if getattr(self.data, 'is_multirif', False):
+        if getattr(self.data, 'is_multirif', False) or getattr(self.data, 'multirif_distribution', None):
             self._build_multirif_section(elements)
 
         # Características particulares del Proyecto → antes del Anexo Corporativo (condiciones)

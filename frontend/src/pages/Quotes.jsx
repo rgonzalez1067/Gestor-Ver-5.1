@@ -41,6 +41,7 @@ import { getProductStatus } from '../utils/bankProductStatus';
 import { AssignClientDialog, SendPreliminaryDialog } from '../components/quotes/PreliminaryQuoteDialogs';
 import { contactMatchesPurpose, purposeForQuoteCategory } from '../utils/contactPurposes';
 import { toast } from 'sonner';
+import { EMPTY_SCOPE, scopePayload, scopeDistribution, isScopeValid, scopeFromQuote } from '../components/quotes/scope/scopeUtils';
 import { usePermission } from '../hooks/usePermission';
 import { useQuoteFilters } from '../hooks/useQuoteFilters';
 import { useQuoteRbac } from '../hooks/useQuoteRbac';
@@ -188,6 +189,7 @@ export const Quotes = () => {
     include_recurring: true,
     // Implementación Patrocinada (radio Sí/No + dropdown banco condicional)
     sponsored_implementation: false,
+    ...EMPTY_SCOPE,
     sponsoring_bank_id: '',
     sponsoring_processor_id: '',
     sponsoring_processor_name: '',
@@ -1144,6 +1146,7 @@ export const Quotes = () => {
       notes: '',
       include_recurring: true,
       sponsored_implementation: false,
+      ...EMPTY_SCOPE,
       sponsoring_bank_id: '',
       sponsoring_processor_id: '',
       sponsoring_processor_name: '',
@@ -1824,7 +1827,7 @@ export const Quotes = () => {
       cliente_contacto: _isMultiRif ? '' : (client.contact_name || ''),
       cliente_address: _isMultiRif ? '' : (client.address || ''),
       is_multirif: _isMultiRif,
-      multirif_distribution: _isMultiRif ? (quoteData.multirif_distribution || []) : [],
+      multirif_distribution: _isMultiRif ? (quoteData.multirif_distribution || []) : scopeDistribution(quoteData),
       sponsoring_bank_id: quoteData.sponsoring_bank_id || null,
       sponsoring_bank_name: quoteData.sponsoring_bank_name || '',
       // IDs para hidratación server-side (aislamiento de RBAC): el backend resuelve
@@ -2130,7 +2133,7 @@ export const Quotes = () => {
         cliente_contacto: isMultiRif ? '' : (client?.contact_name || ''),
         cliente_address: isMultiRif ? '' : (client?.address || ''),
         is_multirif: !!isMultiRif,
-        multirif_distribution: isMultiRif ? (quoteData.multirif_distribution || []) : [],
+        multirif_distribution: isMultiRif ? (quoteData.multirif_distribution || []) : scopeDistribution(quoteData),
         sponsoring_bank_id: quoteData.sponsoring_bank_id || null,
         sponsoring_bank_name: quoteData.sponsoring_bank_name || '',
         quote_type: quoteData.quote_type,
@@ -2228,6 +2231,7 @@ export const Quotes = () => {
         client_id: quoteData.client_id || (isMultiRif ? null : quoteData.client_id),
         is_multirif: !!isMultiRif,
         multirif_distribution: isMultiRif ? (quoteData.multirif_distribution || []) : null,
+        ...scopePayload(quoteData),
         client_segment: quoteData.client_segment || 'PYME',
         quote_category: quoteData.quote_type === 'FAST_TRACK' ? 'fast_track' : 'implementation',
         quote_type: quoteData.quote_type,
@@ -3893,6 +3897,7 @@ export const Quotes = () => {
       descuento_recurrente: quote.descuento_recurrente || 0,
       notes: quote.notes || '',
       sponsored_implementation: !!quote.sponsored_implementation,
+      ...scopeFromQuote(quote, clients),
       sponsoring_bank_id: quote.sponsoring_bank_id || '',
       sponsoring_bank_name: quote.sponsoring_bank_name || '',
       sponsoring_processor_id: quote.sponsoring_processor_id || '',
@@ -4072,6 +4077,7 @@ export const Quotes = () => {
 
       // Actualizar la cotización duplicada
       await api.put(`/quotes/${newQuoteId}`, {
+        ...scopePayload(quoteData),
         quote_type: quoteData.quote_type,
         client_id: quoteData.client_id,
         client_segment: quoteData.client_segment,
@@ -4387,7 +4393,7 @@ export const Quotes = () => {
        (quoteData.cantidad_cajas >= 1 || quoteData.cantidad_cajas === '') &&
        (isEditing || quoteData.integrator_id));
   // Si Implementación Patrocinada = Sí, el banco es obligatorio para considerar el header completo.
-  const isSponsorshipValid = !quoteData.sponsored_implementation || !!quoteData.sponsoring_bank_id;
+  const isSponsorshipValid = (!quoteData.sponsored_implementation || !!quoteData.sponsoring_bank_id) && isScopeValid(quoteData);
   const isHeaderComplete = isHeaderCompleteBase && isSponsorshipValid;
   
   // En modo edición, siempre mostrar los items si existen

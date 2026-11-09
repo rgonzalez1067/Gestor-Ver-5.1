@@ -22,6 +22,8 @@ import { ProjectFeaturesField } from '../ProjectFeaturesField';
 import { PhaseTag } from '../PhaseTag';
 import { ExpressServiceToggle } from './ExpressServiceToggle';
 import { PgAdditionalServicesToggles, LpStandaloneSummary } from './PgAdditionalServices';
+import { QuoteScopeSelector } from './scope/QuoteScopeSelector';
+import { SponsorTypeSelector } from './scope/SponsorTypeSelector';
 
 export const QuoteWizardDialog = ({ ctx }) => {
   const {
@@ -144,6 +146,33 @@ export const QuoteWizardDialog = ({ ctx }) => {
       sponsoring_processor_name: '',
     });
   };
+
+  // Alcance jerárquico VPOS/MPOS: el RIF titular es el patrocinador-cliente o el primer RIF seleccionado.
+  const isScopeFlow = quoteData.quote_type === 'VPOS' || quoteData.quote_type === 'MPOS';
+  const handleScopeChange = (s) => setQuoteData(prev => {
+    const firstRif = s.scope_tree[0]?.client_id || '';
+    const clientId = prev.patrocinador_tipo === 'CLIENTE' && prev.patrocinador_id ? prev.patrocinador_id : firstRif;
+    return {
+      ...prev, nivel_cotizacion: s.nivel_cotizacion, grupo_economico_id: s.grupo_economico_id,
+      grupo_economico_name: s.grupo_economico_name, scope_tree: s.scope_tree, cajas_desglose: s.cajas_desglose,
+      client_id: clientId || prev.client_id,
+      ...(s.cajas_desglose && s.total > 0 && s.total !== prev.cantidad_cajas ? { cantidad_cajas: s.total } : {}),
+    };
+  });
+  const handleSponsorBank = (bank) => {
+    handleSponsoringBankSelect(bank.bank_id);
+    setQuoteData(prev => ({
+      ...prev, sponsored_implementation: true, patrocinador_tipo: 'BANCO', patrocinador_id: bank.bank_id,
+      patrocinador_nombre: bank.name, client_id: prev.scope_tree?.[0]?.client_id || prev.client_id,
+    }));
+  };
+  const handleSponsorClient = (c) => setQuoteData(prev => ({
+    ...prev, patrocinador_tipo: 'CLIENTE', patrocinador_id: c.client_id, patrocinador_nombre: c.legal_name || c.fantasy_name,
+    client_id: c.client_id, sponsored_implementation: false, sponsoring_bank_id: '', sponsoring_bank_name: '',
+    sponsoring_processor_id: '', sponsoring_processor_name: '',
+  }));
+  const scopeTotal = (quoteData.scope_tree || []).reduce((s, r) => s + (r.stores || []).reduce((a, st) => a + (parseInt(st.boxes) || 0), 0), 0);
+  const cajasLocked = isScopeFlow && quoteData.cajas_desglose && scopeTotal > 0;
 
   // Tipo de Comunicación (conectividad): "VPN" | "SSL" | "NO_APLICA".
   // Matriz de costos: VPN → tarifa Convencional; SSL/NO_APLICA → tarifa
@@ -401,13 +430,14 @@ export const QuoteWizardDialog = ({ ctx }) => {
                         <SelectValue placeholder="Seleccione tipo..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {QUOTE_TYPES.filter(t => !t.disabled).map((type) => (
+                        {QUOTE_TYPES.filter(t => !t.disabled || t.id === quoteData.quote_type).map((type) => (
                           <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
+                  {!isScopeFlow && (
                   <div>
                     <Label className="text-sm font-medium text-slate-700 mb-2 block">
                       {isMultiRif ? <>Banco (Adquirencia) <span className="text-red-500">*</span></> : <>Cliente <span className="text-red-500">*</span></>}
@@ -491,6 +521,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                       );
                     })()}
                   </div>
+                  )}
 
                   {/* Hide Modelo/Cajas/Bancos for Payment Gateway */}
                   {!isPaymentGateway && (<>
@@ -561,12 +592,13 @@ export const QuoteWizardDialog = ({ ctx }) => {
 
                   <div>
                     <Label className="text-sm font-medium text-slate-700 mb-2 block">
-                      {isMultiRif ? <>Cajas Globales (Lote) <span className="text-red-500">*</span></> : <>Cajas (VTID) <span className="text-red-500">*</span></>}
+                      {isMultiRif ? <>Cajas Globales (Lote) <span className="text-red-500">*</span></> : cajasLocked ? <>Total Cajas (desglose)</> : <>{isScopeFlow ? 'Nro de Cajas' : 'Cajas (VTID)'} <span className="text-red-500">*</span></>}
                     </Label>
                     <Input
                       type="number"
                       min="1"
                       value={quoteData.cantidad_cajas}
+                      readOnly={cajasLocked}
                       onChange={(e) => setQuoteData({ ...quoteData, cantidad_cajas: e.target.value === '' ? '' : parseInt(e.target.value) })}
                       onBlur={(e) => {
                         if (e.target.value === '' || parseInt(e.target.value) < 1) {
@@ -599,6 +631,8 @@ export const QuoteWizardDialog = ({ ctx }) => {
                   {/* End conditional for non-PG fields */}
                   </>)}
                 </div>
+
+                {isScopeFlow && <QuoteScopeSelector value={quoteData} onChange={handleScopeChange} clients={clients} />}
 
                 {/* Parámetros dinámicos VPOS: PinPads y VPN */}
                 {!isPaymentGateway && quoteData.pricing_model && (
@@ -744,6 +778,12 @@ export const QuoteWizardDialog = ({ ctx }) => {
                           {quoteData.sponsoring_bank_name ? ` Patrocinador: ${quoteData.sponsoring_processor_name ? quoteData.sponsoring_processor_name + ' — ' : ''}${quoteData.sponsoring_bank_name}.` : ''}
                         </p>
                       </div>
+                    ) : isScopeFlow ? (
+                      <SponsorTypeSelector value={quoteData} banks={banks} clients={clients}
+                        onBank={handleSponsorBank} onClient={handleSponsorClient}
+                        compositeLabel={quoteData.patrocinador_tipo === 'BANCO' && quoteData.sponsoring_bank_name
+                          ? (quoteData.sponsoring_processor_name ? `${quoteData.sponsoring_processor_name} — ${quoteData.sponsoring_bank_name}` : quoteData.sponsoring_bank_name)
+                          : ''} />
                     ) : (<>
                     <div className="flex-shrink-0">
                       <Label className="text-sm font-semibold text-slate-800 block mb-2">
@@ -2458,7 +2498,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                     />
 
                     {/* Detalle de Sucursales (opcional para VPOS/MPOS/Fast Track y Multi-RIF) */}
-                    {(quoteData.quote_type === 'VPOS' || isMPOS || isFastTrackType || isMultiRif) && (
+                    {(isFastTrackType || isMultiRif) && (
                       <BranchDetailPanel
                         branches={branchDetails}
                         onChange={setBranchDetails}

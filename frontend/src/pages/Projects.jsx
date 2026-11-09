@@ -1301,6 +1301,11 @@ const Projects = () => {
                             </p>
                           )}
                           <div className="flex gap-1 mt-1 flex-wrap">
+                            {project.tipologia_proyecto && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-teal-100 text-teal-700 border border-teal-200" data-testid={`project-tipologia-badge-${project.project_id}`}>
+                                {project.tipologia_proyecto}
+                              </span>
+                            )}
                             {project.project_type === 'multistore' && (
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-blue-100 text-blue-700 border border-blue-200" data-testid="project-multistore-badge">
                                 <Store size={10} />Multitienda ({project.stores?.length || 0})

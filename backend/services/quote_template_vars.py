@@ -73,8 +73,10 @@ def build_quote_dynamic_vars(
     else:
         patrocinador = client_fantasy or client_legal or ""
 
+    from services.quote_scope import scope_template_vars
     return {
         "Matriz_Bancos_Productos": matriz_bancos,
         "Matriz_Sucursales": matriz_sucursales,
         "Patrocinador": patrocinador,
+        **scope_template_vars(quote),
     }

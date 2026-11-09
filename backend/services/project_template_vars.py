@@ -905,6 +905,7 @@ async def resolve_project_template_vars(project: dict, actor_user: dict = None) 
         "Ticket_Nro": ticket or "",
         "Nro_Ticket": ticket or "",  # alias adicional por si se inserta como "Nro_Ticket"
         "Tipo_Proyecto": project.get("quote_type", "") or "",
+        **__import__("services.quote_scope", fromlist=["scope_template_vars"]).scope_template_vars(project),
         "Fecha_Asignacion": fecha_asignacion,
         "Fecha_Desbloqueo_Ticket": fecha_desbloqueo_ticket,
 

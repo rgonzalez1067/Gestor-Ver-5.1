@@ -885,6 +885,17 @@ class Quote(BaseModel):
     is_multirif: Optional[bool] = False
     # Distribución jerárquica (Fase 2): [{client_id, rif, client_name, boxes, stores:[{name, boxes}]}]
     multirif_distribution: Optional[List[dict]] = None
+    # Alcance jerárquico VPOS/MPOS (Grupo → Marcas → RIFs → Sucursales) y patrocinio
+    nivel_cotizacion: Optional[str] = None
+    grupo_economico_id: Optional[str] = None
+    grupo_economico_name: Optional[str] = None
+    scope_tree: Optional[List[dict]] = None
+    cajas_desglose: Optional[bool] = None
+    patrocinador_tipo: Optional[str] = None
+    patrocinador_id: Optional[str] = None
+    patrocinador_nombre: Optional[str] = None
+    tipo_proyecto_inferido: Optional[str] = None
+    cotizacion_sucursales: List[dict] = []
     # Flujo Irregular
     is_irregular: Optional[bool] = None  # True si tiene excepciones de flujo
     irregular_exceptions: Optional[List[dict]] = None  # Lista de excepciones registradas
