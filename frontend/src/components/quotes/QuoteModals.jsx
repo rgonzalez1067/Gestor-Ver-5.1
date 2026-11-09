@@ -27,6 +27,7 @@ import { InternalEmailInput } from '../InternalEmailInput';
 import { RichTextEditor } from '../RichTextEditor';
 import { ACTION_LABELS } from './constants';
 import { LEVELS, LEVEL_ORDER, LevelTag } from '../clients/hierarchy/levels';
+import { ScopeTreePhase } from './scope/ScopeTreePhase';
 
 // ============================================================================
 // Inputs aislados para Multitienda (rendimiento de escritura).
@@ -275,7 +276,7 @@ export const QuoteModals = ({ ctx }) => {
     preassignModal, setPreassignModal,
     // Multistore
     multistoreDialogOpen, setMultistoreDialogOpen, multistoreSending,
-    multistorePhase, setMultistorePhase, multistoreStores, setMultistoreStores,
+    multistorePhase, setMultistorePhase, multistoreStores, setMultistoreStores, multistoreScope, confirmScopeTree,
     multistoreNewStore, setMultistoreNewStore, isMultistore, setIsMultistore,
     multistoreAssignedBoxes, confirmMultistore, addMultistoreStore, removeMultistoreStore,
     getMultistoreTotalCajas, getMultistoreQuote, confirmInheritedStores,
@@ -749,7 +750,7 @@ export const QuoteModals = ({ ctx }) => {
 
           {/* Diálogo Multitienda + Tipo de Proyecto + Equipos */}
           <Dialog open={multistoreDialogOpen} onOpenChange={(open) => { if (!open && !multistoreSending) { setMultistoreDialogOpen(false); } }}>
-            <DialogContent className={`max-w-lg ${(multistorePhase === 'inherited' || multistorePhase === 'collect') ? 'max-h-[80vh] flex flex-col overflow-hidden' : ''}`} data-testid="multistore-dialog">
+            <DialogContent className={`max-w-lg ${(multistorePhase === 'inherited' || multistorePhase === 'collect' || multistorePhase === 'scope_tree') ? 'max-h-[80vh] flex flex-col overflow-hidden' : ''}`} data-testid="multistore-dialog">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Store size={20} className="text-blue-600" />
@@ -990,7 +991,7 @@ export const QuoteModals = ({ ctx }) => {
                         }
                         // Si venimos desde multistore: volver a inherited/collect/ask; si no, cancelar
                         if (isMultistore) setMultistorePhase('collect');
-                        else setMultistorePhase('ask');
+                        else setMultistorePhase(multistoreScope ? 'scope_tree' : 'ask');
                       }}
                       data-testid="pinpad-question-back-btn"
                     >
@@ -1159,6 +1160,10 @@ export const QuoteModals = ({ ctx }) => {
                 </div>
               )}
                 {/* Bloque de selección de equipos removido (Feb 2026) */}
+
+              {multistorePhase === 'scope_tree' && multistoreScope && (
+                <ScopeTreePhase scope={multistoreScope} onContinue={confirmScopeTree} />
+              )}
 
               {/* Fase 1: Pregunta Multitienda (solo si NO hay distribución previa) */}
               {multistorePhase === 'ask' && (

@@ -41,7 +41,7 @@ import { getProductStatus } from '../utils/bankProductStatus';
 import { AssignClientDialog, SendPreliminaryDialog } from '../components/quotes/PreliminaryQuoteDialogs';
 import { contactMatchesPurpose, purposeForQuoteCategory } from '../utils/contactPurposes';
 import { toast } from 'sonner';
-import { EMPTY_SCOPE, scopePayload, scopeDistribution, isScopeValid, scopeFromQuote } from '../components/quotes/scope/scopeUtils';
+import { EMPTY_SCOPE, scopePayload, scopeDistribution, isScopeValid, scopeFromQuote, inferTipologia } from '../components/quotes/scope/scopeUtils';
 import { usePermission } from '../hooks/usePermission';
 import { useQuoteFilters } from '../hooks/useQuoteFilters';
 import { useQuoteRbac } from '../hooks/useQuoteRbac';
@@ -324,6 +324,12 @@ export const Quotes = () => {
   const [multistoreNewStore, setMultistoreNewStore] = useState({ name: '', box_count: '' });
   const [multistorePhase, setMultistorePhase] = useState('project_type'); // 'project_type' | 'equipment' | 'ask' | 'inherited' | 'collect' | 'confirm'
   const [multistoreSending, setMultistoreSending] = useState(false);
+  const [multistoreScope, setMultistoreScope] = useState(null);
+  // La estructura del alcance se crea en el backend (scope_tree): no se envían `stores` planos.
+  const confirmScopeTree = () => {
+    setIsMultistore(false);
+    setMultistorePhase('pinpad_question');
+  };
 
   // Estado para gestión de plantillas de cotización
   // Template editing removed — centralized in Configuración > Plantillas de Correo
@@ -3367,6 +3373,20 @@ export const Quotes = () => {
       console.warn('[multistore] no se pudo refrescar cotización, usando caché:', err);
     }
 
+    // Alcance jerárquico VPOS/MPOS: si la cotización ya es Multi Marca / Multi RIF / Multitienda,
+    // se muestra su estructura completa y no se pregunta.
+    const scopeTree = quote?.scope_tree || [];
+    const tipologia = quote?.tipo_proyecto_inferido || inferTipologia(scopeTree);
+    if (!quote?.is_multirif && scopeTree.length && ['Multi Marca', 'Multi RIF', 'Multitienda'].includes(tipologia)) {
+      const desglose = !!quote.cajas_desglose;
+      const sum = scopeTree.reduce((s, r) => s + (r.stores || []).reduce((a, st) => a + (parseInt(st.boxes) || 0), 0), 0);
+      setMultistoreScope({ tipologia, tree: scopeTree, desglose, total: desglose ? sum : (quote.cantidad_cajas || 0) });
+      setMultistoreStores([]);
+      setMultistorePhase('scope_tree');
+      return;
+    }
+    setMultistoreScope(null);
+
     // Pre-check branch data → si hay distribución guardada, fase 'inherited';
     // si no, fase 'ask' (pregunta directa Sí/No).
     const branchData = (quote?.branch_details || []).filter(b => b.store_name && b.quantity > 0);
@@ -4635,7 +4655,7 @@ export const Quotes = () => {
             repairDeliveryDialogOpen, setRepairDeliveryDialogOpen,
             preassignModal, setPreassignModal,
             multistoreDialogOpen, setMultistoreDialogOpen, multistoreSending,
-            multistorePhase, setMultistorePhase, multistoreStores, setMultistoreStores,
+            multistorePhase, setMultistorePhase, multistoreStores, setMultistoreStores, multistoreScope, confirmScopeTree,
             multistoreNewStore, setMultistoreNewStore, isMultistore, setIsMultistore,
             multistoreAssignedBoxes, confirmMultistore, addMultistoreStore, removeMultistoreStore,
             getMultistoreTotalCajas, getMultistoreQuote, confirmInheritedStores,
