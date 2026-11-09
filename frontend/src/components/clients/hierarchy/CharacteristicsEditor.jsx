@@ -3,6 +3,7 @@ import { Label } from '../../ui/label';
 import { SlidersHorizontal } from 'lucide-react';
 import { useClientCatalogs } from './useClientCatalogs';
 import { LEVELS } from './levels';
+import { SearchableSelect } from './SearchableSelect';
 
 const SEGMENTS = ['Pymes', 'Corporativo', 'Emprendedor', 'Mixto'];
 const TIPOS = ['VPOS', 'MPOS', 'Payment Gateway', 'Link de Pago'];
@@ -52,6 +53,7 @@ export const CharacteristicsEditor = ({ value = {}, onChange, inherited, disable
   );
 
   const users = (arr) => arr.map(u => ({ id: u.user_id, name: u.full_name }));
+  const integrators = [...cat.integrators].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' }));
   const tipos = Array.isArray(value.tipo_servicio) ? value.tipo_servicio : [];
   const intg = cat.integrators.find(i => i.integrator_id === (value.integrador_id || iv.integrador_id));
   const apps = intg?.app_name ? [intg.app_name] : [];
@@ -66,7 +68,13 @@ export const CharacteristicsEditor = ({ value = {}, onChange, inherited, disable
         {pair('ejecutivo_user_id', 'ejecutivo_propietario', users(cat.ejecutivos), 'Ejecutivo Propietario')}
         {pair('coordinator_user_id', 'coordinator_name', users(cat.coordinadores), 'Coordinador')}
         {pair('implementer_user_id', 'implementer_name', users(cat.implementadores), 'Implementador')}
-        {pair('integrador_id', 'integrador_name', cat.integrators.map(i => ({ id: i.integrator_id, name: i.name })), 'Integrador')}
+        <div>
+          <Label className="text-xs">Integrador</Label>
+          <SearchableSelect testId={`${testPrefix}-integrador_id`} disabled={disabled}
+            value={value.integrador_id} emptyLabel={hint('integrador_id', iv.integrador_name)}
+            options={integrators.map(i => ({ id: i.integrator_id, name: i.name }))}
+            onChange={(o) => set(o ? { integrador_id: o.id, integrador_name: o.name } : { integrador_id: '', integrador_name: '' })} />
+        </div>
         {single('aplicativo', apps, 'Aplicativo')}
         {single('modelo_impresora_fiscal', cat.printers.map(p => p.name), 'Impresora Fiscal')}
         <div>

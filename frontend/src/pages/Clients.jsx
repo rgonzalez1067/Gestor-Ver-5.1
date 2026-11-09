@@ -70,6 +70,7 @@ export const Clients = () => {
   const [addingBranchParentId, setAddingBranchParentId] = useState(null);
   const [clientDialogTab, setClientDialogTab] = useState('data');
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [contactDeleteIdx, setContactDeleteIdx] = useState(null);
   const [deleteClientData, setDeleteClientData] = useState({ id: null, name: null });
   const [searchTerm, setSearchTerm] = useState('');
   const [segmentFilter, setSegmentFilter] = useState('all');
@@ -1584,6 +1585,9 @@ export const Clients = () => {
                       {(addingBranchParentId || (editingClient && editingClient.is_branch)) && (
                         <p className="text-[11px] text-amber-700 mb-2" data-testid="local-contacts-hint">Los contactos que agregue aquí son exclusivos de esta sucursal (no se comparten con el Principal ni con otras sucursales).</p>
                       )}
+                      {formData.contacts.length === 0 && (
+                        <p className="text-xs text-slate-400 italic mb-2" data-testid="no-own-contacts">Sin contactos propios en este nivel.</p>
+                      )}
                       {formData.contacts.map((contact, idx) => (
                         <div key={idx} className="grid grid-cols-12 gap-2 mb-2 items-end p-2.5 bg-slate-50 rounded-lg border" data-testid={`contact-row-${idx}`}>
                           <div className="col-span-3">
@@ -1611,12 +1615,10 @@ export const Clients = () => {
                             </Select>
                           </div>
                           <div className="col-span-1 flex justify-center">
-                            {formData.contacts.length > 1 && (
-                              <Button type="button" size="sm" variant="ghost" onClick={() => removeContact(idx)}
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700" data-testid={`remove-contact-${idx}`}>
-                                <X size={16} />
-                              </Button>
-                            )}
+                            <Button type="button" size="sm" variant="ghost" onClick={() => setContactDeleteIdx(idx)} title="Eliminar contacto"
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700" data-testid={`remove-contact-${idx}`}>
+                              <Trash2 size={15} />
+                            </Button>
                           </div>
                           <div className="col-span-12 mt-1">
                             <p className="text-[11px] font-semibold text-slate-500 mb-1.5">Perfilamiento de Procesos</p>
@@ -1922,6 +1924,21 @@ export const Clients = () => {
         </Dialog>
 
         {/* Delete confirmation */}
+        <AlertDialog open={contactDeleteIdx !== null} onOpenChange={(o) => !o && setContactDeleteIdx(null)}>
+          <AlertDialogContent data-testid="contact-delete-dialog">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eliminar contacto</AlertDialogTitle>
+              <AlertDialogDescription>
+                ¿Eliminar a "{formData.contacts[contactDeleteIdx]?.full_name || formData.contacts[contactDeleteIdx]?.email || 'este contacto'}" de este nivel? Los contactos heredados no se ven afectados. El cambio se aplica al guardar la ficha.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="contact-delete-cancel">Cancelar</AlertDialogCancel>
+              <AlertDialogAction className="bg-red-600 hover:bg-red-700" data-testid="contact-delete-confirm"
+                onClick={() => { removeContact(contactDeleteIdx); setContactDeleteIdx(null); }}>Eliminar</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
 
         {/* RIF Digital Dialog */}
