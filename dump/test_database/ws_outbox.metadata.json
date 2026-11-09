@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"created_at":{"$numberInt":"1"}},"name":"created_at_1","expireAfterSeconds":{"$numberInt":"120"}}],"uuid":"65f616418956438b8ea4c54a423fa625","collectionName":"ws_outbox","type":"collection"}

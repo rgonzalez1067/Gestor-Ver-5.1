@@ -11,6 +11,7 @@ import Login from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Clients } from './pages/Clients';
 import EconomicGroups from './pages/EconomicGroups';
+import Brands from './pages/Brands';
 import { InitialContacts } from './pages/InitialContacts';
 import { InventoryAccountingReport } from './pages/InventoryAccountingReport';
 import { AssetLedgerReport } from './pages/AssetLedgerReport';
@@ -88,6 +89,11 @@ function AppRouter() {
       <Route path="/grupos-economicos" element={
         <ProtectedRoute>
           <EconomicGroups />
+        </ProtectedRoute>
+      } />
+      <Route path="/marcas" element={
+        <ProtectedRoute>
+          <Brands />
         </ProtectedRoute>
       } />
       <Route path="/initial-contacts" element={

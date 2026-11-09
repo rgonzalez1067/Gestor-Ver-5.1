@@ -721,6 +721,11 @@ async def validate_client_email_required(action_id: str, quote: dict) -> Optiona
             primary = (c.get("contacts") or [c.get("contact1") or {}])[0] if (c.get("contacts") or c.get("contact1")) else {}
             if isinstance(primary, dict):
                 client_email = primary.get("email")
+        if not client_email:
+            from services.client_hierarchy import effective_contacts
+            full = await db.clients.find_one({"client_id": quote["client_id"]}, {"_id": 0})
+            eff = await effective_contacts(full) if full else []
+            client_email = eff[0].get("email") if eff else None
     if not client_email:
         return (
             "La configuración de esta acción requiere notificar al Cliente, pero la ficha "

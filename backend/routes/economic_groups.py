@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException, Header
 
 from config import db, get_current_user, require_permission
 from models import EconomicGroupCreate
+from services.client_hierarchy import clean_characteristics, propagate_group
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -70,6 +71,7 @@ async def list_economic_groups(search: str = "", authorization: Optional[str] = 
     for g in groups:
         g["rif_count"] = await _rif_count(g["group_id"])
         g["contacts_count"] = len([c for c in (g.get("contacts") or []) if (c.get("email") or "").strip()])
+        g["brands_count"] = await db.brands.count_documents({"group_id": g["group_id"]})
     return groups
 
 
@@ -84,6 +86,7 @@ async def create_economic_group(payload: EconomicGroupCreate, authorization: Opt
         raise HTTPException(status_code=400, detail=f"Ya existe un Grupo Económico con el nombre '{name}'")
     data = payload.model_dump()
     data["name"] = name
+    data["characteristics"] = clean_characteristics(payload.characteristics)
     for c in data.get("contacts", []):
         if not c.get("contact_id"):
             c["contact_id"] = f"cnt_{uuid.uuid4().hex[:8]}"
@@ -106,6 +109,7 @@ async def get_economic_group(group_id: str, authorization: Optional[str] = Heade
     clients = await _associated_clients(group_id)
     group["clients"] = clients
     group["rif_count"] = len(clients)
+    group["brands_count"] = await db.brands.count_documents({"group_id": group_id})
     return _serialize(group)
 
 
@@ -134,6 +138,7 @@ async def update_economic_group(group_id: str, payload: EconomicGroupCreate, aut
         raise HTTPException(status_code=400, detail=f"Ya existe otro Grupo Económico con el nombre '{name}'")
     data = payload.model_dump()
     data["name"] = name
+    data["characteristics"] = clean_characteristics(payload.characteristics)
     for c in data.get("contacts", []):
         if not c.get("contact_id"):
             c["contact_id"] = f"cnt_{uuid.uuid4().hex[:8]}"
@@ -141,6 +146,7 @@ async def update_economic_group(group_id: str, payload: EconomicGroupCreate, aut
     await db.economic_groups.update_one({"group_id": group_id}, {"$set": data})
     # Mantener sincronizado el nombre visible en los clientes vinculados
     await db.clients.update_many({"grupo_economico_id": group_id}, {"$set": {"grupo_economico": name}})
+    await propagate_group(group_id)
     return await get_economic_group(group_id, authorization)
 
 
@@ -156,6 +162,11 @@ async def delete_economic_group(group_id: str, authorization: Optional[str] = He
         {"$set": {"grupo_economico_id": None, "grupo_economico": None}},
     )
     await db.economic_groups.delete_one({"group_id": group_id})
+    brand_ids = await db.brands.distinct("brand_id", {"group_id": group_id})
+    await db.brands.update_many({"group_id": group_id}, {"$set": {"group_id": None}})
+    from services.client_hierarchy import propagate_brand
+    for bid in brand_ids:
+        await propagate_brand(bid)
     return {"deleted": True, "group_id": group_id}
 
 

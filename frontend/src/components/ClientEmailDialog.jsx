@@ -7,6 +7,7 @@ import { Label } from './ui/label';
 import { Send, Eye, Edit3, Plus, Trash2, Paperclip, FileText, X, Search, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../utils/api';
+import { HierarchyContactPicker } from './clients/hierarchy/HierarchyContactPicker';
 
 const VARIABLES = [
   { key: '{{nombre}}', desc: 'Razón Social' },
@@ -209,6 +210,14 @@ export const ClientEmailDialog = ({ open, onClose, client, onSent }) => {
               {/* Recipients */}
               <div>
                 <Label className="text-xs">Destinatarios</Label>
+                <div className="mt-1 mb-2">
+                  <HierarchyContactPicker clientId={client?.client_id} selected={recipients.filter(Boolean)}
+                    onToggle={(emails, on) => setRecipients(prev => {
+                      const cur = prev.filter(Boolean);
+                      const next = on ? [...new Set([...cur, ...emails])] : cur.filter(e => !emails.includes(e));
+                      return next.length ? next : [''];
+                    })} />
+                </div>
                 {recipients.map((r, idx) => (
                   <div key={idx} className="flex gap-2 mt-1">
                     <Input

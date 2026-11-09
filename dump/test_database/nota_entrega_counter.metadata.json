@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"6e35c7e24f31429d9f4f9ff6a5329bfe","collectionName":"nota_entrega_counter","type":"collection"}

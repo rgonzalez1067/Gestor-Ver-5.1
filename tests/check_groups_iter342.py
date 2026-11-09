@@ -1,5 +1,5 @@
 import os, requests, json
-BASE = "https://quote-overhaul.preview.emergentagent.com"
+BASE = "https://crm-cotizaciones--8cp564n9.preview.emergentagent.com"
 s = requests.Session()
 r = s.post(f"{BASE}/api/auth/login", json={"email": "rgonzalez@megasoft.com.ve", "password": "admin123"})
 print("login", r.status_code)

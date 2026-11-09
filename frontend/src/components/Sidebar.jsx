@@ -35,7 +35,8 @@ import {
   ClipboardList,
   PackageCheck,
   Printer,
-  Server
+  Server,
+  Store
 } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
@@ -51,11 +52,17 @@ import SidebarErrorBoundary from './SidebarErrorBoundary';
 const menuItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', groupId: 'dashboard' },
   {
-    icon: Briefcase, label: 'Gestion Comercial', isGroup: true, groupId: 'gestion_comercial',
+    icon: Users, label: 'Clientes', isGroup: true, groupId: 'gestion_comercial',
     children: [
       { path: '/initial-contacts', icon: Phone, label: 'Contacto Inicial' },
       { path: '/grupos-economicos', icon: Building2, label: 'Grupo Económico' },
-      { path: '/clients', icon: Users, label: 'Clientes' },
+      { path: '/marcas', icon: Tag, label: 'Marca o Nombre Fantasía' },
+      { path: '/clients', icon: Store, label: 'Sucursales' },
+    ]
+  },
+  {
+    icon: Briefcase, label: 'Gestion Comercial', isGroup: true, groupId: 'gestion_comercial',
+    children: [
       { path: '/quotes', icon: FileText, label: 'Cotizaciones' },
       { path: '/reports/sales', icon: BarChart3, label: 'Reportes de Ventas' },
       { path: '/reports/sponsors', icon: Landmark, label: 'Reportes por Patrocinador' },

@@ -9,7 +9,7 @@ import pytest
 import requests
 from datetime import datetime, timedelta, timezone
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://quote-overhaul.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://crm-cotizaciones--8cp564n9.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
 ADMIN_EMAIL = "rgonzalez@megasoft.com.ve"
 ADMIN_PASS = "admin123"

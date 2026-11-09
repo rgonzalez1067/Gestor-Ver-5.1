@@ -912,6 +912,10 @@ async def approve_quote(
                     cc_emails.append(_extra)
         if not client_email and contacts:
             client_email = contacts[0].get('email')
+        if not client_email and client:
+            from services.client_hierarchy import effective_contacts
+            _eff = await effective_contacts(client)
+            client_email = _eff[0].get('email') if _eff else None
         if not client_email:
             contact1 = client.get('contact1') or {} if client else {}
             client_email = contact1.get('email') if isinstance(contact1, dict) else None

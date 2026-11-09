@@ -1,3 +1,116 @@
-<analysis><handoff summary>
-taller_equipos/taller-recepcionPOST /api/taller/parse-serials-exceltaller_recepcion_equiposEquipmentQuoteWizard.jsxroutes/quotes.pyroutes/quote_actions.pySERIALIZED_TYPESQuotes.jsxQuotesTable.jsxintegrators.py{Interfaz_Integrada}templateVariables.jsQuotesBundleMigrationModal.jsx<span data-ve-dynamic>/app/frontend/src//app/backend/services/notification_engine.pyservices/other_actions_engine.pyroutes/other_actions_config.pydispatch_other_action(action_id, template_vars, extra_attachments)RecibidoCotizadoEn ReparaciónEntregadoEquipmentQuoteWizard.jsxquote_actions.pytaller_equipos{taller_equipo_id, modelo_id, modelo_name, serial, estatus, cliente_id, nombre_cliente, fecha_ingreso, fecha_entrega}quotesrepair_modelsEnviadaAprobada/app/frontend/src/pages/TallerRecepcion.jsx/app/backend/routes/quote_taller.py/app/frontend/src/components/EquipmentQuoteWizard.jsx/app/backend/routes/quotes.py/app/backend/routes/quote_actions.py/app/frontend/src/components/EquipmentQuoteWizard.jsxPOST /api/taller/recepcionPOST /api/taller/parse-serials-excelPOST /api/quotesPOST /api/quotes/{id}/regularizetaller_equiposRecibidoUPDATECotizadotaller_equipo_idEn ReparaciónEn Reparación/app/test_reports/iteration_285.json/app/test_reports/iteration_286.json/app/frontend/public/Manual_Auditoria_Implementacion.docx/app/frontend/public/Manual_Usuario_Detallado.docx/app/frontend/public/tech-docs//app/test_reports/iteration_286.jsonrgonzalez@megasoft.com.veadmin123
-</handoff summary></analysis>
+<analysis>**original_problem_statement**: 
+El usuario solicitó una serie de requerimientos técnicos, mejoras y correcciones de bugs:
+1. **Nuevo tipo de Cotización MPOS:** Sin equipos, flujo similar a VPOS, pasando a histórico tras fase Configurada.
+2. **Unificación de Payment Gateway:** Incluir selectores SÍ/NO para Tokenizador y Link de Pago en cotizaciones PG, integrando sus anexos tarifarios dinámicamente en el PDF. Especializar el botón existente Link de Pago/Tokenizador solo para clientes que ya poseen PG.
+3. **Ajuste en Tabla de Costos Corporativos:** Agregar columna Costo Unitario (sin totalizar al final) en cotizaciones VPOS/MultiRIF corporativas, y reflejar montos netos directamente si hay descuentos, agregando nota aclaratoria.
+4. **Módulo de Pistas de Auditoría (Audit Trail):** Rastrear y visualizar de forma inmutable eventos CREATE, UPDATE, DELETE (excepto en Proyectos), con filtros y exportación a Excel.
+5. **Corrección de Bug:** Filtro de clientes por Nombre de Fantasía en la grilla de cotizaciones no aplicaba correctamente la vista.
+6. **Script de Soporte:** Proveer script para liberar seriales huérfanos tras eliminar ítems de inventario manualmente en BD.
+7. **Rebranding y PDFs:** Cambiar MegaNexus por Gestor - CRM en todo el sistema. Agregar logo de Mega Soft a la Nota de Transferencia de Inventario y asegurar que todos los reportes PDF muestren su encabezado en todas las páginas.
+8. **Duda sobre Backup/Fork:** Orientación sobre cómo bifurcar/respaldar el proyecto antes de un cambio mayor.
+
+**User's preferred language**: Spanish (Español)
+**INSTRUCT NEXT AGENT:** You MUST respond and communicate in Spanish only.
+
+**what currently exists?**: 
+Un robusto CRM/ERP (ahora llamado Gestor - CRM) con un motor complejo de cotizaciones, RBAC, auditoría global y control de inventario/seriales. Maneja generación de reportes avanzados en PDF usando WeasyPrint y ReportLab con encabezados persistentes.
+
+**Last working item**: 
+    - Last item agent was working: Responder a la consulta del usuario sobre cómo realizar una bifurcación (Fork) y proteger su código/datos antes de solicitar un ajuste importante. El agente explicó las herramientas de Emergent (Fork, Rollback, Save to Github) y cómo respaldar la BD local usando .
+    - Status: RESOLVED
+    - Agent Testing Done: NA
+    - Which testing method agent to use?: NA
+    - User Testing Done: N
+
+**All Pending/In progress Issue list**: 
+NONE.
+
+**In progress Task List**: 
+NONE.
+
+**Upcoming and Future Tasks**:
+Upcoming Tasks:
+- El usuario mencionó explícitamente: *Quiero realizar un ajuste importante, pero necesito bifurcar a una nueva version...*. Se espera que en el próximo mensaje (en este nuevo fork) el usuario detalle finalmente cuál es ese ajuste importante. (Priority P0)
+
+**Completed work in this session**:
+- Creación de flujo de Cotización MPOS sin equipos. (DONE)
+- Integración de Tokenizador/Link de Pago al flujo de Payment Gateway y separación del módulo Standalone. (DONE)
+- Adición de Columna Costo Unitario en Cotizaciones Corporativas y despliegue de montos netos post-descuento en la grilla. (DONE)
+- Módulo de Pistas de Auditoría (Backend interceptor + UI Frontend con filtros y exportación Excel). (DONE)
+- Corrección del bug de filtrado de clientes (por Nombre de Fantasía) en QuotesTable. (DONE)
+- Script en JS () proporcionado al usuario para limpieza de BD local. (DONE)
+- Rebranding de MegaNexus a Gestor - CRM (UI, emails, PDFs). (DONE)
+- Agregado de logo de Mega Soft y encabezados persistentes multipágina en Notas de Entrega y Reportes PDF. (DONE)
+
+**Earlier issues found/mentioned but not fixed**:
+NONE.
+
+**Known issue recurrence from previous fork**:
+- Recurrence count: 0
+- Status: RESOLVED
+
+**Code Architecture**:
+- Frontend:  (Pistas de Auditoría),  (Lógica de modales y grillas de cotización), .
+- Backend: API en , motor de auditoría transversal en  (usado vía hooks en operaciones CRUD), y generación profunda de PDFs en ,  y .
+
+**Key Technical Concepts**:
+- Audit Trail Interceptor: Se interceptan operaciones de BD en los endpoints para inyectar logs en la colección .
+- PDF Engine: ReportLab y Weasyprint con control de  y  para headers persistentes.
+
+**key DB schema**:
+  - : {fecha_hora, modulo, entidad, registro_id, accion, valores_anteriores, valores_nuevos, campos_modificados, usuario_id, usuario_nombre, ip_origen}
+
+**changes in tech stack**: 
+Ninguno, pero se renombró el sistema globalmente a Gestor - CRM.
+
+**All files of reference**:
+-  &  (Nuevo sistema de auditoría).
+-  y subs (UI de Auditoría).
+-  (Gestión centralizada de encabezados HTML para WeasyPrint).
+-  y  (Manejo de canvas en ReportLab).
+-  y .
+
+**Areas that need refactoring**:
+-  maneja excesiva lógica condicional de maquetación (más de 2200 líneas). Parte de los headers ya se abstrajeron, pero la generación de tablas comerciales sigue acoplada.
+
+**key api endpoints**:
+-  y 
+-  y  (Altamente modificados para incluir lógica Tokenizador/LP).
+
+**Critical Info for New Agent**:
+- **Nombre del Sistema:** El sistema ahora se llama **Gestor - CRM**. No utilices el término MegaNexus.
+- El usuario ejecuta instancias locales en Docker con su propia base de datos MongoDB. Ocasionalmente pedirá scripts manuales (como el de los seriales huérfanos).
+- Al inicio de este fork, el usuario va a introducir un cambio crítico o grande. Presta mucha atención a sus requerimientos y asegúrate de planificar en pasos (ask_human).
+
+**documents and test reports created in this job**:
+-  (QA MPOS)
+-  (QA Payment Gateway unificado)
+-  (QA Pistas de Auditoría)
+-  (Script standalone proporcionado al usuario).
+
+**Last 10 User Messages and any pending HUMAN messages**:
+1. *(User)*: Bug en eliminar ítem del inventario dejando seriales colgados. -> *(Agent)*: Proveyó script de Mongo shell y pasos de ejecución.
+2. *(User)*: Dame el contenido de esos scripts -> *(Agent)*: Entregó script completo.
+3. *(User)*: Requerimiento de agregar logo a Nota de Transferencia, cambiar MegaNexus a Gestor - CRM, y colocar encabezados persistentes en reportes. -> *(Agent)*: Ejecutado y verificado.
+4. *(User)*: Quiero realizar un ajuste importante, pero necesito bifurcar a una nueva version para asegurarme de si no funciona el cambio pueda conservar la version actual -> *(Agent)*: Respondió vía  orientando sobre cómo hacer Fork, Rollback y respaldo vía .
+*Pending Human Messages*: El usuario está por solicitar el ajuste importante en el primer prompt de esta nueva sesión (Fork).
+
+**Project Health Check**:
+Broken: None.
+Mocked: None.
+
+**3rd Party Integrations**:
+- Resend / SMTP (Manejo de emails) — requires User API Key.
+
+**Testing status**:
+- Testing agent used after significant changes: YES
+- Troubleshoot agent used after agent stuck in loop: NO
+- Test files created: Tests locales Pytest añadidos para auditoría () y cambios corporativos.
+- Known regressions: Ninguna.
+
+**Credentials to test flow**:
+- Email:  o 
+- Password: **** (Política de seguridad estricta).
+
+**What agent forgot to execute**:
+Todas las solicitudes previas fueron completadas exitosamente. A la espera de las instrucciones del nuevo feature importante.</analysis>

@@ -13,6 +13,7 @@ import shutil
 
 from config import db, get_current_user, require_permission, UPLOADS_DIR
 from models import *
+from services.client_hierarchy import prepare_client_data, propagate_rif, lineage_contacts, client_inheritance
 
 try:
     from PyPDF2 import PdfReader
@@ -125,48 +126,11 @@ async def _derive_hierarchy(rif: str, sucursal: Optional[str], self_client_id: O
 
 
 async def _consolidated_contacts_for_client(client: dict):
-    """Contactos consolidados de un cliente: los del Principal (globales) + los
-    locales de la sucursal (si el cliente es una hija). Cada contacto lleva 'scope'
-    ('principal' | 'local') y 'sucursal'. No muta los documentos originales."""
-    principal = client
-    if client.get("is_branch") and client.get("parent_client_id"):
-        p = await db.clients.find_one({"client_id": client["parent_client_id"]}, {"_id": 0})
-        if p:
-            principal = p
-
-    out = []
-
-    def _emit(src_doc, scope):
-        for c in (src_doc.get("contacts") or []):
-            if not (c.get("email") or "").strip():
-                continue
-            item = dict(c)
-            item["scope"] = scope
-            item["sucursal"] = src_doc.get("sucursal") or "Principal"
-            out.append(item)
-
-    _emit(principal, "principal")
-    if client.get("client_id") != principal.get("client_id"):
-        _emit(client, "local")
-
-    # Nivel 1 (herencia): contactos del Grupo Económico vinculado al Principal.
-    # Se marcan como scope='grupo' y no editables desde la ficha del cliente/sucursal.
-    gid = principal.get("grupo_economico_id")
-    if gid:
-        grp = await db.economic_groups.find_one(
-            {"group_id": gid}, {"_id": 0, "name": 1, "contacts": 1}
-        )
-        if grp:
-            for c in (grp.get("contacts") or []):
-                if not (c.get("email") or "").strip():
-                    continue
-                item = dict(c)
-                item["scope"] = "grupo"
-                item["sucursal"] = "Grupo Económico"
-                item["grupo_economico_name"] = grp.get("name")
-                item["source_group_id"] = gid
-                out.append(item)
-    return out, principal
+    """Contactos de toda la línea jerárquica (Sucursal, RIF, Marca, Grupo) con su
+    nivel ('scope': local|principal|marca|grupo) y `effective` del nivel vigente."""
+    contacts, levels, _ = await lineage_contacts(client)
+    principal = next((d for s_, d, _n in levels if s_ == "principal"), client)
+    return contacts, principal
 
 
 def parse_rif_data(text: str) -> dict:
@@ -445,6 +409,13 @@ async def _sync_group_name(data: dict):
             data["grupo_economico_id"] = None
 
 
+def _require_brand_if_group(data: dict):
+    if data.get("is_branch"):
+        return
+    if (data.get("grupo_economico_id") or "").strip() and not (data.get("marca_id") or "").strip():
+        raise HTTPException(status_code=400, detail="Si selecciona un Grupo Económico debe indicar la Marca o Nombre Comercial.")
+
+
 @router.post("/clients")
 async def create_client(client_data: ClientCreate, authorization: Optional[str] = Header(None)):
     await require_permission(authorization, "clientes", "edit")
@@ -468,6 +439,8 @@ async def create_client(client_data: ClientCreate, authorization: Optional[str] 
     data["parent_client_id"], data["is_branch"] = await _derive_hierarchy(
         client_data.rif, client_data.sucursal
     )
+    _require_brand_if_group(data)
+    await prepare_client_data(data)
     client = Client(**data)
     doc = client.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
@@ -614,6 +587,7 @@ async def create_branch(parent_id: str, body: dict, authorization: Optional[str]
         if not c.get("contact_id"):
             c["contact_id"] = f"cnt_{uuid.uuid4().hex[:8]}"
 
+    await prepare_client_data(branch_dict)
     branch = Client(**branch_dict)
     doc = branch.model_dump()
     doc["created_at"] = doc["created_at"].isoformat()
@@ -1080,13 +1054,28 @@ async def update_client(client_id: str, client_data: ClientCreate, authorization
     data["parent_client_id"], data["is_branch"] = await _derive_hierarchy(
         client_data.rif, client_data.sucursal, self_client_id=client_id
     )
+    _require_brand_if_group(data)
+    await prepare_client_data(data, self_client_id=client_id)
     result = await db.clients.update_one(
         {"client_id": client_id},
         {"$set": data}
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Client not found")
-    return await get_client(client_id, authorization)
+    saved = await get_client(client_id, authorization)
+    if not saved.get("is_branch"):
+        await propagate_rif(saved)
+    return saved
+
+
+@router.get("/clients/{client_id}/inheritance")
+async def get_client_inheritance(client_id: str, authorization: Optional[str] = Header(None)):
+    """Características efectivas (con nivel de procedencia) y contactos del árbol."""
+    await get_current_user(authorization)
+    client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    return await client_inheritance(client)
 
 @router.patch("/clients/{client_id}")
 async def patch_client(client_id: str, body: dict, authorization: Optional[str] = Header(None)):

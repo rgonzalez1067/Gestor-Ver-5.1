@@ -2691,7 +2691,7 @@ export const Quotes = () => {
       setContactSelectOpen(true);
     } else {
       // Escenario C: Contacto Primario (primer contacto del Principal con email).
-      const primary = contacts.find(c => c.scope === 'principal') || contacts[0];
+      const primary = contacts.find(c => c.effective) || contacts.find(c => c.scope === 'principal') || contacts[0];
       if (primary?.email) {
         openEmailModal('send-to-client', quoteId, [primary.email]);
       } else {
@@ -4622,7 +4622,7 @@ export const Quotes = () => {
             emailManualAttachments, setEmailManualAttachments,
             addEmailRecipient, removeEmailRecipient, confirmEmailAndProceed,
             contactSelectOpen, setContactSelectOpen, contactList, contactSelectLoading,
-            contactSelectedEmails, toggleContactEmail, handleContactSelectContinue, contactSelectAction,
+            contactSelectedEmails, setContactSelectedEmails, toggleContactEmail, handleContactSelectContinue, contactSelectAction,
             bitacoraFlujoOpen, setBitacoraFlujoOpen, bitacoraFlujoQuoteNumber,
             bitacoraFlujoEntries, bitacoraFlujoLoading,
             deliveryDialogOpen, setDeliveryDialogOpen, deliveryQuoteId, deliveryExceptionInfo, deliveryEmailHeaders,

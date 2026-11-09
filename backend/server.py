@@ -63,6 +63,7 @@ from routes.connected_users import router as connected_users_router
 from routes.other_actions_config import router as other_actions_router
 from routes.bank_payment_conditions import router as bank_payment_conditions_router
 from routes.economic_groups import router as economic_groups_router
+from routes.brands import router as brands_router
 from routes.audit_trails import router as audit_trails_router
 from services.audit_trail import AuditContextMiddleware, ensure_audit_indexes
 from services.notification_scheduler import start_scheduler, stop_scheduler
@@ -403,6 +404,7 @@ api_router.include_router(project_sla_router)
 api_router.include_router(calendar_router)
 api_router.include_router(bank_payment_conditions_router)
 api_router.include_router(economic_groups_router)
+api_router.include_router(brands_router)
 api_router.include_router(audit_trails_router)
 app.include_router(api_router)
 # Debe quedar como middleware más externo (contexto IP/UA/endpoint de las Pistas de Auditoría).
@@ -463,6 +465,17 @@ async def create_indexes():
             await restore_client_hierarchy()
         except Exception as e:
             logging.warning(f"[startup] client hierarchy migration failed: {e}")
+
+        # Jerarquía 4 niveles: Marcas desde nombre de fantasía — idempotente, guardada por flag
+        try:
+            await db.brands.create_index([("brand_id", 1)], unique=True)
+            await db.brands.create_index([("group_id", 1)])
+            await db.clients.create_index([("marca_id", 1)])
+            await db.clients.create_index([("parent_client_id", 1)])
+            from services.client_hierarchy import migrate_brands
+            await migrate_brands()
+        except Exception as e:
+            logging.warning(f"[startup] client brands migration failed: {e}")
 
         # Backfill de origen inmutable de cotizaciones (creator_departamento) — idempotente, flag
         try:

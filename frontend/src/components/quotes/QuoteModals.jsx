@@ -26,6 +26,7 @@ import { PreassignSerialsModal } from './PreassignSerialsModal';
 import { InternalEmailInput } from '../InternalEmailInput';
 import { RichTextEditor } from '../RichTextEditor';
 import { ACTION_LABELS } from './constants';
+import { LEVELS, LEVEL_ORDER, LevelTag } from '../clients/hierarchy/levels';
 
 // ============================================================================
 // Inputs aislados para Multitienda (rendimiento de escritura).
@@ -262,7 +263,7 @@ export const QuoteModals = ({ ctx }) => {
     addEmailRecipient, removeEmailRecipient, confirmEmailAndProceed,
     // Enviar al Cliente — Paso 1: selección de contactos
     contactSelectOpen, setContactSelectOpen, contactList, contactSelectLoading,
-    contactSelectedEmails, toggleContactEmail, handleContactSelectContinue, contactSelectAction,
+    contactSelectedEmails, setContactSelectedEmails, toggleContactEmail, handleContactSelectContinue, contactSelectAction,
     // Bitacora
     bitacoraFlujoOpen, setBitacoraFlujoOpen, bitacoraFlujoQuoteNumber,
     bitacoraFlujoEntries, bitacoraFlujoLoading,
@@ -483,7 +484,7 @@ export const QuoteModals = ({ ctx }) => {
               Lista los contactos de la ficha del cliente (Nombre, Email, Rol) con
               checkbox; al Continuar precarga los correos en el modal de comunicación. */}
           <Dialog open={contactSelectOpen} onOpenChange={(open) => { if (!open) setContactSelectOpen(false); }}>
-            <DialogContent className="max-w-lg" data-testid="contact-select-modal">
+            <DialogContent className="max-w-2xl" data-testid="contact-select-modal">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-blue-700">
                   <Users size={20} className="text-blue-500" />
@@ -508,19 +509,24 @@ export const QuoteModals = ({ ctx }) => {
                   </div>
                 ) : (
                   <div className="border border-slate-200 rounded-lg overflow-hidden max-h-[340px] overflow-y-auto" data-testid="contact-select-groups">
-                    {[
-                      { key: 'grupo', label: 'Grupo Económico', bar: 'bg-purple-100 text-purple-800 border-purple-200' },
-                      { key: 'principal', label: 'RIF Principal', bar: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
-                      { key: 'local', label: 'Sucursal', bar: 'bg-amber-100 text-amber-800 border-amber-200' },
-                    ].map((grp) => {
+                    {LEVEL_ORDER.map((key) => {
+                      const grp = { key, label: LEVELS[key].label, bar: LEVELS[key].tag };
                       const rows = contactList
                         .map((c, idx) => ({ c, idx }))
                         .filter(({ c }) => (c.scope || 'principal') === grp.key);
                       if (rows.length === 0) return null;
+                      const emails = [...new Set(rows.map(({ c }) => c.email))];
+                      const allOn = emails.every(e => contactSelectedEmails.includes(e));
+                      const toggleBlock = () => setContactSelectedEmails(prev => (allOn
+                        ? prev.filter(e => !emails.includes(e))
+                        : [...new Set([...prev, ...emails])]));
                       return (
                         <div key={grp.key} data-testid={`contact-group-${grp.key}`}>
-                          <div className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide border-y ${grp.bar} sticky top-0 z-10`}>
-                            {grp.label} <span className="opacity-70">({rows.length})</span>
+                          <div className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide border-y ${grp.bar} sticky top-0 z-10 flex items-center justify-between`}>
+                            <span>[{grp.label}] <span className="opacity-70">({rows.length})</span></span>
+                            <button type="button" onClick={toggleBlock} className="normal-case tracking-normal hover:underline" data-testid={`contact-group-toggle-${grp.key}`}>
+                              {allOn ? 'Deseleccionar bloque' : 'Seleccionar bloque'}
+                            </button>
                           </div>
                           <table className="w-full text-sm">
                             <tbody className="divide-y divide-slate-100">
@@ -546,6 +552,8 @@ export const QuoteModals = ({ ctx }) => {
                                       {grp.key === 'local' && c.sucursal && c.sucursal !== 'Principal' && (
                                         <span className="ml-1.5 text-[10px] font-semibold text-amber-700">({c.sucursal})</span>
                                       )}
+                                      <span className="ml-1.5 align-middle"><LevelTag scope={grp.key} testId={`contact-level-tag-${idx}`} /></span>
+                                      {c.effective && <span className="ml-1 text-[10px] font-semibold text-emerald-700" data-testid={`contact-effective-${idx}`}>· vigente</span>}
                                     </td>
                                     <td className="px-3 py-2 text-slate-600 truncate max-w-[180px]">{c.email}</td>
                                     <td className="px-3 py-2 text-slate-500">{c.role || '—'}</td>

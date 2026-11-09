@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"25548f1c205e446ca3330a185e350149","collectionName":"inventory_movement_audits","type":"collection"}

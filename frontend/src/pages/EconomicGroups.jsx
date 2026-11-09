@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
@@ -6,18 +6,16 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Plus, Pencil, Trash2, X, Search, Building2, Users, FileDown, Check, Circle, UserPlus, Contact as ContactIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Search, Building2, FileDown, UserPlus, ChevronRight, ChevronDown, GitBranch } from 'lucide-react';
+import { CharacteristicsEditor } from '../components/clients/hierarchy/CharacteristicsEditor';
+import { CorporateContactsEditor } from '../components/clients/hierarchy/CorporateContactsEditor';
+import { GroupTree } from '../components/clients/hierarchy/HierarchyTree';
 import api from '../utils/api';
 import { toast } from 'sonner';
 import { usePermission } from '../hooks/usePermission';
-import { CONTACT_PURPOSES } from '../utils/contactPurposes';
-
-const CONTACT_ROLES = ['Administrativo', 'Financiero', 'Técnico', 'Cuentas por Pagar', 'Operativo', 'Propietario', 'Director', 'Integrador'];
 
 const emptyRepresentante = () => ({ nombre: '', cedula: '', cargo: '', telefono: '', email: '' });
-const emptyContact = () => ({ contact_id: '', full_name: '', phone: '', email: '', role: 'Administrativo', purposes: [] });
-const emptyGroup = () => ({ name: '', description: '', representantes: [], contacts: [] });
+const emptyGroup = () => ({ name: '', description: '', representantes: [], contacts: [], characteristics: {} });
 
 export default function EconomicGroups() {
   const { canEdit } = usePermission('grupos_economicos');
@@ -29,7 +27,7 @@ export default function EconomicGroups() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyGroup());
-  const [clients, setClients] = useState([]);
+  const [expanded, setExpanded] = useState({});
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
@@ -49,7 +47,7 @@ export default function EconomicGroups() {
   useEffect(() => { const t = setTimeout(fetchGroups, 300); return () => clearTimeout(t); /* eslint-disable-next-line */ }, [search]);
 
   const openCreate = () => {
-    setEditingId(null); setForm(emptyGroup()); setClients([]); setDialogOpen(true);
+    setEditingId(null); setForm(emptyGroup()); setDialogOpen(true);
   };
 
   const openEdit = async (groupId) => {
@@ -61,9 +59,9 @@ export default function EconomicGroups() {
         name: g.name || '',
         description: g.description || '',
         representantes: (g.representantes || []).map(r => ({ ...emptyRepresentante(), ...r })),
-        contacts: (g.contacts || []).map(c => ({ ...emptyContact(), ...c, purposes: c.purposes || [] })),
+        contacts: (g.contacts || []).map(c => ({ contact_id: '', full_name: '', phone: '', email: '', role: 'Administrativo', ...c, purposes: c.purposes || [] })),
+        characteristics: g.characteristics || {},
       });
-      setClients(g.clients || []);
       setDialogOpen(true);
     } catch {
       toast.error('No se pudo abrir el grupo');
@@ -79,19 +77,6 @@ export default function EconomicGroups() {
   });
   const removeRepresentante = (idx) => setForm(p => ({ ...p, representantes: p.representantes.filter((_, i) => i !== idx) }));
 
-  // Contactos
-  const addContact = () => setForm(p => ({ ...p, contacts: [...p.contacts, emptyContact()] }));
-  const updateContact = (idx, field, value) => setForm(p => {
-    const c = [...p.contacts]; c[idx] = { ...c[idx], [field]: value }; return { ...p, contacts: c };
-  });
-  const removeContact = (idx) => setForm(p => ({ ...p, contacts: p.contacts.filter((_, i) => i !== idx) }));
-  const toggleContactPurpose = (idx, key) => setForm(p => {
-    const c = [...p.contacts];
-    const cur = Array.isArray(c[idx].purposes) ? c[idx].purposes : [];
-    c[idx] = { ...c[idx], purposes: cur.includes(key) ? cur.filter(x => x !== key) : [...cur, key] };
-    return { ...p, contacts: c };
-  });
-
   const save = async () => {
     if (!form.name.trim()) { toast.error('El nombre del grupo es obligatorio'); return; }
     setSaving(true);
@@ -101,6 +86,7 @@ export default function EconomicGroups() {
         description: form.description || '',
         representantes: form.representantes.filter(r => r.nombre.trim()),
         contacts: form.contacts.filter(c => c.full_name.trim() || c.email.trim()),
+        characteristics: form.characteristics || {},
       };
       if (editingId) {
         await api.put(`/grupos-economicos/${editingId}`, payload);
@@ -151,7 +137,7 @@ export default function EconomicGroups() {
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
               <Building2 className="text-indigo-600" size={28} /> Grupo Económico
             </h1>
-            <p className="text-slate-500 mt-1">Agrupe múltiples clientes/RIFs bajo una misma figura corporativa.</p>
+            <p className="text-slate-500 mt-1">Grupos corporativos y sus Marcas. Haga clic en un grupo para desplegar Marcas → RIFs → Sucursales.</p>
           </div>
           {editable && (
             <Button onClick={openCreate} className="bg-indigo-600 hover:bg-indigo-700" data-testid="create-group-btn">
@@ -172,6 +158,7 @@ export default function EconomicGroups() {
               <tr>
                 <th className="text-left px-4 py-3">Nombre del Grupo</th>
                 <th className="text-left px-4 py-3">Descripción</th>
+                <th className="text-center px-4 py-3">Marcas</th>
                 <th className="text-center px-4 py-3">RIFs Asociados</th>
                 <th className="text-center px-4 py-3">Contactos</th>
                 <th className="text-right px-4 py-3">Acciones</th>
@@ -179,13 +166,21 @@ export default function EconomicGroups() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} className="text-center py-8 text-slate-400">Cargando...</td></tr>
+                <tr><td colSpan={6} className="text-center py-8 text-slate-400">Cargando...</td></tr>
               ) : groups.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-8 text-slate-400">No hay grupos económicos.</td></tr>
+                <tr><td colSpan={6} className="text-center py-8 text-slate-400">No hay grupos económicos.</td></tr>
               ) : groups.map(g => (
-                <tr key={g.group_id} className="border-t hover:bg-slate-50" data-testid={`group-row-${g.group_id}`}>
-                  <td className="px-4 py-3 font-medium text-slate-800">{g.name}</td>
+                <Fragment key={g.group_id}>
+                <tr className="border-t hover:bg-slate-50" data-testid={`group-row-${g.group_id}`}>
+                  <td className="px-4 py-3 font-medium text-slate-800">
+                    <button type="button" onClick={() => setExpanded(p => ({ ...p, [g.group_id]: !p[g.group_id] }))} className="flex items-center gap-2 hover:text-indigo-700" data-testid={`group-expand-${g.group_id}`}>
+                      {expanded[g.group_id] ? <ChevronDown size={15} /> : <ChevronRight size={15} />}{g.name}
+                    </button>
+                  </td>
                   <td className="px-4 py-3 text-slate-500 max-w-xs truncate">{g.description || '—'}</td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 font-semibold" data-testid={`group-brand-count-${g.group_id}`}>{g.brands_count ?? 0}</span>
+                  </td>
                   <td className="px-4 py-3 text-center">
                     <span className="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold" data-testid={`group-rif-count-${g.group_id}`}>{g.rif_count}</span>
                   </td>
@@ -206,6 +201,10 @@ export default function EconomicGroups() {
                     </div>
                   </td>
                 </tr>
+                {expanded[g.group_id] && (
+                  <tr className="bg-slate-50/60" data-testid={`group-tree-row-${g.group_id}`}><td colSpan={6} className="px-6 py-2"><GroupTree groupId={g.group_id} /></td></tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -254,78 +253,14 @@ export default function EconomicGroups() {
                 </div>
               </div>
 
-              {/* Contactos Corporativos */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-1.5"><ContactIcon size={15} /> Contactos Corporativos</h3>
-                  {editable && <Button size="sm" variant="outline" onClick={addContact} data-testid="add-group-contact-btn"><Plus size={14} className="mr-1" /> Agregar</Button>}
-                </div>
-                {form.contacts.length === 0 && <p className="text-xs text-slate-400">Sin contactos.</p>}
-                <div className="space-y-3">
-                  {form.contacts.map((c, idx) => (
-                    <div key={idx} className="grid grid-cols-12 gap-2 border border-slate-200 p-3 rounded-lg" data-testid={`group-contact-${idx}`}>
-                      <Input className="col-span-3" placeholder="Nombre completo" value={c.full_name} onChange={e => updateContact(idx, 'full_name', e.target.value)} disabled={!editable} data-testid={`group-contact-name-${idx}`} />
-                      <Input className="col-span-3" placeholder="Email" value={c.email} onChange={e => updateContact(idx, 'email', e.target.value)} disabled={!editable} data-testid={`group-contact-email-${idx}`} />
-                      <Input className="col-span-2" placeholder="Teléfono" value={c.phone} onChange={e => updateContact(idx, 'phone', e.target.value)} disabled={!editable} />
-                      <div className="col-span-3">
-                        <Select value={c.role} onValueChange={v => updateContact(idx, 'role', v)} disabled={!editable}>
-                          <SelectTrigger data-testid={`group-contact-role-${idx}`}><SelectValue /></SelectTrigger>
-                          <SelectContent>{CONTACT_ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-                        </Select>
-                      </div>
-                      {editable && <Button size="sm" variant="ghost" className="col-span-1 h-8 w-8 p-0 text-red-500" onClick={() => removeContact(idx)}><X size={15} /></Button>}
-                      <div className="col-span-12">
-                        <p className="text-[11px] font-semibold text-slate-500 mb-1.5">Perfilamiento de Procesos</p>
-                        <div className="flex flex-wrap gap-1.5" data-testid={`group-contact-purposes-${idx}`}>
-                          {CONTACT_PURPOSES.map(p => {
-                            const active = Array.isArray(c.purposes) && c.purposes.includes(p.key);
-                            return (
-                              <button key={p.key} type="button" disabled={!editable} onClick={() => toggleContactPurpose(idx, p.key)}
-                                aria-pressed={active} data-testid={`group-contact-purpose-${idx}-${p.key}`}
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400'}`}>
-                                {active ? <Check size={12} /> : <Circle size={11} className="opacity-50" />}
-                                {p.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <CharacteristicsEditor value={form.characteristics} onChange={v => setField('characteristics', v)} disabled={!editable} testPrefix="group-char" />
 
-              {/* Grilla de RIFs asociados */}
+              <CorporateContactsEditor contacts={form.contacts} onChange={v => setField('contacts', v)} editable={editable} title="Contactos Corporativos" />
+
               {editingId && (
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-                      <Users size={15} /> RIFs Asociados
-                      <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold" data-testid="group-associated-count">{clients.length}</span>
-                    </h3>
-                  </div>
-                  <div className="border border-slate-200 rounded-lg overflow-hidden">
-                    <table className="w-full text-sm" data-testid="group-clients-grid">
-                      <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                        <tr>
-                          <th className="text-left px-3 py-2">Nombre de Fantasía</th>
-                          <th className="text-left px-3 py-2">RIF</th>
-                          <th className="text-left px-3 py-2">Nombre Jurídico</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {clients.length === 0 ? (
-                          <tr><td colSpan={3} className="text-center py-4 text-slate-400">Sin RIFs asociados. Vincula clientes desde su ficha.</td></tr>
-                        ) : clients.map(c => (
-                          <tr key={c.client_id} className="border-t">
-                            <td className="px-3 py-2 font-medium text-slate-800">{c.fantasy_name}</td>
-                            <td className="px-3 py-2 text-slate-600">{c.rif}</td>
-                            <td className="px-3 py-2 text-slate-500">{c.legal_name}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-1.5 mb-2"><GitBranch size={15} /> Marcas, RIFs y Sucursales</h3>
+                  <div className="border border-slate-200 rounded-lg p-2" data-testid="group-dialog-tree"><GroupTree groupId={editingId} /></div>
                 </div>
               )}
             </div>

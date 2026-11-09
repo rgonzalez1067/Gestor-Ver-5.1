@@ -50,6 +50,15 @@ class EconomicGroupCreate(BaseModel):
     description: Optional[str] = ""
     representantes: List[Representante] = []
     contacts: List[ContactCRM] = []
+    characteristics: dict = {}
+
+
+class BrandCreate(BaseModel):
+    name: str
+    group_id: Optional[str] = None
+    description: Optional[str] = ""
+    contacts: List[ContactCRM] = []
+    characteristics: dict = {}
 
 
 class EconomicGroup(BaseModel):
@@ -65,7 +74,8 @@ class EconomicGroup(BaseModel):
 class ClientCreate(BaseModel):
     rif: str
     legal_name: str
-    fantasy_name: str
+    fantasy_name: str = ""
+    marca_id: Optional[str] = None
     segment: str = "Pymes"
     condicion: str = "Prospecto"
     referidor: Optional[str] = None
@@ -105,7 +115,10 @@ class Client(BaseModel):
     client_id: str = Field(default_factory=lambda: f"cli_{uuid.uuid4().hex[:12]}")
     rif: str
     legal_name: str
-    fantasy_name: str
+    fantasy_name: str = ""
+    marca_id: Optional[str] = None
+    marca_name: Optional[str] = None
+    inherit_overrides: List[str] = []
     segment: str = "Pymes"
     condicion: str = "Prospecto"
     referidor: Optional[str] = None

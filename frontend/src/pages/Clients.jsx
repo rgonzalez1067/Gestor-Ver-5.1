@@ -23,6 +23,17 @@ import { usePermission } from '../hooks/usePermission';
 import { useNavigate } from 'react-router-dom';
 import { ClientEmailDialog } from '../components/ClientEmailDialog';
 import { ClientsBulkUpdateModal } from '../components/ClientsBulkUpdateModal';
+import { BrandPicker } from '../components/clients/hierarchy/BrandPicker';
+import { BrandDialog } from '../components/clients/hierarchy/BrandDialog';
+import { InheritanceSummary } from '../components/clients/hierarchy/InheritanceSummary';
+import { InheritedContactsPanel } from '../components/clients/hierarchy/InheritedContactsPanel';
+
+const INHERIT_KEYS = {
+  segment: ['segment'], categoria_comercial: ['categoria_comercial'], tipo_servicio: ['tipo_servicio'],
+  aplicativo: ['aplicativo'], modelo_impresora_fiscal: ['modelo_impresora_fiscal'],
+  ejecutivo_user_id: ['ejecutivo_user_id', 'ejecutivo_propietario'], coordinator_user_id: ['coordinator_user_id', 'coordinator_name'],
+  implementer_user_id: ['implementer_user_id', 'implementer_name'], integrador_id: ['integrador_id', 'integrador_name'],
+};
 
 const SEGMENT_OPTIONS = ['Pymes', 'Corporativo', 'Emprendedor', 'Mixto'];
 const CONDICION_OPTIONS = ['Prospecto', 'Cliente'];
@@ -104,7 +115,7 @@ export const Clients = () => {
     rif: '', legal_name: '', fantasy_name: '', segment: 'Pymes', condicion: 'Prospecto', referidor: '',
     referidor_tipo: '', referidor_id: '', referidor_nombre: '',
     address: '', branch_address: '', categoria_comercial: '', sucursal: 'Principal',
-    grupo_economico: '', grupo_economico_id: '', ejecutivo_propietario: '', ejecutivo_user_id: '',
+    grupo_economico: '', grupo_economico_id: '', marca_id: '', ejecutivo_propietario: '', ejecutivo_user_id: '',
     cantidad_tiendas: '', cantidad_cajas: '',
     coordinator_user_id: '', coordinator_name: '',
     implementer_user_id: '', implementer_name: '',
@@ -126,16 +137,53 @@ export const Clients = () => {
   const [bitacoraInicioText, setBitacoraInicioText] = useState('');
   const [fiscalPrinters, setFiscalPrinters] = useState([]);
   const [economicGroups, setEconomicGroups] = useState([]);
-  const [inheritedGroupContacts, setInheritedGroupContacts] = useState([]);
-  const loadGroupContacts = async (gid) => {
-    if (!gid) { setInheritedGroupContacts([]); return; }
-    try {
-      const res = await api.get(`/grupos-economicos/${gid}`);
-      setInheritedGroupContacts((res.data?.contacts || []).filter(c => (c.email || '').trim() || (c.full_name || '').trim()));
-    } catch { setInheritedGroupContacts([]); }
+  const [brands, setBrands] = useState([]);
+  const [quickBrandOpen, setQuickBrandOpen] = useState(false);
+  const [inheritance, setInheritance] = useState(null);
+  const fetchBrands = async () => {
+    try { const res = await api.get('/marcas'); setBrands(res.data || []); } catch { /* noop */ }
   };
   const fetchEconomicGroups = async () => {
     try { const res = await api.get('/grupos-economicos'); setEconomicGroups(res.data || []); } catch { /* noop */ }
+    fetchBrands();
+  };
+  const isBranchForm = () => !!addingBranchParentId || !!(editingClient && editingClient.is_branch);
+  // Herencia: ficha existente → su árbol; nueva sucursal → árbol del RIF; nuevo RIF → árbol de la Marca.
+  const loadInheritance = async () => {
+    try {
+      if (editingClient) {
+        const r = await api.get(`/clients/${editingClient.client_id}/inheritance`);
+        const own = editingClient.is_branch ? 'local' : 'principal';
+        setInheritance({ rows: r.data.characteristics, contacts: (r.data.contacts || []).filter(c => c.scope !== own) });
+      } else if (addingBranchParentId) {
+        const r = await api.get(`/clients/${addingBranchParentId}/inheritance`);
+        setInheritance({ rows: [], contacts: r.data.contacts || [] });
+      } else if (formData.marca_id) {
+        const r = await api.get(`/marcas/${formData.marca_id}/inheritance`);
+        setInheritance({ rows: r.data.characteristics, contacts: r.data.contacts || [] });
+      } else setInheritance(null);
+    } catch { setInheritance(null); }
+  };
+  const handleBrandSelect = async (brand) => {
+    if (!brand) { setFormData(prev => ({ ...prev, marca_id: '' })); return; }
+    const grp = economicGroups.find(g => g.group_id === brand.group_id);
+    setFormData(prev => ({ ...prev, marca_id: brand.brand_id, fantasy_name: brand.name,
+      grupo_economico_id: brand.group_id || '', grupo_economico: grp ? grp.name : '' }));
+    try {
+      const { data } = await api.get(`/marcas/${brand.brand_id}/inheritance`);
+      const vals = data.effective_values || {};
+      const overrides = editingClient?.inherit_overrides || [];
+      setFormData(prev => {
+        const next = { ...prev };
+        Object.entries(INHERIT_KEYS).forEach(([unit, fields]) => {
+          const v = vals[unit];
+          if (v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length)) return;
+          if (editingClient && overrides.includes(unit)) return;
+          fields.forEach(f => { next[f] = vals[f] ?? ''; });
+        });
+        return next;
+      });
+    } catch { /* noop */ }
   };
   const [customPrinterName, setCustomPrinterName] = useState('');
   const [showCustomPrinterInput, setShowCustomPrinterInput] = useState(false);
@@ -143,7 +191,7 @@ export const Clients = () => {
   const fileInputRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
-  useEffect(() => { loadGroupContacts(formData.grupo_economico_id); /* eslint-disable-next-line */ }, [formData.grupo_economico_id]);
+  useEffect(() => { if (dialogOpen) loadInheritance(); /* eslint-disable-next-line */ }, [dialogOpen, editingClient, addingBranchParentId, formData.marca_id]);
   useEffect(() => { fetchClients(); fetchIntegrators(); fetchEjecutivos(); fetchImplementationStaff(); fetchFiscalPrinters(); fetchReferidorOptions(); fetchCommercialCategories(); fetchEconomicGroups(); }, []);
 
   // Handle deep-link from Dashboard alerts
@@ -262,6 +310,10 @@ export const Clients = () => {
       toast.error('No tiene permisos para guardar cambios en clientes');
       return;
     }
+    if (!isBranchForm() && formData.grupo_economico_id && !formData.marca_id) {
+      toast.error('Si selecciona un Grupo Económico debe indicar la Marca o Nombre Comercial');
+      return;
+    }
     // Migrate legacy contact1/contact2 to contacts array if needed
     const payload = { ...formData };
     // Convertir strings vacíos a null para campos numéricos opcionales
@@ -270,7 +322,7 @@ export const Clients = () => {
     if (payload.cantidad_cajas === '' || payload.cantidad_cajas === null) payload.cantidad_cajas = null;
     else payload.cantidad_cajas = parseInt(payload.cantidad_cajas, 10) || null;
     // Convertir strings vacíos a null para campos opcionales
-    for (const key of ['referidor', 'referidor_tipo', 'referidor_id', 'referidor_nombre', 'address', 'branch_address', 'categoria_comercial', 'grupo_economico', 'grupo_economico_id', 'ejecutivo_propietario', 'ejecutivo_user_id', 'coordinator_user_id', 'coordinator_name', 'implementer_user_id', 'implementer_name', 'fecha_primer_contacto', 'tipo_contacto', 'integrador_id', 'integrador_name', 'aplicativo', 'modelo_impresora_fiscal', 'additional_info']) {
+    for (const key of ['referidor', 'referidor_tipo', 'referidor_id', 'referidor_nombre', 'address', 'branch_address', 'categoria_comercial', 'grupo_economico', 'grupo_economico_id', 'marca_id', 'ejecutivo_propietario', 'ejecutivo_user_id', 'coordinator_user_id', 'coordinator_name', 'implementer_user_id', 'implementer_name', 'fecha_primer_contacto', 'tipo_contacto', 'integrador_id', 'integrador_name', 'aplicativo', 'modelo_impresora_fiscal', 'additional_info']) {
       if (payload[key] === '') payload[key] = null;
     }
     // Ensure legacy fields for backwards compat
@@ -305,6 +357,7 @@ export const Clients = () => {
       setDialogOpen(false);
       resetForm();
       fetchClients();
+      fetchBrands();
     } catch (error) {
       const detail = error.response?.data?.detail;
       if (Array.isArray(detail)) {
@@ -387,7 +440,7 @@ export const Clients = () => {
       branch_address: client.branch_address || '',
       categoria_comercial: client.categoria_comercial || '',
       sucursal: client.sucursal || 'Principal',
-      grupo_economico: client.grupo_economico || '', grupo_economico_id: client.grupo_economico_id || '',
+      grupo_economico: client.grupo_economico || '', grupo_economico_id: client.grupo_economico_id || '', marca_id: client.marca_id || '',
       ejecutivo_propietario: client.ejecutivo_propietario || '',
       ejecutivo_user_id: client.ejecutivo_user_id || '',
       cantidad_tiendas: client.cantidad_tiendas ?? '',
@@ -414,7 +467,7 @@ export const Clients = () => {
       rif: '', legal_name: '', fantasy_name: '', segment: 'Pymes', condicion: 'Prospecto',
       referidor: '', referidor_tipo: '', referidor_id: '', referidor_nombre: '',
       address: '', branch_address: '', categoria_comercial: '', sucursal: 'Principal',
-      grupo_economico: '', grupo_economico_id: '', ejecutivo_propietario: '', ejecutivo_user_id: '',
+      grupo_economico: '', grupo_economico_id: '', marca_id: '', ejecutivo_propietario: '', ejecutivo_user_id: '',
       cantidad_tiendas: '', cantidad_cajas: '',
       fecha_primer_contacto: '', tipo_contacto: '', tipo_servicio: [],
       integrador_id: '', integrador_name: '', aplicativo: '',
@@ -448,7 +501,7 @@ export const Clients = () => {
       branch_address: '',
       categoria_comercial: principal.categoria_comercial || '',
       sucursal: '',
-      grupo_economico: principal.grupo_economico || '', grupo_economico_id: principal.grupo_economico_id || '',
+      grupo_economico: principal.grupo_economico || '', grupo_economico_id: principal.grupo_economico_id || '', marca_id: principal.marca_id || '',
       ejecutivo_propietario: principal.ejecutivo_propietario || '',
       ejecutivo_user_id: principal.ejecutivo_user_id || '',
       cantidad_tiendas: principal.cantidad_tiendas ?? '',
@@ -494,7 +547,7 @@ export const Clients = () => {
       branch_address: '',  // Limpiar dirección de sucursal
       categoria_comercial: client.categoria_comercial || '',
       sucursal: '', // Limpiar para nueva sucursal
-      grupo_economico: client.grupo_economico || '', grupo_economico_id: client.grupo_economico_id || '',
+      grupo_economico: client.grupo_economico || '', grupo_economico_id: client.grupo_economico_id || '', marca_id: client.marca_id || '',
       ejecutivo_propietario: client.ejecutivo_propietario || '',
       ejecutivo_user_id: client.ejecutivo_user_id || '',
       cantidad_tiendas: client.cantidad_tiendas ?? '',
@@ -1072,24 +1125,35 @@ export const Clients = () => {
                               onCommit={(v) => { setFormData(prev => ({ ...prev, legal_name: v })); setRifHighlightFields(prev => { const n = new Set(prev); n.delete('legal_name'); return n; }); }}
                               className={`h-9 ${rifHighlightFields.has('legal_name') ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-200' : ''}`} required />
                           </div>
+                          {isBranchForm() ? (
                           <div>
                             <Label className="text-xs">Nombre de Fantasía</Label>
                             <DebouncedInput data-testid="client-fantasy-name-input" value={formData.fantasy_name}
                               onCommit={(v) => { setFormData(prev => ({ ...prev, fantasy_name: v })); setRifHighlightFields(prev => { const n = new Set(prev); n.delete('fantasy_name'); return n; }); }}
-                              className={`h-9 ${rifHighlightFields.has('fantasy_name') ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-200' : ''}`} required />
+                              className={`h-9 ${rifHighlightFields.has('fantasy_name') ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-200' : ''}`} />
                           </div>
+                          ) : (
+                          <div>
+                            <Label className="text-xs">Marca o Nombre Comercial {formData.grupo_economico_id && <span className="text-amber-600">*</span>}</Label>
+                            <BrandPicker brands={brands} groupId={formData.grupo_economico_id} value={formData.marca_id}
+                              required={!!formData.grupo_economico_id} onSelect={handleBrandSelect}
+                              onCreate={canEdit ? () => setQuickBrandOpen(true) : null} />
+                          </div>
+                          )}
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <Label className="text-xs">Grupo Económico</Label>
                             <Select
                               value={formData.grupo_economico_id || '_none_'}
+                              disabled={isBranchForm()}
                               onValueChange={(v) => {
+                                const keepBrand = (gid) => brands.some(b => b.brand_id === formData.marca_id && b.group_id === gid);
                                 if (v === '_none_') {
                                   setFormData(prev => ({ ...prev, grupo_economico_id: '', grupo_economico: '' }));
                                 } else {
                                   const g = economicGroups.find(x => x.group_id === v);
-                                  setFormData(prev => ({ ...prev, grupo_economico_id: v, grupo_economico: g ? g.name : prev.grupo_economico }));
+                                  setFormData(prev => ({ ...prev, grupo_economico_id: v, grupo_economico: g ? g.name : prev.grupo_economico, marca_id: keepBrand(v) ? prev.marca_id : '' }));
                                 }
                               }}
                             >
@@ -1110,6 +1174,7 @@ export const Clients = () => {
                             </Select>
                           </div>
                         </div>
+                        {inheritance?.rows?.length > 0 && <InheritanceSummary rows={inheritance.rows} testId="client-inheritance-summary" />}
                         {/* Datos de Captación — Origen del Cliente con cascada */}
                         <div className="space-y-2">
                           <Label className="text-xs font-semibold text-slate-600">Datos de Captación</Label>
@@ -1505,71 +1570,8 @@ export const Clients = () => {
 
                     {/* === CONTACTOS === */}
                     <div className="border-t pt-4">
-                      {inheritedGroupContacts.length > 0 && (
-                        <div className="mb-4" data-testid="inherited-group-contacts">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Building2 size={14} className="text-indigo-600" />
-                            <p className="text-xs font-semibold text-slate-600">Contactos heredados del Grupo Económico</p>
-                          </div>
-                          <div className="space-y-2">
-                            {inheritedGroupContacts.map((gc, gi) => (
-                              <div key={gc.contact_id || gi}
-                                className="grid grid-cols-12 gap-2 items-center bg-indigo-50/60 border border-indigo-100 p-2.5 rounded-lg opacity-95"
-                                data-testid={`inherited-group-contact-${gi}`}>
-                                <div className="col-span-3 text-sm font-medium text-slate-700 truncate">{gc.full_name || '—'}</div>
-                                <div className="col-span-3 text-xs text-slate-500 truncate">{gc.email}</div>
-                                <div className="col-span-2 text-xs text-slate-500 truncate">{gc.role || '—'}</div>
-                                <div className="col-span-3">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-semibold">
-                                    <Building2 size={10} /> Grupo Económico
-                                  </span>
-                                </div>
-                                <div className="col-span-1 flex justify-center">
-                                  <Button type="button" size="sm" variant="ghost" disabled
-                                    className="h-8 w-8 p-0 text-slate-300 cursor-not-allowed"
-                                    title="Este contacto pertenece al Grupo Económico y solo puede ser modificado desde la Ficha de Grupo correspondiente"
-                                    data-testid={`inherited-group-contact-locked-${gi}`}>
-                                    <X size={15} />
-                                  </Button>
-                                </div>
-                                <p className="col-span-12 text-[10px] text-slate-400 italic">
-                                  Solo lectura · Editable únicamente desde la Ficha del Grupo Económico.
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {(() => {
-                        const isBranchCtx = !!addingBranchParentId || !!(editingClient && editingClient.is_branch);
-                        if (!isBranchCtx) return null;
-                        const principalId = addingBranchParentId || editingClient?.parent_client_id;
-                        const principalDoc = principalId ? clients.find(c => c.client_id === principalId) : null;
-                        const inherited = (principalDoc?.contacts || []).filter(c => (c.email || '').trim() || (c.full_name || '').trim());
-                        return (
-                          <div className="mb-4 p-3 bg-indigo-50/60 border border-indigo-200 rounded-lg" data-testid="inherited-contacts-panel">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Users size={14} className="text-indigo-600" />
-                              <h4 className="text-xs font-semibold uppercase tracking-wider text-indigo-700">Contactos Globales del Principal (solo lectura)</h4>
-                            </div>
-                            <p className="text-[11px] text-indigo-600/80 mb-2">Estos contactos pertenecen al cliente Principal y están disponibles automáticamente para todas sus sucursales. Se editan únicamente desde la ficha del Principal.</p>
-                            {inherited.length === 0 ? (
-                              <p className="text-xs text-slate-400 italic" data-testid="inherited-contacts-empty">El Principal no tiene contactos registrados.</p>
-                            ) : (
-                              <div className="space-y-1">
-                                {inherited.map((c, i) => (
-                                  <div key={i} className="flex items-center gap-2 text-xs text-slate-600 bg-white/70 rounded px-2 py-1" data-testid={`inherited-contact-${i}`}>
-                                    <span className="font-medium text-slate-700">{c.full_name || '—'}</span>
-                                    <span className="text-slate-400">·</span>
-                                    <span>{c.email || 's/correo'}</span>
-                                    {c.role && <span className="ml-auto text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full">{c.role}</span>}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
+                      <InheritedContactsPanel contacts={inheritance?.contacts || []}
+                        ownHasContacts={(formData.contacts || []).some(c => (c.email || '').trim())} testId="client-inherited-contacts" />
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="font-semibold text-sm uppercase tracking-wider text-slate-700">
                           {(addingBranchParentId || (editingClient && editingClient.is_branch)) ? 'Contactos de esta Sucursal (locales)' : 'Contactos'}
@@ -2275,6 +2277,9 @@ export const Clients = () => {
         </Dialog>
 
         {/* Email Communication Dialog */}
+        <BrandDialog open={quickBrandOpen} fixedGroupId={formData.grupo_economico_id || null}
+          onClose={() => setQuickBrandOpen(false)}
+          onSaved={async (b) => { await fetchBrands(); handleBrandSelect({ ...b, group_id: b.group_id }); }} />
         <ClientEmailDialog
           open={emailDialogOpen}
           onClose={() => { setEmailDialogOpen(false); setEmailClient(null); }}

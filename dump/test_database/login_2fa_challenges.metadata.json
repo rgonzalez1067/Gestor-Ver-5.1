@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"expires_at_dt":{"$numberInt":"1"}},"name":"expires_at_dt_1","expireAfterSeconds":{"$numberInt":"0"}}],"uuid":"f7b090187f9047dcbd3a69ecdb6487a6","collectionName":"login_2fa_challenges","type":"collection"}

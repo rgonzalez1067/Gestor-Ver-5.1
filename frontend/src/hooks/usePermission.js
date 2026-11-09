@@ -60,6 +60,7 @@ export const ROUTE_MODULE_MAP = {
   '/reports/sponsors': 'reportes_patrocinador',
   '/historical-quotes': 'quote_history',
   '/clients': 'clientes',
+  '/marcas': 'clientes',
   '/banks': 'bancos',
   '/medios-pago': 'medios_pago',
   '/hardware': 'dispositivos',

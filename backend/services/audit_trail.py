@@ -20,7 +20,7 @@ MAX_DOCS_PER_OP = 500
 COLLECTION_MODULES = {
     "quotes": "Cotizaciones", "quote_history": "Cotizaciones", "quote_custom_actions": "Cotizaciones",
     "quote_action_overrides": "Cotizaciones",
-    "clients": "Clientes", "economic_groups": "Clientes", "initial_contacts": "Clientes", "client_documents": "Clientes",
+    "clients": "Clientes", "economic_groups": "Clientes", "brands": "Clientes", "initial_contacts": "Clientes", "client_documents": "Clientes",
     "banks": "Bancos", "banco_mediopago_condiciones": "Bancos",
     "services": "Medios de Pago",
     "exchange_rates": "Tasa de Cambio", "historico_tasas_cambio": "Tasa de Cambio",
@@ -67,7 +67,7 @@ SENSITIVE_RE = _SensitiveMatcher()
 # Identificador legible por colección (primer campo presente).
 ID_FIELDS = {
     "quotes": ("quote_number", "quote_id"), "quote_history": ("quote_number", "history_id", "quote_id"),
-    "clients": ("rif", "client_id"), "banks": ("name", "bank_id"), "users": ("email", "user_id"),
+    "clients": ("rif", "client_id"), "brands": ("name", "brand_id"), "banks": ("name", "bank_id"), "users": ("email", "user_id"),
     "services": ("name", "service_id"), "integrators": ("rif", "name", "integrator_id"),
     "security_policies": ("policy_id",), "hardware": ("name", "hardware_id"),
 }
