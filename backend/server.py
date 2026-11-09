@@ -474,6 +474,8 @@ async def create_indexes():
             await db.clients.create_index([("parent_client_id", 1)])
             from services.client_hierarchy import migrate_brands
             await migrate_brands()
+            from services.client_hierarchy import relink_orphan_branches
+            await relink_orphan_branches()
         except Exception as e:
             logging.warning(f"[startup] client brands migration failed: {e}")
 

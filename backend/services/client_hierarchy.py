@@ -413,3 +413,57 @@ async def migrate_brands(force: bool = False) -> dict:
     await db["_migrations"].update_one({"_id": MIGRATION_KEY}, {"$set": {"applied_at": now, **result}}, upsert=True)
     logger.info(f"Client brands migration: {result}")
     return result
+
+
+# ==================== SUCURSALES HUÉRFANAS ====================
+
+def _is_principal_name(sucursal) -> bool:
+    return (sucursal or "Principal").strip().lower() == "principal"
+
+
+async def adopt_orphan_branches(principal: dict) -> int:
+    """Registros del mismo RIF con sucursal ≠ Principal que quedaron como independientes
+    pasan a ser Sucursales del Principal y heredan su Marca/Grupo/características."""
+    if principal.get("is_branch") or not _is_principal_name(principal.get("sucursal")):
+        return 0
+    n = 0
+    async for o in db.clients.find({"rif": principal.get("rif"), "is_branch": {"$ne": True},
+                                    "client_id": {"$ne": principal["client_id"]}}, {"_id": 0}):
+        if _is_principal_name(o.get("sucursal")):
+            continue
+        old_brand = o.get("marca_id")
+        pv = {f: principal.get(f) for f in INHERIT_FIELDS}
+        upd = {"is_branch": True, "parent_client_id": principal["client_id"],
+               "marca_id": principal.get("marca_id"), "marca_name": principal.get("marca_name"),
+               "grupo_economico_id": principal.get("grupo_economico_id"),
+               "grupo_economico": principal.get("grupo_economico"),
+               "inherit_overrides": compute_overrides(o, pv)}
+        await db.clients.update_one({"client_id": o["client_id"]}, {"$set": upd})
+        n += 1
+        # Marca creada solo para esta sucursal en la migración → se elimina si quedó vacía
+        if old_brand and old_brand != principal.get("marca_id"):
+            b = await db.brands.find_one({"brand_id": old_brand}, {"_id": 0, "migrated": 1, "contacts": 1, "characteristics": 1})
+            if b and b.get("migrated") and not b.get("contacts") and not b.get("characteristics") \
+                    and not await db.clients.count_documents({"marca_id": old_brand, "is_branch": {"$ne": True}}):
+                await db.brands.delete_one({"brand_id": old_brand})
+    return n
+
+
+async def relink_orphan_branches() -> dict:
+    key = "client_branches_relink_v1"
+    if await db["_migrations"].find_one({"_id": key}):
+        return {"skipped": True}
+    adopted = 0
+    rifs = await db.clients.aggregate([
+        {"$match": {"is_branch": {"$ne": True}}},
+        {"$group": {"_id": "$rif", "n": {"$sum": 1}}}, {"$match": {"n": {"$gt": 1}}},
+    ]).to_list(None)
+    for r in rifs:
+        docs = await db.clients.find({"rif": r["_id"], "is_branch": {"$ne": True}}, {"_id": 0}).sort("created_at", 1).to_list(None)
+        principal = next((d for d in docs if _is_principal_name(d.get("sucursal"))), None)
+        if principal:
+            adopted += await adopt_orphan_branches(principal)
+    res = {"rifs_checked": len(rifs), "branches_adopted": adopted}
+    await db["_migrations"].update_one({"_id": key}, {"$set": {"applied_at": datetime.now(timezone.utc).isoformat(), **res}}, upsert=True)
+    logger.info(f"Orphan branches relink: {res}")
+    return res

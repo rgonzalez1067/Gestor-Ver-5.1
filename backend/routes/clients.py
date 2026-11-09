@@ -13,7 +13,7 @@ import shutil
 
 from config import db, get_current_user, require_permission, UPLOADS_DIR
 from models import *
-from services.client_hierarchy import prepare_client_data, propagate_rif, lineage_contacts, client_inheritance
+from services.client_hierarchy import prepare_client_data, propagate_rif, lineage_contacts, client_inheritance, adopt_orphan_branches
 
 try:
     from PyPDF2 import PdfReader
@@ -446,6 +446,8 @@ async def create_client(client_data: ClientCreate, authorization: Optional[str] 
     doc['created_at'] = doc['created_at'].isoformat()
     await db.clients.insert_one(doc)
     doc.pop("_id", None)
+    if not doc.get("is_branch"):
+        await adopt_orphan_branches(doc)
     return doc
 
 @router.get("/clients")
@@ -1064,6 +1066,7 @@ async def update_client(client_id: str, client_data: ClientCreate, authorization
         raise HTTPException(status_code=404, detail="Client not found")
     saved = await get_client(client_id, authorization)
     if not saved.get("is_branch"):
+        await adopt_orphan_branches(saved)
         await propagate_rif(saved)
     return saved
 

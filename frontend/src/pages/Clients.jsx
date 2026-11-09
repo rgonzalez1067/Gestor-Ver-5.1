@@ -1131,6 +1131,14 @@ export const Clients = () => {
                               className={`h-9 ${rifHighlightFields.has('legal_name') ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-200' : ''}`} required />
                           </div>
                           {isBranchForm() ? (
+                          <div className="min-w-0">
+                            <Label className="text-xs">Marca (heredada de la Tienda Principal)</Label>
+                            <div className="h-9 px-3 flex items-center rounded-md border border-slate-200 bg-slate-50 text-sm text-slate-700 truncate" data-testid="branch-inherited-marca">
+                              {formData.marca_id ? (brands.find(b => b.brand_id === formData.marca_id)?.name || formData.fantasy_name) : 'Sin marca'}
+                            </div>
+                          </div>
+                          ) : null}
+                          {isBranchForm() ? (
                           <div>
                             <Label className="text-xs">Nombre de Fantasía</Label>
                             <DebouncedInput data-testid="client-fantasy-name-input" value={formData.fantasy_name}
@@ -1747,7 +1755,12 @@ export const Clients = () => {
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm font-medium text-slate-900 max-w-[200px] truncate" title={client.legal_name}>{client.legal_name}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 max-w-[180px] truncate" title={client.fantasy_name}>{client.fantasy_name}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600 max-w-[180px] truncate" title={client.fantasy_name}>
+                        {client.fantasy_name}
+                        {client.is_branch && client.marca_name && client.marca_name !== client.fantasy_name && (
+                          <span className="block text-[10px] text-teal-700 truncate" data-testid={`client-branch-marca-${client.client_id}`}>Marca: {client.marca_name}</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${
                           client.segment === 'Corporativo' ? 'bg-purple-100 text-purple-700' :

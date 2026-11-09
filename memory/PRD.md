@@ -22,6 +22,7 @@ Plataforma interna de gestión operativa para MegaNexus Venezuela.
 - **QA:** backend 20/20 (`tests/test_client_hierarchy_4levels.py`), frontend iter365 100%. ⚠️ PREVIEW; requiere REDEPLOY.
 - **Ajuste (Nov 2026):** selector de Integrador con búsqueda y orden alfabético en Grupo Económico y Marca (`SearchableSelect.jsx`); botón eliminar (con confirmación) para contactos propios del nivel en la Ficha de Clientes (los heredados son solo lectura).
 - **Ajuste integradores (Nov 2026):** integradores únicos por nombre (sin repetidos) en Ficha de Cliente, Grupo y Marca; el selector Aplicativo lista las alternativas del integrador y fija `integrador_id` al registro del aplicativo elegido (igual que en Cotizadores).
+- **Ajuste sucursales (Nov 2026):** sucursales del mismo RIF que quedaron como registros independientes se enlazan al Principal y heredan su Marca/Grupo (`adopt_orphan_branches`, migración `client_branches_relink_v1`: 20 adoptadas, 7 marcas huérfanas eliminadas). También al crear/editar un Principal. Formulario de sucursal muestra Marca heredada (solo lectura); grilla muestra 'Marca: X' en sucursales. Pendiente: 3 RIF con Principales duplicados (revisión manual).
 - **Backlog:** buscador en selector de Grupo del formulario; PDF de Marca; import masivo que asigne Marca automáticamente.
 
 
