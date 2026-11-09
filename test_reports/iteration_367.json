@@ -1,0 +1,31 @@
+{
+  "summary": "Tested the 'Enviar a Implementación' wizard end to end with hierarchical scope (TEST_IMPL data, RIFs J97xxxxxxx). UI (Playwright, admin): (1) Multi Marca VPOS quote (2 brands, RIF A with 3 stores at 2/3/5 boxes, RIF B with 1 store at 4 boxes). The Personalizar Comunicación modal opens first; clicking Continuar opens multistore-dialog directly at multistore-scope-phase. scope-phase-tipologia='Multi Marca', the tree shows both brands, their RIFs and all 4 scope-phase-store-{client_id} with their box counts, scope-phase-total=14, and multistore-ask-phase is absent. scope-phase-continue-btn goes to pinpad_question; pinpad-question-back-btn returns to the scope view, not the question. Then Pinpad No, fiscal printer, Datos Técnicos (server select) and Implementador Avanzar. Toast 'Enviado a implementación' and project PRY-2026-11-019-PRI was created with tipologia_proyecto='Multi Marca', project_type='multirif', 2 rifs (10/4 boxes) and 4 stores with marca_name (2/3/5/4). (2) Multitienda quote (1 RIF, 3 stores): same view with tipología 'Multitienda' and total 10. The project has project_type='multistore' and 3 stores at 2/3/5 boxes. (3) Monotienda quote (1 RIF, 1 store) and a legacy quote with no scope_tree both show multistore-ask-phase as before; there, the pinpad back button returns to the ask question. Backend: new pytest test_send_to_impl_scope.py 3/3 passed. It covers Multi RIF (same brand, 2 RIFs → multirif, boxes 3/4) and Multi Marca through POST /send-to-implementation with the same payload the modal sends, and checks that Monotienda stays single. Regression test_quote_scope_vpos_mpos.py 8/8 passed (the iter366 partial PUT failure is now fixed). All TEST_IMPL data was cleaned up; a scan of all collections found 0 leftovers.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/quotes/{id}/send-to-implementation", "issue": "The Ficha Técnica PDF does not show the scope structure. For scope_tree quotes the modal no longer sends stores, and branch_details is empty, so generate_implementation_pdf() falls back to a single 'Sucursal Unica' row with the total (e.g. 14). It does not list the Marca→RIF→Sucursal breakdown, even though the project itself is created correctly. Fix: in send_to_implementation, when quote.scope_tree exists and multirif_distribution does not, set quote['multirif_distribution'] = to_distribution(scope_tree, cajas_desglose) before the PDF is generated. Multitienda could instead build branches from scope_tree[0].stores."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_send_to_impl_scope.py", "/app/backend/tests/test_quote_scope_vpos_mpos.py", "/app/backend/tests/_ui_seed_impl_scope.py", "/app/backend/tests/_check_impl_projects.py", "/app/test_reports/pytest/pytest_iter367.xml"],
+  "action_items": [
+    "Optional: include the scope_tree breakdown in the Ficha Técnica PDF (see backend minor issue)."
+  ],
+  "critical_code_review_comments": [
+    "Ficha Técnica PDF ignores scope_tree; see the minor issue above.",
+    "quote_transitions.py, Multitienda branch: stores are built without client_id/is_principal, so the link to the branch client record is lost. The multirif branch also drops store client_id. Consider persisting client_id on project stores.",
+    "When cajas_desglose=false, Multitienda stores get box_count=0 while the scope view shows the global total. This is expected, but the project has no box distribution at all; consider a note or putting the total on the principal store.",
+    "Quotes.jsx is 4900+ lines and QuoteModals.jsx is 1580 lines; they should be split. ScopeTreePhase was extracted correctly."
+  ],
+  "updated_files": ["/app/backend/tests/test_send_to_impl_scope.py", "/app/backend/tests/_ui_seed_impl_scope.py", "/app/backend/tests/_check_impl_projects.py"],
+  "success_rate": {"backend": "100% (11/11)", "frontend": "100% (all requested flows)"},
+  "test_credentials": "Admin rgonzalez@megasoft.com.ve / MegaSoft2026*",
+  "seed_data_creation": "TEST_IMPL group, brands, RIFs (J97...), branches, quotes and projects were created temporarily and deleted afterwards (verified 0 leftovers).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "UI seed: cd /app/backend/tests && python _ui_seed_impl_scope.py seed (writes /tmp/impl_seed.json with q_mm, q_mt, q_mono, q_legacy, all in status Pagada). Clean with '... clean'. Check projects with python _check_impl_projects.py. UI flow: login (auth-email/auth-password + Enter), /quotes, wait up to 40s for quote-actions-{qid}, then send-to-impl-btn-{qid}. The 'Personalizar Comunicación' modal opens first: get_by_role('button', name='Continuar'). Then multistore-dialog → scope-phase-continue-btn → pinpad-no-btn → fiscal-printer-input + fiscal-printer-continue-btn → consolidated-server-select (select index 1; Continuar is disabled without it) → consolidated-continue-btn → confirm-implementer-advance-btn. The quote is archived (GET 404) once the project is created."
+}

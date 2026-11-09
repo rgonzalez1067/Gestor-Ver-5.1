@@ -1783,6 +1783,11 @@ async def send_quote_to_implementation(quote_id: str, body: Optional[SendToImple
         branches = (fresh_quote or {}).get('branch_details', [])
 
     # PASO 3: Generar PDF (si falla, retornar error sin enviar email ni tocar BD)
+    # Alcance jerárquico VPOS/MPOS: desglose Marca → RIF → Sucursal en la Ficha Técnica
+    if quote.get("scope_tree") and not quote.get("multirif_distribution"):
+        from services.quote_scope import to_distribution, is_multi
+        if is_multi(quote["scope_tree"]):
+            quote["multirif_distribution"] = to_distribution(quote["scope_tree"], bool(quote.get("cajas_desglose")))
     # Inyectar datos PYME (servidor/pinpads) en el quote para el PDF
     if body and body.server_name:
         quote["server_name"] = body.server_name

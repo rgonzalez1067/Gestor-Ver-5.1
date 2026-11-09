@@ -10,6 +10,7 @@ Plataforma interna de gestión operativa para MegaNexus Venezuela.
 - Backend `services/quote_scope.py`: campos nivel_cotizacion, grupo_economico_id/name, scope_tree, cajas_desglose, patrocinador_tipo/id/nombre, tipo_proyecto_inferido, cotizacion_sucursales (create-with-pdf + PUT con merge). PDF: página "Detalle de Tiendas y Sucursales" si >1 RIF/tienda.
 - Proyecto: un solo proyecto; Multi Marca/Multi RIF → project_type multirif (rifs+stores con marca), Multitienda → multistore; `tipologia_proyecto` con badge en lista y detalle.
 - Variables de plantilla: Nivel_Cotizacion, Grupo_Economico_Cotizacion, Marcas_Cotizacion, RIFs_Cotizacion, Sucursales_Cotizacion, Cantidad_RIFs/Sucursales_Cotizacion, Total_Cajas_Cotizacion, Tipologia_Proyecto, Tipo_Patrocinio, Patrocinador_Cotizacion, Matriz_Alcance_Cotizacion.
+- Enviar a Implementación (Nov 2026): si la cotización es Multi Marca/Multi RIF/Multitienda, el modal muestra la estructura completa con cajas (fase `scope_tree`, ScopeTreePhase.jsx) sin preguntar; solo Monotienda/sin alcance pregunta Sí/No. Ficha Técnica PDF incluye desglose Marca→RIF→Sucursal. QA iter367 100%.
 - QA: iter366 (backend 8/8 tras fixes, UI 100%); tests/test_quote_scope_vpos_mpos.py. Guardado UI completo de cotización no ejercitado por el agente (validado por API).
 
 
