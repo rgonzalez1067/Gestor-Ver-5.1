@@ -12,6 +12,7 @@ Plataforma interna de gestión operativa para MegaNexus Venezuela.
 - **UI:** menú lateral "Clientes" (Contacto Inicial, Grupo Económico, Marca o Nombre Fantasía `/marcas`, Sucursales `/clients`). Árbol expandible en Grupos y Marcas. Editor de características y contactos en Grupo/Marca. Ficha cliente: BrandPicker filtrado por grupo + botón crear marca, resumen de herencia con tags, panel de contactos heredados. Modal "Seleccionar Destinatarios" de cotizaciones y ClientEmailDialog con contactos de todo el árbol, tags [Grupo Económico]/[Marca]/[RIF / Razón Social]/[Sucursal] y selección por bloque. Notificaciones al cliente caen al contacto vigente heredado si el RIF no tiene propios.
 - **QA:** backend 20/20 (`tests/test_client_hierarchy_4levels.py`), frontend iter365 100%. ⚠️ PREVIEW; requiere REDEPLOY.
 - **Ajuste (Nov 2026):** selector de Integrador con búsqueda y orden alfabético en Grupo Económico y Marca (`SearchableSelect.jsx`); botón eliminar (con confirmación) para contactos propios del nivel en la Ficha de Clientes (los heredados son solo lectura).
+- **Ajuste integradores (Nov 2026):** integradores únicos por nombre (sin repetidos) en Ficha de Cliente, Grupo y Marca; el selector Aplicativo lista las alternativas del integrador y fija `integrador_id` al registro del aplicativo elegido (igual que en Cotizadores).
 - **Backlog:** buscador en selector de Grupo del formulario; PDF de Marca; import masivo que asigne Marca automáticamente.
 
 

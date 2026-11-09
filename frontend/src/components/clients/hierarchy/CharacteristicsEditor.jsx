@@ -53,10 +53,22 @@ export const CharacteristicsEditor = ({ value = {}, onChange, inherited, disable
   );
 
   const users = (arr) => arr.map(u => ({ id: u.user_id, name: u.full_name }));
-  const integrators = [...cat.integrators].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' }));
+  const integratorNames = Array.from(new Set(cat.integrators.map(i => i.name).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
   const tipos = Array.isArray(value.tipo_servicio) ? value.tipo_servicio : [];
-  const intg = cat.integrators.find(i => i.integrator_id === (value.integrador_id || iv.integrador_id));
-  const apps = intg?.app_name ? [intg.app_name] : [];
+  const curIntgName = value.integrador_id ? value.integrador_name : iv.integrador_name;
+  const appDocs = cat.integrators.filter(i => i.name === curIntgName && (i.app_name || '').trim());
+  const apps = Array.from(new Set(appDocs.map(i => i.app_name)));
+  const pickIntegrator = (o) => {
+    if (!o) return set({ integrador_id: '', integrador_name: '', aplicativo: '' });
+    const docs = cat.integrators.filter(i => i.name === o.name);
+    set({ integrador_id: docs[0]?.integrator_id || '', integrador_name: o.name, aplicativo: docs.length === 1 ? (docs[0].app_name || '') : '' });
+  };
+  const pickApp = (v) => {
+    if (v === NONE) return set({ aplicativo: '' });
+    const doc = appDocs.find(i => i.app_name === v);
+    set(value.integrador_id && doc ? { aplicativo: v, integrador_id: doc.integrator_id } : { aplicativo: v });
+  };
 
   return (
     <div data-testid={`${testPrefix}-editor`}>
@@ -71,11 +83,20 @@ export const CharacteristicsEditor = ({ value = {}, onChange, inherited, disable
         <div>
           <Label className="text-xs">Integrador</Label>
           <SearchableSelect testId={`${testPrefix}-integrador_id`} disabled={disabled}
-            value={value.integrador_id} emptyLabel={hint('integrador_id', iv.integrador_name)}
-            options={integrators.map(i => ({ id: i.integrator_id, name: i.name }))}
-            onChange={(o) => set(o ? { integrador_id: o.id, integrador_name: o.name } : { integrador_id: '', integrador_name: '' })} />
+            value={value.integrador_id ? value.integrador_name : ''} emptyLabel={hint('integrador_id', iv.integrador_name)}
+            options={integratorNames.map(n => ({ id: n, name: n }))}
+            onChange={pickIntegrator} />
         </div>
-        {single('aplicativo', apps, 'Aplicativo')}
+        <div>
+          <Label className="text-xs">Aplicativo</Label>
+          <Select value={value.aplicativo || NONE} disabled={disabled || !apps.length} onValueChange={pickApp}>
+            <SelectTrigger className="h-9" data-testid={`${testPrefix}-aplicativo`}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE}>{apps.length ? hint('aplicativo') : 'Seleccione integrador'}</SelectItem>
+              {apps.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
         {single('modelo_impresora_fiscal', cat.printers.map(p => p.name), 'Impresora Fiscal')}
         <div>
           <Label className="text-xs">Tipo de Servicio</Label>

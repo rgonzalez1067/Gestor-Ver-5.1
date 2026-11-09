@@ -586,22 +586,25 @@ export const Clients = () => {
     }));
   };
 
-  // Manejar cambio de integrador
-  const handleIntegradorChange = (integradorId) => {
-    const intg = integrators.find(i => i.integrator_id === integradorId);
+  // Manejar cambio de integrador (por nombre: un integrador puede tener varios aplicativos)
+  const handleIntegradorChange = (name) => {
+    const docs = integrators.filter(i => i.name === name);
+    const single = docs.length === 1 ? docs[0] : null;
     setFormData(prev => ({
       ...prev,
-      integrador_id: integradorId,
-      integrador_name: intg?.name || '',
-      aplicativo: '' // Reset aplicativo al cambiar integrador
+      integrador_id: docs[0]?.integrator_id || '',
+      integrador_name: name,
+      aplicativo: single?.app_name || ''
     }));
   };
 
-  // Obtener aplicativos filtrados por integrador seleccionado
+  const integratorNames = Array.from(new Set(integrators.map(i => i.name).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+
+  // Aplicativos del integrador seleccionado (cada uno es un registro de integrador)
   const getAplicativos = () => {
-    if (!formData.integrador_id) return [];
-    const intg = integrators.find(i => i.integrator_id === formData.integrador_id);
-    return intg?.app_name ? [intg.app_name] : [];
+    if (!formData.integrador_name) return [];
+    return integrators.filter(i => i.name === formData.integrador_name && (i.app_name || '').trim());
   };
 
   // Toggle tipo de servicio (multi-select)
@@ -1465,17 +1468,18 @@ export const Clients = () => {
                                         <Check className={`mr-2 h-4 w-4 ${!formData.integrador_id ? 'opacity-100' : 'opacity-0'}`} />
                                         <span className="text-slate-500 italic">Sin integrador</span>
                                       </CommandItem>
-                                      {integrators.map((i) => (
+                                      {integratorNames.map((name) => (
                                         <CommandItem
-                                          key={i.integrator_id}
-                                          value={i.name}
+                                          key={name}
+                                          value={name}
+                                          data-testid={`client-integrador-option-${name}`}
                                           onSelect={() => {
-                                            handleIntegradorChange(i.integrator_id);
+                                            handleIntegradorChange(name);
                                             setIntegradorPopoverOpen(false);
                                           }}
                                         >
-                                          <Check className={`mr-2 h-4 w-4 ${formData.integrador_id === i.integrator_id ? 'opacity-100' : 'opacity-0'}`} />
-                                          {i.name}
+                                          <Check className={`mr-2 h-4 w-4 ${formData.integrador_name === name ? 'opacity-100' : 'opacity-0'}`} />
+                                          {name}
                                         </CommandItem>
                                       ))}
                                     </CommandGroup>
@@ -1487,11 +1491,14 @@ export const Clients = () => {
                           <div>
                             <Label className="text-xs">Aplicativo</Label>
                             {getAplicativos().length > 0 ? (
-                              <Select value={formData.aplicativo || '_none_'} onValueChange={(v) => setFormData(prev => ({ ...prev, aplicativo: v === '_none_' ? '' : v }))}>
+                              <Select value={formData.aplicativo || '_none_'} onValueChange={(v) => {
+                                const doc = getAplicativos().find(a => a.app_name === v);
+                                setFormData(prev => ({ ...prev, aplicativo: v === '_none_' ? '' : v, ...(doc ? { integrador_id: doc.integrator_id } : {}) }));
+                              }}>
                                 <SelectTrigger data-testid="client-aplicativo-select" className="h-9"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="_none_">Seleccionar...</SelectItem>
-                                  {getAplicativos().map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                                  {getAplicativos().map(a => <SelectItem key={a.integrator_id} value={a.app_name}>{a.app_name}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                             ) : (
