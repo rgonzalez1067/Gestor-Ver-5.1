@@ -316,6 +316,7 @@ export const Clients = () => {
     }
     // Migrate legacy contact1/contact2 to contacts array if needed
     const payload = { ...formData };
+    payload.contacts = (payload.contacts || []).filter(c => (c.full_name || '').trim() || (c.email || '').trim() || (c.phone || '').trim());
     // Convertir strings vacíos a null para campos numéricos opcionales
     if (payload.cantidad_tiendas === '' || payload.cantidad_tiendas === null) payload.cantidad_tiendas = null;
     else payload.cantidad_tiendas = parseInt(payload.cantidad_tiendas, 10) || null;
@@ -1133,7 +1134,7 @@ export const Clients = () => {
                               className={`h-9 ${rifHighlightFields.has('fantasy_name') ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-200' : ''}`} />
                           </div>
                           ) : (
-                          <div>
+                          <div className="min-w-0">
                             <Label className="text-xs">Marca o Nombre Comercial {formData.grupo_economico_id && <span className="text-amber-600">*</span>}</Label>
                             <BrandPicker brands={brands} groupId={formData.grupo_economico_id} value={formData.marca_id}
                               required={!!formData.grupo_economico_id} onSelect={handleBrandSelect}
@@ -1588,7 +1589,7 @@ export const Clients = () => {
                           <div className="col-span-3">
                             <Label className="text-xs">Nombre</Label>
                             <DebouncedInput value={contact.full_name} onCommit={(v) => updateContact(idx, 'full_name', v)}
-                              placeholder="Nombre completo" className="h-8 text-sm" data-testid={`contact-full-name-${idx}`} required />
+                              placeholder="Nombre completo" className="h-8 text-sm" data-testid={`contact-full-name-${idx}`} />
                           </div>
                           <div className="col-span-2">
                             <Label className="text-xs">Teléfono</Label>

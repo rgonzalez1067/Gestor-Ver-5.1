@@ -731,6 +731,8 @@ async def import_clients(file: UploadFile = File(...), authorization: Optional[s
                 
                 doc = client.model_dump()
                 doc['created_at'] = doc['created_at'].isoformat()
+                from services.client_hierarchy import prepare_client_data
+                await prepare_client_data(doc)
                 await db.clients.insert_one(doc)
                 success_count += 1
                 

@@ -518,6 +518,8 @@ async def convert_to_prospect(contact_id: str, authorization: Optional[str] = He
         "updated_at": now
     }
     
+    from services.client_hierarchy import prepare_client_data
+    await prepare_client_data(new_client)
     await db.clients.insert_one(new_client)
 
     # ──────────────────────────────────────────────────────────────────────

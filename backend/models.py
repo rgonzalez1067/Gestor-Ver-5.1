@@ -76,7 +76,7 @@ class ClientCreate(BaseModel):
     legal_name: str
     fantasy_name: str = ""
     marca_id: Optional[str] = None
-    segment: str = "Pymes"
+    segment: str = ""
     condicion: str = "Prospecto"
     referidor: Optional[str] = None
     referidor_tipo: Optional[str] = None  # BANCO | CLIENTE | OTRO

@@ -92,7 +92,7 @@ export const BrandDialog = ({ open, onClose, brandId, fixedGroupId, editable = t
               title="Contactos de la Marca" testPrefix="brand-contact" addTestId="add-brand-contact-btn" />
           </div>
           {brandId && (
-            <div>
+            <div className="pt-2">
               <h3 className="text-sm font-semibold text-slate-700 mb-2">RIFs y Sucursales de la Marca</h3>
               <div className="border border-slate-200 rounded-lg p-2"><RifList brandId={brandId} /></div>
             </div>

@@ -168,6 +168,8 @@ async def prepare_client_data(data: dict, self_client_id=None):
     parent_vals = await parent_values_for_client(data)
     overrides = compute_overrides(data, parent_vals)
     apply_inheritance(data, parent_vals, overrides)
+    if _empty(data.get("segment")):
+        data["segment"] = "Pymes"
     data["inherit_overrides"] = overrides
     return data
 
