@@ -112,7 +112,7 @@ export const Clients = () => {
   const updateRifFileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
-    rif: '', legal_name: '', fantasy_name: '', segment: 'Pymes', condicion: 'Prospecto', referidor: '',
+    rif: '', legal_name: '', fantasy_name: '', segment: '', condicion: 'Prospecto', referidor: '',
     referidor_tipo: '', referidor_id: '', referidor_nombre: '',
     address: '', branch_address: '', categoria_comercial: '', sucursal: 'Principal',
     grupo_economico: '', grupo_economico_id: '', marca_id: '', ejecutivo_propietario: '', ejecutivo_user_id: '',
@@ -465,7 +465,7 @@ export const Clients = () => {
 
   const resetForm = () => {
     setFormData({
-      rif: '', legal_name: '', fantasy_name: '', segment: 'Pymes', condicion: 'Prospecto',
+      rif: '', legal_name: '', fantasy_name: '', segment: '', condicion: 'Prospecto',
       referidor: '', referidor_tipo: '', referidor_id: '', referidor_nombre: '',
       address: '', branch_address: '', categoria_comercial: '', sucursal: 'Principal',
       grupo_economico: '', grupo_economico_id: '', marca_id: '', ejecutivo_propietario: '', ejecutivo_user_id: '',
@@ -820,7 +820,7 @@ export const Clients = () => {
       rif: rifResult.rif || '',
       legal_name: rifResult.legal_name || '',
       fantasy_name: rifResult.legal_name || '',
-      segment: 'Pymes',
+      segment: '',
       condicion: 'Prospecto',
       referidor: '',
       address: rifResult.address || '',
@@ -1168,7 +1168,7 @@ export const Clients = () => {
                           <div>
                             <Label className="text-xs">Segmento</Label>
                             <Select value={formData.segment} onValueChange={(v) => setFormData(prev => ({ ...prev, segment: v }))}>
-                              <SelectTrigger data-testid="client-segment-select" className="h-9"><SelectValue /></SelectTrigger>
+                              <SelectTrigger data-testid="client-segment-select" className="h-9"><SelectValue placeholder="Heredado (Pymes por defecto)" /></SelectTrigger>
                               <SelectContent>
                                 {SEGMENT_OPTIONS.map(seg => <SelectItem key={seg} value={seg}>{seg}</SelectItem>)}
                               </SelectContent>

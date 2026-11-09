@@ -1,7 +1,17 @@
-# PRD — Gestor MegaNexus
+# PRD — Gestor - CRM
 
 ## Descripción General
 Plataforma interna de gestión operativa para MegaNexus Venezuela.
+
+
+### Feature: Jerarquía de Clientes en 4 Niveles + Herencia + Árbol Drill-Down + Menú Clientes — Nov 2026
+- **Modelo:** Grupo Económico (`economic_groups`) → **Marca** (nueva colección `brands`: brand_id, name, group_id, description, characteristics{}, contacts[]) → RIF (`clients` principal, `marca_id`/`marca_name`) → Sucursal (`clients` is_branch + parent_client_id). El RIF sincroniza `fantasy_name`=nombre de Marca y `grupo_economico_id` desde la Marca. Grupo/Marca opcionales; si hay Grupo la Marca es obligatoria (400).
+- **Herencia (`services/client_hierarchy.py`):** características (segmento, categoría, tipo servicio, aplicativo, impresora fiscal, ejecutivo, coordinador, implementador, integrador) se heredan CAMPO POR CAMPO y se materializan en el RIF/Sucursal; `inherit_overrides` = campos definidos localmente (calculado comparando con el padre). Propagación automática al editar Grupo/Marca/RIF. Contactos: sobrescritura POR BLOQUE (nivel más cercano con contactos = vigente, `effective`).
+- **API:** `/api/marcas` CRUD, `/api/marcas/{id}/rifs`, `/api/marcas/{id}/inheritance`, `/api/grupos-economicos/{id}/marcas`, `/api/clients/{id}/inheritance`, `consolidated-contacts` ahora con scopes grupo|marca|principal|local; `POST /api/admin/clients/migrate-brands`.
+- **Migración:** automática al arranque (flag `_migrations.client_brands_v1`): 1 Marca por nombre de fantasía (802), enlazada al grupo de sus RIF; calcula overrides preservando valores. Corre sola en la instancia Docker local del usuario al reiniciar el backend.
+- **UI:** menú lateral "Clientes" (Contacto Inicial, Grupo Económico, Marca o Nombre Fantasía `/marcas`, Sucursales `/clients`). Árbol expandible en Grupos y Marcas. Editor de características y contactos en Grupo/Marca. Ficha cliente: BrandPicker filtrado por grupo + botón crear marca, resumen de herencia con tags, panel de contactos heredados. Modal "Seleccionar Destinatarios" de cotizaciones y ClientEmailDialog con contactos de todo el árbol, tags [Grupo Económico]/[Marca]/[RIF / Razón Social]/[Sucursal] y selección por bloque. Notificaciones al cliente caen al contacto vigente heredado si el RIF no tiene propios.
+- **QA:** backend 20/20 (`tests/test_client_hierarchy_4levels.py`), frontend iter365 100%. ⚠️ PREVIEW; requiere REDEPLOY.
+- **Backlog:** buscador en selector de Grupo del formulario; PDF de Marca; import masivo que asigne Marca automáticamente.
 
 
 ### Feature: Respaldo Total V2 (segmentado, reasumible) + Cambiar contraseña self-service — Ago 2026

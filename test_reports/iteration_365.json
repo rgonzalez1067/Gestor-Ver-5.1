@@ -1,0 +1,22 @@
+{
+  "summary": "Frontend-only retest of the 4-level client hierarchy (Grupo Económico → Marca → RIF → Sucursal) using Playwright as admin rgonzalez. All 3 retests pass. 1) QA4: a client with only RIF J999286397 and Nombre Jurídico (no grupo, no marca, no contact) saved with the toast 'Cliente creado exitosamente'. contact-full-name-0 has no required attribute, and POST /api/clients returned 200. 2) Selecting grupo ALKOSTO and saving without a marca correctly shows the validation toast. A normal click (no force) on client-marca-create-btn hits the button itself (elementFromPoint check) and opens brand-dialog with brand-group-select disabled and set to ALKOSTO. Saving 'TEST_QA4N Marca' returned POST /api/marcas 200, the marca was auto-selected in client-marca-select, and the client saved (200, marca_id set). 3) Editing an ALKOSTO client: client-inheritance-summary shows 9 rows in 2 columns, with no overlapping rows (bounding-box check) and no horizontal overflow. Smoke checks: /grupos-economicos expand ALKOSTO → brands → TEST brand → RIF works; /marcas brand-expand → RIF tree and RIF count (1) work. contact-select-modal and hierarchy-contact-picker were not re-smoked in this run (kept short as requested). All test data was deleted via API (both DELETE calls returned 200, follow-up GET returned 404).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "New client with grupo + marca", "issue": "The client was saved with inherit_overrides=['segment'] although the user never touched Segmento. The default 'Pymes' form value is treated as an explicit override, so if the Marca/Grupo later defines a segment, this RIF will NOT inherit it. Suggest only counting segment as an override when the user actually changed it, or leaving it empty when a marca is chosen.", "affected_selectors": ["client-segment-select"]}
+    ],
+    "design_issues": [
+      {"screen": "Client form – Estatus y Definición Legal", "issues": ["The Marca select is narrow (~175px), so the placeholder 'Seleccione la marca (obligatoria)' truncates to 'Seleccione la ma...'. Cosmetic only.", "Inheritance summary: the LevelTag wraps under the value, so row heights differ between the 2 columns. Readable and not overlapping."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": ["(Minor) Do not mark 'segment' as inherit_override when it is just the form default on a new client with a marca/grupo"],
+  "critical_code_review_comments": ["Clients.jsx is 2303 lines; consider splitting the form sections into components", "Playwright note: clicks on client-marca-create-btn/save-brand-btn wait on 'scheduled navigations' unless no_wait_after=True. This is a test-harness quirk, not an app bug."],
+  "updated_files": [],
+  "success_rate": {"backend": "skipped (frontend only)", "frontend": "100% (3/3 retests + tree smoke)"},
+  "seed_data_creation": "Created and then deleted: clients cli_69f615f39cf7 (J999286397) and cli_d51b25fc4212 (J991160445), and marca mrc_41b79e83e74a (TEST_QA4N Marca) under the ALKOSTO grupo grp_d881121e1f7c.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login at /login with auth-email/auth-password/auth-submit. Full page loads are slow: use goto(wait_until='domcontentloaded') and wait up to 45s. Use no_wait_after=True on dialog buttons. Edit is reached via client-actions-{id} → menuitem 'Editar'. Group select options are [role=option] (index 0 = Sin grupo)."
+}
