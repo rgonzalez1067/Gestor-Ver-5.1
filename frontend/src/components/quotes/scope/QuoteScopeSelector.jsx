@@ -4,6 +4,7 @@ import { Layers } from 'lucide-react';
 import api from '../../../utils/api';
 import { EntityChecklist } from './EntityChecklist';
 import { StoresBoxesGrid } from './StoresBoxesGrid';
+import { inferTipologia } from './scopeUtils';
 
 const LEVELS = [['GRUPO', 'Grupo Económico'], ['MARCA', 'Marca'], ['RIF', 'RIF']];
 
@@ -134,6 +135,11 @@ export const QuoteScopeSelector = ({ value, onChange, clients }) => {
       {rifIds.length > 0 && (
         <StoresBoxesGrid rifs={gridRifs} picked={picked} onPick={(rid, ids) => setPicked(p => ({ ...p, [rid]: ids }))}
           boxes={boxes} onBoxes={(sid, n) => setBoxes(p => ({ ...p, [sid]: n }))} desglose={desglose} onDesglose={setDesglose} total={total} />
+      )}
+      {(value.scope_tree || []).length > 0 && (
+        <p className="text-xs text-slate-600" data-testid="scope-tipologia">
+          Tipología del proyecto: <span className="font-semibold text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded" data-testid="scope-tipologia-value">{inferTipologia(value.scope_tree)}</span>
+        </p>
       )}
     </div>
   );

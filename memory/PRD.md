@@ -3,6 +3,15 @@
 ## Descripción General
 Plataforma interna de gestión operativa para MegaNexus Venezuela.
 
+### Feature: Cotizaciones VPOS/MPOS con Alcance Jerárquico + Tipo de Patrocinio — Nov 2026
+- VPOS Multi-RIF retirado de la creación (`disabled` en QUOTE_TYPES); las existentes siguen como histórico.
+- Wizard VPOS/MPOS: "¿Cuál es el nivel de la Cotización?" (Grupo/Marca/RIF) → listas A-Z con buscador (Grupo único → Marcas multi/todas → RIFs agrupados por marca → Sucursales por RIF). Cajas: desglose por tienda (suma → Nro de Cajas bloqueado) o carga global. Muestra tipología inferida.
+- "Tipo de Patrocinio" reemplaza "Implementación Patrocinada Sí/No" en VPOS/MPOS: Banco/Ente (modal Bancos y Procesadores; mantiene sponsoring_bank_* y reportes) o Cliente (modal Clientes; ese RIF = client_id titular). Con Banco el titular es el primer RIF.
+- Backend `services/quote_scope.py`: campos nivel_cotizacion, grupo_economico_id/name, scope_tree, cajas_desglose, patrocinador_tipo/id/nombre, tipo_proyecto_inferido, cotizacion_sucursales (create-with-pdf + PUT con merge). PDF: página "Detalle de Tiendas y Sucursales" si >1 RIF/tienda.
+- Proyecto: un solo proyecto; Multi Marca/Multi RIF → project_type multirif (rifs+stores con marca), Multitienda → multistore; `tipologia_proyecto` con badge en lista y detalle.
+- Variables de plantilla: Nivel_Cotizacion, Grupo_Economico_Cotizacion, Marcas_Cotizacion, RIFs_Cotizacion, Sucursales_Cotizacion, Cantidad_RIFs/Sucursales_Cotizacion, Total_Cajas_Cotizacion, Tipologia_Proyecto, Tipo_Patrocinio, Patrocinador_Cotizacion, Matriz_Alcance_Cotizacion.
+- QA: iter366 (backend 8/8 tras fixes, UI 100%); tests/test_quote_scope_vpos_mpos.py. Guardado UI completo de cotización no ejercitado por el agente (validado por API).
+
 
 ### Feature: Jerarquía de Clientes en 4 Niveles + Herencia + Árbol Drill-Down + Menú Clientes — Nov 2026
 - **Modelo:** Grupo Económico (`economic_groups`) → **Marca** (nueva colección `brands`: brand_id, name, group_id, description, characteristics{}, contacts[]) → RIF (`clients` principal, `marca_id`/`marca_name`) → Sucursal (`clients` is_branch + parent_client_id). El RIF sincroniza `fantasy_name`=nombre de Marca y `grupo_economico_id` desde la Marca. Grupo/Marca opcionales; si hay Grupo la Marca es obligatoria (400).

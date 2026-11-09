@@ -83,16 +83,16 @@ export const AssetLedgerReport = () => {
   const handlePrint = () => window.print();
 
   const exportToExcel = () => {
-    if (!data?.items?.length) return;
+    if (!reportData?.items?.length) return;
     let csv = '\uFEFF';
     csv += 'MAYOR DE ACTIVOS - METODO PEPS (FIFO)\n\n';
     csv += 'Item,Tipo,Fecha Adquisicion,Lote,Costo Unit.(Bs),Cantidad,LCH,TBP,Total Bs.\n';
-    for (const item of data.items) {
+    for (const item of reportData.items) {
       for (const lot of (item.lots || [])) {
         csv += `"${item.item_name}",${item.item_type},${lot.acquisition_date},${lot.lot_index},${lot.unit_cost_bs},${lot.remaining_qty},${lot.qty_lch},${lot.qty_tbp},${lot.total_cost_bs}\n`;
       }
     }
-    csv += `\nTOTAL GENERAL:,,,,,,,,${data.grand_total}\n`;
+    csv += `\nTOTAL GENERAL:,,,,,,,,${reportData.grand_total}\n`;
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

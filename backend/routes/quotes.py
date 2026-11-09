@@ -28,7 +28,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 import traceback
 
-from services.quote_scope import compute_scope, clean_tree, to_distribution, is_multi
+from services.quote_scope import compute_scope, clean_tree, to_distribution, is_multi, SCOPE_INPUT_FIELDS
 router = APIRouter()
 
 # ==================== QUOTES ENDPOINTS ====================
@@ -1175,7 +1175,8 @@ async def update_quote(quote_id: str, quote_update: QuoteUpdate, authorization: 
         if value is not None:
             update_data[field] = value
     if "scope_tree" in update_data:
-        update_data.update(compute_scope(update_data))
+        _merged = {**existing_quote, **update_data}
+        update_data.update(compute_scope({k: _merged.get(k) for k in SCOPE_INPUT_FIELDS}))
 
     # Normalizar segmento si viene en el update (evita degradación a PYME por
     # variantes 'Corporativo'/'Corp' y garantiza que CORP se conserve).

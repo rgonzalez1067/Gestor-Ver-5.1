@@ -32,6 +32,15 @@ export const scopeDistribution = (qd) => {
   });
 };
 
+export const inferTipologia = (tree = []) => {
+  if (!tree.length) return '';
+  const marcas = new Set(tree.map(r => r.marca_id).filter(Boolean));
+  const stores = tree.reduce((s, r) => s + Math.max((r.stores || []).length, 1), 0);
+  if (marcas.size > 1) return 'Multi Marca';
+  if (tree.length > 1) return 'Multi RIF';
+  return stores > 1 ? 'Multitienda' : 'Monotienda';
+};
+
 export const isScopeValid = (qd) => {
   if (!isScopeType(qd.quote_type)) return true;
   const tree = qd.scope_tree || [];

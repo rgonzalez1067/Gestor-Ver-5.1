@@ -338,6 +338,8 @@ async def _create_project_from_quote(
                   "patrocinador_id", "patrocinador_nombre"):
             project[k] = quote.get(k)
         project["scope_tree"] = scope_tree
+        if quote.get("grupo_economico_name"):
+            project["economic_group"] = quote.get("grupo_economico_name")
         project["cajas_desglose"] = desglose
         project["tipologia_proyecto"] = tipologia
         if project["project_type"] == "single" and tipologia in ("Multi Marca", "Multi RIF"):
@@ -358,7 +360,7 @@ async def _create_project_from_quote(
             project["project_type"] = "multistore"
             project["stores"] = [{"store_id": f"st_{uuid.uuid4().hex[:8]}", "name": s.get("name", ""),
                                   "box_count": s.get("boxes", 0) if desglose else 0,
-                                  "implementation_matrix": dict(implementation_matrix), "status": "Pendiente", "notes": []}
+                                  "implementation_matrix": copy.deepcopy(implementation_matrix), "status": "Pendiente", "notes": []}
                                  for s in scope_tree[0].get("stores") or []]
         project["notes"].append({
             "note_id": f"pn_{uuid.uuid4().hex[:8]}",

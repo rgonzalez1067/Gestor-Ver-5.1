@@ -1,0 +1,41 @@
+{
+  "summary": "Tested VPOS/MPOS hierarchical scope feature end-to-end. Backend (new pytest /app/backend/tests/test_quote_scope_vpos_mpos.py): 7 of 8 pass. These pass: cascade endpoints; create-with-pdf with a 2-brand scope_tree persisting nivel_cotizacion/grupo/scope_tree/cajas_desglose/patrocinador_*/tipo_proyecto_inferido='Multi Marca'/cotizacion_sucursales (4 stores, 14 boxes); PUT recalculation (Multitienda -> Monotienda -> Multi RIF); quote->Enviada->Aprobada->Facturada->Pagada->Enviada a Imple creating a project (Multi Marca: project_type=multirif, 2 rifs, 4 stores with marca_name, box sum 14; Multitienda: project_type=multistore, 3 stores with 2/3/5 boxes); scope_template_vars; variables present in the email template editor lists. 1 fails: a partial PUT clobbers patrocinador_tipo. UI (Playwright): the type menu shows VPOS (Cajas), MPOS, MPOS (Imple + POS), Payment Gateway, Link de Pago/Tokenizador and no VPOS Multi-RIF. Grupo level: 46 groups listed A-Z, search works, select-all brands, RIFs grouped under brand headers, 3 stores auto-checked. Desglose 2+3+5 gives total 10 and cantidad-cajas-input=10 readOnly; unchecking a store recalculates to 5. Global mode unlocks the input and accepts 8. Sponsor BANCO modal (38 banks/processors, search) and CLIENTE modal both set sponsor-selected-label. The project-tipologia badge 'Multi Marca' shows on /projects/{id} and in the /projects list. Regression OK: Payment Gateway and MPOS (Imple + POS) still show the Cliente selector and 'Implementación Patrocinada Sí/No' with no scope selector. An existing VPOS_MULTIRIF quote (quo_fe9e9f1c240b) opens in edit with its implicit-sponsor block; closed without saving. The full UI save of a quote (pricing model/integrator/medios de pago) was NOT exercised; persistence was verified via API. All TEST_QS data was cleaned up (verified 0 leftovers).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/quotes/{id}", "issue": "If the body has scope_tree but omits patrocinador_tipo or cajas_desglose, compute_scope() overwrites the saved values: patrocinador_tipo becomes None (not in PATROCINIOS) and cajas_desglose becomes False (bool(None)). Confirmed by test_put_partial_scope_preserves_sponsor. The frontend sends the full scopePayload, so the UI is not affected today."},
+      {"endpoint": "services/quote_scope.infer_project_type", "issue": "Each RIF without marca_id counts as its own brand (f'rif:{client_id}'). So 2 RIFs without a brand (common at nivel RIF with legacy clients) give 'Multi Marca' instead of 'Multi RIF', and the project gets the wrong tipologia. Reproduced: infer_project_type([{client_id:'a',stores:[{}]},{client_id:'b',stores:[{}]}]) == 'Multi Marca'."},
+      {"endpoint": "routes/quote_transitions._create_project_from_quote", "issue": "project.economic_group is not filled from quote.grupo_economico_name for scope quotes, so ProjectDetail shows 'Sin Grupo Económico' on a GRUPO-level quote. Only grupo_economico_name is copied to the project."},
+      {"endpoint": "routes/quote_transitions (Multitienda block)", "issue": "Each store's implementation_matrix uses dict(implementation_matrix), a shallow copy (the Multi Marca branch uses deepcopy), so the nested product dicts are shared between stores. It also skips the per-bank/product 'expected' quantity fill that monotienda gets. Use copy.deepcopy for consistency."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Quote wizard (VPOS/MPOS scope)", "issues": ["The inferred typology (Multi Marca / Multi RIF / Multitienda / Monotienda) is not shown anywhere in the wizard before saving. Adding a small badge next to 'Total Cajas Cotización' would help the user confirm the classification.", "In global mode the Nro de Cajas keeps the previous desglose total (10) instead of clearing. Acceptable, just noting it."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_quote_scope_vpos_mpos.py", "/app/test_reports/pytest/iter366_scope.xml"],
+  "action_items": [
+    "In PUT /api/quotes/{id}, run compute_scope on the merged data ({**existing_quote, **update_data}) or only normalize the fields that were sent, so a partial update does not wipe patrocinador_tipo/cajas_desglose.",
+    "infer_project_type: RIFs without marca should not count as distinct brands. Use only the real marca_ids (len(set of non-null marca_id) > 1 -> Multi Marca; otherwise >1 RIF -> Multi RIF).",
+    "Set project['economic_group'] = quote.grupo_economico_name (when present) in the 'Alcance jerárquico' block.",
+    "Use copy.deepcopy(implementation_matrix) for Multitienda stores.",
+    "Optional: show the inferred typology in the wizard."
+  ],
+  "critical_code_review_comments": [
+    "compute_scope is not idempotent for partial updates (see PUT issue).",
+    "clean_tree does not validate that store client_ids belong to the RIF or that nivel_cotizacion is one of GRUPO/MARCA/RIF. Any string is accepted.",
+    "When patrocinador_tipo=BANCO, isScopeValid requires sponsoring_bank_id, but the backend does not validate the patrocinador_tipo/patrocinador_id combination.",
+    "QuoteWizardDialog.jsx and Quotes.jsx are very large (>4000 lines in Quotes.jsx). The new scope logic is well isolated in components/quotes/scope/*."
+  ],
+  "updated_files": ["/app/backend/tests/test_quote_scope_vpos_mpos.py", "/app/backend/tests/_ui_seed_quote_scope.py", "/app/backend/tests/_ui_seed_quote_scope_project.py"],
+  "success_rate": {"backend": "87.5% (7/8)", "frontend": "100% of tested UI flows"},
+  "test_credentials": "Admin: rgonzalez@megasoft.com.ve / MegaSoft2026*",
+  "seed_data_creation": "TEST_QS group/2 brands/2 RIFs (J98...)/2 branches, quotes and projects were created and then deleted by id. Verified 0 TEST_QS leftovers in clients, brands, economic_groups, quotes, projects and quote_history.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && python -m pytest tests/test_quote_scope_vpos_mpos.py -p no:xdist -v. It self-seeds and cleans up. test_put_partial_scope_preserves_sponsor should pass once the PUT fix lands. For UI: python tests/_ui_seed_quote_scope.py seed (ids are written to /tmp/qs_seed.json), then python tests/_ui_seed_quote_scope_project.py make to build a Multi Marca project; clean with '... clean' (project first, then seed). Login testids: auth-email/auth-password + Enter. Create button: get_by_role('button', name='Implementaciones'), then new-impl-pyme. Opening a quote edit goes through modify-choice-new-version and a justification textarea (min 20 chars) + 'Confirmar y Guardar' (this only opens the wizard).",
+  "rca of the issue": "Partial PUT: compute_scope(update_data) always sets out['cajas_desglose']=bool(data.get(...)) and resets patrocinador_tipo to None when it is absent, and update_data holds only the sent fields. Multi Marca misclassification: in infer_project_type the brand set falls back to 'rif:{id}' for RIFs without a brand."
+}

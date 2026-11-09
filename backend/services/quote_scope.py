@@ -36,7 +36,7 @@ def clean_tree(tree) -> list:
 def infer_project_type(tree: list) -> str:
     if not tree:
         return ""
-    marcas = {r.get("marca_id") or f"rif:{r['client_id']}" for r in tree}
+    marcas = {r.get("marca_id") for r in tree if r.get("marca_id")}
     stores = sum(max(len(r.get("stores") or []), 1) for r in tree)
     if len(marcas) > 1:
         return "Multi Marca"
