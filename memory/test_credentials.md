@@ -120,3 +120,7 @@ Proyectos de referencia: CORP=prj_ad1bb4bd314e, PYME=prj_826643491b64
 
 ## ⚠️ Nota (Jun 2026)
 Muchos tests antiguos de /app/backend/tests usan "Mega2026*" y bloquean a rgonzalez tras 5 intentos. Desbloquear con: python /app/memory/scripts/unlock_admins.py
+
+## QA — Iter373 (segmentación Histórico por departamento / cobro recurrente directos)
+- jdolande@megasoft.com.ve / QaMegaSoft2026*x → Ejecutivo, Ventas Pyme (quote_history=read propio). Reseteado con config.hash_password, must_change_password=False.
+- mmartin@megasoft.com.ve / QaMegaSoft2026*x → Ejecutivo, Ventas Corporativas. quote_history originalmente 'none' (se otorga 'read' temporal con `python /app/backend/tests/ui_fixture_iter373.py setup`, se revierte con `cleanup`).

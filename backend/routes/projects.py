@@ -4464,7 +4464,7 @@ async def bulk_reassign_projects(body: BulkReassignBody, authorization: Optional
     """Reasignación masiva de proyectos. Solo Coord/Gerente/Admin.
     - Registra al implementador anterior en `reassignment_history[]`.
     - Marca `assigned_to_*` al nuevo implementador.
-    - Cambia status a 'En proceso/reasignado'.
+    - Conserva el estatus (solo 'Por asignar' pasa a 'Asignado'/'En Gestión').
     """
     user = await get_current_user(authorization)
     if not _is_coordinator_or_admin(user):

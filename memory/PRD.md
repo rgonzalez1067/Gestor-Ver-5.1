@@ -4754,3 +4754,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06: Filtros multiselección por Ejecutivo Propietario e Implementador en Clientes > Sucursales (incluye "Sin asignar"), integrados con la selección para acciones masivas. Probado (iteración 372).
 
 - 2026-06: Nueva variable {Matriz_Clientes_Proyecto} (automática) en notificaciones de proyectos: tabla Grupo / Marca / RIF-Razón Social / Sucursal agrupada por Marca, construida desde rifs/stores del proyecto + catálogo de clientes. {Nombre_Cliente} sin cambios.
+
+- 2026-06 (iter 373): Reasignación conserva estatus; Edición Maestra recalcula rollup_progress (ponderado por cajas); Clientes columna combinada Razón Social/Fantasía; cobro recurrente en Proyectos Directos (client_segment = equipo del creador, 394 migrados) + nota en bitácora; ícono patrocinio rojo/amarillo con tooltip en Cotizaciones; Histórico segmentado por departamento (Ventas Pyme→PYME, Ventas Corp→CORP; admin/Director/Gerente todo + selector).
