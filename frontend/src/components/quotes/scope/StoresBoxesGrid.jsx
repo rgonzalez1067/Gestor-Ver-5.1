@@ -29,7 +29,7 @@ export const StoresBoxesGrid = ({ rifs, picked, onPick, boxes, onBoxes, desglose
         return (
           <div key={r.client_id} data-testid={`scope-rif-block-${r.client_id}`}>
             {showBrand && (
-              <div className="px-3 py-1.5 bg-teal-600 text-white text-[11px] font-bold uppercase tracking-wide flex items-center justify-between" data-testid={`scope-brand-header-${brand}`}>
+              <div className="sticky top-0 z-10 px-3 py-1.5 bg-teal-600 text-white text-[11px] font-bold uppercase tracking-wide flex items-center justify-between" data-testid={`scope-brand-header-${brand}`}>
                 <span>Marca: {brand}</span>
                 <span className="normal-case font-medium opacity-90">{brandRifs.length} RIF · {brandStores} tienda(s){desglose ? ` · ${brandBoxes} cajas` : ''}</span>
               </div>

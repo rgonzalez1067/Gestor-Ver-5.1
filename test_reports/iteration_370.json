@@ -1,0 +1,24 @@
+{
+  "summary": "Short frontend test of the Cotizador VPOS scope grid (StoresBoxesGrid) brand ordering + brand headers. Flow: /quotes -> create-quote-button -> Clientes Pymes (new-impl-pyme) -> VPOS (Cajas) -> scope-level-GRUPO -> existing group 'Farmacias San Ignacio Grupo J&A' (grp_c0079160704b, 2 brands: FARMACIA SAN IGNACIO [3 RIF], FARMACIAS SAN IGNACIO GRUPO J&A [6 RIF]) -> scope-brands-select-all -> RIFs picked in REVERSE order (J&A: FSI BISCUCUY, FARMACIA PTO CABELLO; then A: FARMACIA SAN IGNACIO LA 20, FARMA MERCADO). The legal names sort INTERLEAVED across brands alphabetically (FARMA MERCADO, FARMACIA PTO CABELLO(J&A), FARMACIA SAN IGNACIO LA 20, FSI...), so this was a real test of the ordering. Result: grid shows header 'MARCA: FARMACIA SAN IGNACIO' (2 RIF · 2 tienda(s) · 0 cajas) with FARMA MERCADO, FARMACIA SAN IGNACIO LA 20 under it, then header 'MARCA: FARMACIAS SAN IGNACIO GRUPO J&A' with FARMACIA PTO CABELLO CENTRO, FSI BISCUCUY. No interleaving, brands A-Z, RIFs A-Z inside each brand. With only J&A RIFs selected, a single header was shown. Boxes: entering 3,2,5,1 updated headers to 5 and 6 cajas, total 11; un-checking FARMA MERCADO's store -> header 1 tienda(s) · 2 cajas, total 8. Global mode hides the cajas part of the header and the total bar. Tipología shows 'Multi Marca'. No quote saved. No TEST_SG data created (used an existing group, read-only), so nothing to clean up.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "StoresBoxesGrid", "issues": ["Low: brand headers are not sticky inside the max-h-72 scroll area, so when one brand has many stores its header scrolls out of view. Could use sticky top-0."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "The scope-brand-header-{brand} testid uses the raw brand name (spaces, '&', accents). It works, but it is fragile for selectors. Consider using the marca_id or a slug.",
+    "The brand header is rendered inside the first RIF's scope-rif-block div. That is fine visually, but the brand is not its own container. Wrapping each brand in a group element would be cleaner and would make sticky headers easy.",
+    "brandRifs/brandBoxes are recomputed with rifs.filter for every row (O(n^2)). This is negligible at current sizes."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "seed_data_creation": "None. Used existing group grp_c0079160704b, read-only. No quotes saved.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Login: POST /api/auth/login returns session_token; set localStorage 'session_token' and then reach /quotes via history.pushState + popstate, because direct goto redirects to /dashboard. Poll until create-quote-button exists, because it can load slowly. Open the Radix dropdown with a pointerdown dispatch, then click new-impl-pyme. Checklist testids: scope-groups-search, scope-groups-check-{group_id}, scope-brands-select-all, scope-rifs-check-{client_id}. Box inputs: [data-testid=scope-rif-block-{cid}] input[data-testid^=scope-store-boxes-]."
+}
