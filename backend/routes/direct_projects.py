@@ -387,8 +387,9 @@ async def create_direct_project(
                 detail=f"La suma de cajas de los RIFs ({sum_rifs}) debe ser igual a la Cantidad de Cajas global ({payload.cantidad_cajas}).",
             )
 
-    # Segmento del cliente: se conserva desde la ficha del cliente (PYME/CORP).
-    client_segment = (client.get("client_segment") or "PYME").upper()
+    # Equipo comercial origen: el del usuario que genera el proyecto (Ventas Pyme / Corporativas).
+    from routes.projects import _user_sales_team
+    client_segment = _user_sales_team(user) or (client.get("client_segment") or "PYME").upper()
     if client_segment not in {"PYME", "CORP"}:
         client_segment = "PYME"
     # Sede del proyecto: se hereda de la ficha del USUARIO en sesión (no editable

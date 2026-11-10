@@ -29,14 +29,37 @@ def _can_access_history(user: dict) -> bool:
     return (user.get("permissions", {}) or {}).get("quote_history", "none") != "none"
 
 
-def _segment_allows(user: dict, doc: dict) -> bool:
-    """Aislamiento por segmento: Admin y Director ven todo; el resto solo
-    registros cuya `sede` (sede del creador) coincida con la suya."""
+def _history_team(user: dict) -> Optional[str]:
+    """Equipo comercial al que queda restringido el usuario (PYME/CORP), o None si ve todo.
+    Ventas Pyme / Ventas Corporativas quedan segmentados; Admin, Director y Gerente ven todo."""
     if (user.get("role") or "").lower() == "admin":
-        return True
-    if (user.get("cargo") or "").strip().lower() == "director":
-        return True
-    return (doc.get("sede") or "PYME") == (user.get("sede") or "PYME")
+        return None
+    if (user.get("cargo") or "").strip().lower() in ("director", "gerente"):
+        return None
+    dept = (user.get("departamento") or "").strip().lower()
+    if "ventas corporativ" in dept:
+        return "CORP"
+    if "ventas pyme" in dept:
+        return "PYME"
+    return None
+
+
+def _doc_team(doc: dict) -> str:
+    suffix = (doc.get("quote_number") or "").rsplit("-", 1)[-1].upper()
+    if suffix in ("PYME", "CORP"):
+        return suffix
+    return "CORP" if (doc.get("sede") or "").upper() == "CORP" else "PYME"
+
+
+def _segment_allows(user: dict, doc: dict) -> bool:
+    team = _history_team(user)
+    return team is None or _doc_team(doc) == team
+
+
+def _team_condition(team: str) -> dict:
+    return {"$or": [{"quote_number": {"$regex": f"-{team}$", "$options": "i"}},
+                    {"quote_number": {"$not": {"$regex": "-(PYME|CORP)$", "$options": "i"}},
+                     "sede": "CORP" if team == "CORP" else {"$ne": "CORP"}}]}
 
 
 async def backfill_history_sede() -> int:
@@ -201,6 +224,7 @@ async def list_quote_history(
     invoice_number: Optional[str] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
+    segment: Optional[str] = None,
     authorization: Optional[str] = Header(None)
 ):
     """Lista cotizaciones archivadas con filtros. Restringido."""
@@ -210,14 +234,13 @@ async def list_quote_history(
 
     query = {}
     and_conditions = []
-    # ===== Aislamiento por segmento (sede del creador) =====
-    # Regla: los usuarios solo ven registros históricos emitidos por usuarios de
-    # su MISMA sede (Corp ve Corp, Pyme ve Pyme, etc.). Excepción: Administrador
-    # del Sistema y cargo 'Director' conservan visibilidad total (Corp + Pyme).
-    is_admin = (current_user.get("role") or "").lower() == "admin"
-    is_director = (current_user.get("cargo") or "").strip().lower() == "director"
-    if not is_admin and not is_director:
-        query["sede"] = (current_user.get("sede") or "PYME")
+    # Segmentación comercial: Ventas Pyme → PYME, Ventas Corporativas → CORP;
+    # Admin/Director/Gerente ven todo y pueden filtrar con `segment`.
+    team = _history_team(current_user)
+    if not team and (segment or "").upper() in ("PYME", "CORP"):
+        team = segment.upper()
+    if team:
+        and_conditions.append(_team_condition(team))
     if quote_category:
         query["quote_category"] = quote_category
     if client_id:

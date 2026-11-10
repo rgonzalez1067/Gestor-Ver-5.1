@@ -320,7 +320,12 @@ async def toggle_cobro_recurrente(project_id: str, body: CobroRecurrenteToggle, 
         "cobro_recurrente_by_name": full_name,
         "cobro_recurrente_at": datetime.now(timezone.utc).isoformat(),
     }
-    await db.projects.update_one({"project_id": project_id}, {"$set": updates})
+    await db.projects.update_one({"project_id": project_id}, {"$set": updates, "$push": {"notes": {
+        "note_id": f"pn_{uuid.uuid4().hex[:8]}",
+        "text": ("Se marcó cobro recurrente como cobrado" if new_status else "Se desmarcó el cobro recurrente")
+                + (" (Proyecto Directo)." if project.get("origin") == "direct" else "."),
+        "created_by": user.get("user_id", ""), "created_by_name": full_name, "created_at": updates["cobro_recurrente_at"],
+    }}})
     return {"status": "ok", **updates}
 
 
@@ -397,6 +402,14 @@ async def get_project(project_id: str, authorization: Optional[str] = Header(Non
     return project
 
 
+def _status_after_assign(project: dict) -> str:
+    """La (re)asignación solo saca al proyecto de 'Por asignar'; cualquier otro estatus se conserva."""
+    current = (project.get("status") or "").strip()
+    if current and current != "Por asignar":
+        return current
+    return "En Gestión" if (project.get("ticket_number") or "").strip() else "Asignado"
+
+
 @router.put("/projects/{project_id}/assign")
 async def assign_project(project_id: str, assignment: ProjectAssign, authorization: Optional[str] = Header(None)):
     current_user = await get_current_user(authorization)
@@ -415,8 +428,7 @@ async def assign_project(project_id: str, assignment: ProjectAssign, authorizati
     # Gatillo de Asignación: al asignar un Implementador el estado pasa a "Asignado".
     # Regla de negocio: si el proyecto YA tiene Nro de Ticket cargado (estaba "En
     # Gestión"), una reasignación NO retrocede el estado — se mantiene "En Gestión".
-    has_ticket = bool((project.get("ticket_number") or "").strip())
-    new_status = "En Gestión" if has_ticket else "Asignado"
+    new_status = _status_after_assign(project)
 
     update_data = {
         "assigned_to_user_id": assignment.assigned_to_user_id,
@@ -425,10 +437,11 @@ async def assign_project(project_id: str, assignment: ProjectAssign, authorizati
         "assigned_by_name": assigner_name,
         "assigned_at": now,
         "fecha_asignacion": now,
-        "status": new_status,
-        "status_changed_at": now,
         "updated_at": now,
     }
+    if new_status != project.get("status"):
+        update_data["status"] = new_status
+        update_data["status_changed_at"] = now
     if assignment.estimated_delivery_date:
         update_data["estimated_delivery_date"] = assignment.estimated_delivery_date
 
@@ -937,6 +950,12 @@ async def master_override_project(project_id: str, payload: MasterOverridePayloa
         {"$set": update, "$push": {"notes": note, "bitacora": bitacora_entry}},
     )
 
+    # Recalcular el avance global con la estructura resultante (tiendas/cajas/medios).
+    refreshed = await db.projects.find_one({"project_id": project_id}, {"_id": 0})
+    rollup = _calculate_rollup_progress(refreshed) if refreshed.get("project_type") in ("multistore", "multirif") \
+        else _calculate_single_progress(refreshed)
+    await db.projects.update_one({"project_id": project_id}, {"$set": {"rollup_progress": rollup}})
+
     # Disparo asíncrono de la notificación de cambio de estado (Edición Maestra),
     # solo cuando el estado cambió efectivamente a un estado con trigger.
     new_status_mo = update.get("status")
@@ -944,7 +963,7 @@ async def master_override_project(project_id: str, payload: MasterOverridePayloa
         import asyncio
         asyncio.create_task(_dispatch_project_status_action(project_id, new_status_mo, None, current_user))
 
-    return {"message": "Proyecto actualizado (Edición Maestra)", "project_id": project_id, "changes_count": len(changes)}
+    return {"message": "Proyecto actualizado (Edición Maestra)", "project_id": project_id, "changes_count": len(changes), "rollup_progress": rollup}
 
 
 # ==================== NOTIFICATION ENDPOINTS ====================
@@ -979,14 +998,17 @@ def _calculate_rollup_progress(project: dict) -> dict:
         bank_progress[bank_name] = {}
         for product_name in products:
             # Para cada producto, calcular el promedio de avance de las tiendas
-            store_progresses = []
+            # Ponderado por cajas: cada tienda pesa según su box_count (mín. 1).
+            weighted, weight_total = 0.0, 0
             for store in stores:
                 store_matrix = store.get("implementation_matrix", {})
                 store_phases = store_matrix.get(bank_name, {}).get(product_name, {})
                 completed = sum(1 for p in STORE_PHASES if store_phases.get(p, {}).get("completed", False))
                 pct = (completed / len(STORE_PHASES)) * 100 if STORE_PHASES else 0
-                store_progresses.append(pct)
-            avg = sum(store_progresses) / len(store_progresses) if store_progresses else 0
+                w = max(int(store.get("box_count") or 0), 1)
+                weighted += pct * w
+                weight_total += w
+            avg = weighted / weight_total if weight_total else 0
             bank_progress[bank_name][product_name] = round(avg, 1)
 
     # Progreso global
@@ -4476,7 +4498,7 @@ async def bulk_reassign_projects(body: BulkReassignBody, authorization: Optional
 
         # Regla de negocio: una reasignación mantiene "En Gestión" si el proyecto
         # ya tiene Nro de Ticket; si no, queda "Asignado".
-        reassign_status = "En Gestión" if (p.get("ticket_number") or "").strip() else "Asignado"
+        reassign_status = _status_after_assign(p)
 
         history_entry = {
             "from_user_id": p.get("assigned_to_user_id"),
@@ -4494,11 +4516,15 @@ async def bulk_reassign_projects(body: BulkReassignBody, authorization: Optional
                     "assigned_to_name": to_name,
                     "assigned_at": now_iso,
                     "status": reassign_status,
+                    **({"status_changed_at": now_iso} if reassign_status != p.get("status") else {}),
                     "reassigned_from_name": p.get("assigned_to_name"),
                     "reassigned_from_user_id": p.get("assigned_to_user_id"),
                     "updated_at": now_iso,
                 },
-                "$push": {"reassignment_history": history_entry},
+                "$push": {"reassignment_history": history_entry, "notes": {
+                    "note_id": f"pn_{uuid.uuid4().hex[:8]}",
+                    "text": f"Proyecto reasignado a {to_name}. (Anterior: {p.get('assigned_to_name') or '—'}) Estatus conservado: {reassign_status}.",
+                    "created_by": user.get("user_id", ""), "created_by_name": exec_name, "created_at": now_iso}},
             },
         )
         reassigned += 1

@@ -337,16 +337,16 @@ export const QuotesTable = ({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span
-                              className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-amber-100 text-amber-800 border border-amber-300 max-w-[140px] truncate cursor-default"
+                              className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-red-600 border border-yellow-400 shadow-sm cursor-default"
                               data-testid={`sponsored-badge-${quote.quote_id}`}
+                              aria-label={`Banco Patrocinante: ${quote.sponsoring_bank_name || 'no especificado'}`}
                             >
-                              <Landmark size={11} className="shrink-0" />
-                              <span className="truncate">{quote.sponsoring_bank_name || 'Patrocinado'}</span>
+                              <Landmark size={13} className="text-yellow-300" strokeWidth={2.4} />
                             </span>
                           </TooltipTrigger>
-                          <TooltipContent side="top">
+                          <TooltipContent side="top" data-testid={`sponsored-tooltip-${quote.quote_id}`}>
                             <p className="text-xs">
-                              Patrocinado por {quote.sponsoring_bank_name || 'banco no especificado'}
+                              Banco Patrocinante: {[quote.sponsoring_processor_name, quote.sponsoring_bank_name].filter(Boolean).join(' — ') || 'no especificado'}
                             </p>
                           </TooltipContent>
                         </Tooltip>

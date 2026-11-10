@@ -49,6 +49,15 @@ export const HistoricalQuotes = () => {
     try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
   })();
   const isAdmin = (currentUser?.role || '').toLowerCase() === 'admin';
+  // Segmentación comercial (espejo del backend): Ventas Pyme → PYME, Ventas Corporativas → CORP.
+  const lockedTeam = (() => {
+    if (isAdmin || ['director', 'gerente'].includes((currentUser?.cargo || '').trim().toLowerCase())) return null;
+    const dept = (currentUser?.departamento || '').toLowerCase();
+    if (dept.includes('ventas corporativ')) return 'CORP';
+    if (dept.includes('ventas pyme')) return 'PYME';
+    return null;
+  })();
+  const [segmentFilter, setSegmentFilter] = useState('all');
   // Matriz de Anexos del Histórico: el botón para abrir los anexos se muestra a
   // cualquier usuario con al menos Consulta (read) en `quote_history`. El control
   // fino (Subir / Eliminar) lo aplica HistoricalAnexosModal internamente.
@@ -61,6 +70,7 @@ export const HistoricalQuotes = () => {
       if (search.trim()) params.search = search.trim();
       if (categoryFilter !== 'all') params.quote_category = categoryFilter;
       if (invoiceFilter.trim()) params.invoice_number = invoiceFilter.trim();
+      if (!lockedTeam && segmentFilter !== 'all') params.segment = segmentFilter;
       const res = await api.get('/quote-history', { params });
       setRecords(res.data || []);
     } catch (err) {
@@ -72,7 +82,7 @@ export const HistoricalQuotes = () => {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchHistory(); /* eslint-disable-next-line */ }, [categoryFilter]);
+  useEffect(() => { fetchHistory(); /* eslint-disable-next-line */ }, [categoryFilter, segmentFilter]);
 
   // Búsqueda en vivo (debounced) por nombre de cliente / nº cotización / factura:
   // la grilla se actualiza de inmediato al escribir, sin necesidad de "Aplicar filtros".
@@ -168,7 +178,7 @@ export const HistoricalQuotes = () => {
 
         {/* Filtros */}
         <Card className="p-4 mb-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
             <div>
               <Label className="text-xs">Búsqueda</Label>
               <div className="relative">
@@ -188,6 +198,23 @@ export const HistoricalQuotes = () => {
                   <SelectItem value="fast_track">Fast Track</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Segmento</Label>
+              {lockedTeam ? (
+                <div className="h-9 flex items-center gap-1.5 px-3 rounded-md border border-slate-200 bg-slate-50 text-sm text-slate-700" data-testid="qh-segment-locked">
+                  <Lock size={12} className="text-slate-400" /> {lockedTeam === 'CORP' ? 'Corp' : 'PyME'}
+                </div>
+              ) : (
+                <Select value={segmentFilter} onValueChange={setSegmentFilter}>
+                  <SelectTrigger className="text-sm" data-testid="qh-segment"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" data-testid="qh-segment-all">Todos</SelectItem>
+                    <SelectItem value="PYME" data-testid="qh-segment-pyme">PyME</SelectItem>
+                    <SelectItem value="CORP" data-testid="qh-segment-corp">Corp</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div>
               <Label className="text-xs">Nº Factura</Label>
