@@ -12,7 +12,7 @@ import { BrandDialog } from '../components/clients/hierarchy/BrandDialog';
 import { RifList } from '../components/clients/hierarchy/HierarchyTree';
 
 export default function Brands() {
-  const { canEdit } = usePermission('clientes');
+  const { canEdit } = usePermission('marcas');
   const [brands, setBrands] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);

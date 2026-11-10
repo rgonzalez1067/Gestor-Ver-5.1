@@ -52,7 +52,7 @@ import SidebarErrorBoundary from './SidebarErrorBoundary';
 const menuItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', groupId: 'dashboard' },
   {
-    icon: Users, label: 'Clientes', isGroup: true, groupId: 'gestion_comercial',
+    icon: Users, label: 'Clientes', isGroup: true, groupId: 'clientes_menu',
     children: [
       { path: '/initial-contacts', icon: Phone, label: 'Contacto Inicial' },
       { path: '/grupos-economicos', icon: Building2, label: 'Grupo Económico' },

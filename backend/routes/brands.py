@@ -78,7 +78,7 @@ async def _validate(payload: BrandCreate, brand_id: Optional[str] = None) -> dic
 
 @router.post("/marcas")
 async def create_brand(payload: BrandCreate, authorization: Optional[str] = Header(None)):
-    await require_permission(authorization, "clientes", "edit")
+    await require_permission(authorization, "marcas", "edit")
     data = await _validate(payload)
     brand = {"brand_id": f"mrc_{uuid.uuid4().hex[:12]}", **data,
              "created_at": datetime.now(timezone.utc).isoformat(), "updated_at": None}
@@ -125,7 +125,7 @@ async def get_brand_rifs(brand_id: str, authorization: Optional[str] = Header(No
 
 @router.put("/marcas/{brand_id}")
 async def update_brand(brand_id: str, payload: BrandCreate, authorization: Optional[str] = Header(None)):
-    await require_permission(authorization, "clientes", "edit")
+    await require_permission(authorization, "marcas", "edit")
     existing = await db.brands.find_one({"brand_id": brand_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Marca no encontrada")
@@ -138,7 +138,7 @@ async def update_brand(brand_id: str, payload: BrandCreate, authorization: Optio
 
 @router.delete("/marcas/{brand_id}")
 async def delete_brand(brand_id: str, authorization: Optional[str] = Header(None)):
-    await require_permission(authorization, "clientes", "edit")
+    await require_permission(authorization, "marcas", "edit")
     if not await db.brands.find_one({"brand_id": brand_id}, {"_id": 0, "brand_id": 1}):
         raise HTTPException(status_code=404, detail="Marca no encontrada")
     n = await db.clients.count_documents({"marca_id": brand_id, "is_branch": {"$ne": True}})

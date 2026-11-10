@@ -64,6 +64,7 @@ from routes.other_actions_config import router as other_actions_router
 from routes.bank_payment_conditions import router as bank_payment_conditions_router
 from routes.economic_groups import router as economic_groups_router
 from routes.brands import router as brands_router
+from routes.clients_mass import router as clients_mass_router
 from routes.audit_trails import router as audit_trails_router
 from services.audit_trail import AuditContextMiddleware, ensure_audit_indexes
 from services.notification_scheduler import start_scheduler, stop_scheduler
@@ -404,6 +405,7 @@ api_router.include_router(project_sla_router)
 api_router.include_router(calendar_router)
 api_router.include_router(bank_payment_conditions_router)
 api_router.include_router(economic_groups_router)
+api_router.include_router(clients_mass_router)
 api_router.include_router(brands_router)
 api_router.include_router(audit_trails_router)
 app.include_router(api_router)
@@ -478,6 +480,8 @@ async def create_indexes():
             await relink_orphan_branches()
             from services.quote_scope import resort_existing_scopes
             await resort_existing_scopes()
+            from routes.clients_mass import migrate_rbac_clientes_menu
+            await migrate_rbac_clientes_menu()
         except Exception as e:
             logging.warning(f"[startup] client brands migration failed: {e}")
 

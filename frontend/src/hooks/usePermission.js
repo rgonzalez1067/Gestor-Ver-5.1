@@ -60,7 +60,7 @@ export const ROUTE_MODULE_MAP = {
   '/reports/sponsors': 'reportes_patrocinador',
   '/historical-quotes': 'quote_history',
   '/clients': 'clientes',
-  '/marcas': 'clientes',
+  '/marcas': 'marcas',
   '/banks': 'bancos',
   '/medios-pago': 'medios_pago',
   '/hardware': 'dispositivos',
@@ -87,9 +87,10 @@ export const ROUTE_MODULE_MAP = {
  * Debe permanecer sincronizado con /app/backend/permissions_catalog.py (MODULE_TO_GROUP).
  */
 export const MODULE_TO_GROUP = {
-  initial_contacts: 'gestion_comercial',
-  grupos_economicos: 'gestion_comercial',
-  clientes: 'gestion_comercial',
+  initial_contacts: 'clientes_menu',
+  grupos_economicos: 'clientes_menu',
+  marcas: 'clientes_menu',
+  clientes: 'clientes_menu',
   cotizaciones: 'gestion_comercial',
   reportes_ventas: 'gestion_comercial',
   quote_history: 'gestion_comercial',

@@ -24,6 +24,8 @@ import { useNavigate } from 'react-router-dom';
 import { ClientEmailDialog } from '../components/ClientEmailDialog';
 import { ClientsBulkUpdateModal } from '../components/ClientsBulkUpdateModal';
 import { BrandPicker } from '../components/clients/hierarchy/BrandPicker';
+import { MassActionsMenu } from '../components/clients/mass/MassActionsMenu';
+import { MassActionDialog } from '../components/clients/mass/MassActionDialog';
 import { BrandDialog } from '../components/clients/hierarchy/BrandDialog';
 import { InheritanceSummary } from '../components/clients/hierarchy/InheritanceSummary';
 import { InheritedContactsPanel } from '../components/clients/hierarchy/InheritedContactsPanel';
@@ -59,7 +61,10 @@ const emptyContact = () => ({
 });
 
 export const Clients = () => {
-  const { canEdit, isAdmin } = usePermission('clientes');
+  const { canEdit, isAdmin, hasSpecial } = usePermission('clientes');
+  const canMass = isAdmin || hasSpecial('clientes:mantenimiento_masivo');
+  const [massSelected, setMassSelected] = useState([]);
+  const [massAction, setMassAction] = useState(null);
   const [bulkUpdateOpen, setBulkUpdateOpen] = useState(false);
   const navigate = useNavigate();
   const [clients, setClients] = useState([]);
@@ -1711,10 +1716,29 @@ export const Clients = () => {
 
 
           {/* Table */}
+          {canMass && (
+            <div className="flex items-center gap-3 mb-2 flex-wrap" data-testid="mass-actions-bar">
+              <MassActionsMenu count={massSelected.length} onPick={setMassAction} />
+              {massSelected.length > 0 && massSelected.length < filtered.length && (
+                <button type="button" className="text-xs text-indigo-600 hover:underline" data-testid="mass-select-all-filter"
+                  onClick={() => setMassSelected(filtered.map(c => c.client_id))}>Seleccionar todas las {filtered.length} sucursales del filtro</button>
+              )}
+              {massSelected.length > 0 && (
+                <button type="button" className="text-xs text-slate-500 hover:underline" data-testid="mass-clear-selection" onClick={() => setMassSelected([])}>Limpiar selección</button>
+              )}
+            </div>
+          )}
           <div className="bg-white rounded-lg border border-slate-200 overflow-x-auto">
             <table className="w-full min-w-[900px]">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
+                  {canMass && (
+                    <th className="px-3 py-3 w-[36px]">
+                      <input type="checkbox" className="accent-indigo-600" data-testid="mass-select-all"
+                        checked={filtered.length > 0 && filtered.every(c => massSelected.includes(c.client_id))}
+                        onChange={e => setMassSelected(e.target.checked ? filtered.map(c => c.client_id) : [])} />
+                    </th>
+                  )}
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase w-[130px]">RIF</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase w-[90px]">Sucursal</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Nombre Jurídico</th>
@@ -1732,6 +1756,13 @@ export const Clients = () => {
                   const branchCount = clients.filter(c => c.parent_client_id === client.client_id).length;
                   return (
                     <tr key={client.client_id} className="hover:bg-slate-50 transition-colors">
+                      {canMass && (
+                        <td className="px-3 py-3">
+                          <input type="checkbox" className="accent-indigo-600" data-testid={`mass-select-${client.client_id}`}
+                            checked={massSelected.includes(client.client_id)}
+                            onChange={() => setMassSelected(prev => prev.includes(client.client_id) ? prev.filter(x => x !== client.client_id) : [...prev, client.client_id])} />
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-sm font-mono text-slate-700 whitespace-nowrap">
                           {formatRif(client.rif)}
                           {client.condicion && (
@@ -2315,6 +2346,10 @@ export const Clients = () => {
         </Dialog>
 
         {/* Email Communication Dialog */}
+        {canMass && massAction && (
+          <MassActionDialog action={massAction} clientIds={massSelected} onClose={() => setMassAction(null)}
+            onDone={() => { fetchClients(); setMassSelected([]); }} />
+        )}
         <BrandDialog open={quickBrandOpen} fixedGroupId={formData.grupo_economico_id || null}
           onClose={() => setQuickBrandOpen(false)}
           onSaved={async (b) => { await fetchBrands(); handleBrandSelect({ ...b, group_id: b.group_id }); }} />
