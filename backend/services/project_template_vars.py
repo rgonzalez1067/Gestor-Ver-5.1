@@ -371,6 +371,51 @@ def _build_multirif_distribution_html(project: dict, with_progress: bool = False
     return html
 
 
+async def _build_clientes_proyecto_html(project: dict) -> str:
+    """Tabla Grupo / Marca / RIF / Sucursal de todos los clientes del proyecto, agrupada por Marca."""
+    rifs = project.get("rifs") or []
+    stores = project.get("stores") or []
+    rif_client = {r.get("rif_id"): r.get("client_id") for r in rifs if r.get("rif_id")}
+    proj = {"rif": project.get("client_rif", ""), "client_id": project.get("client_id"), "name": project.get("client_name", "")}
+    entries = []
+    for s in stores:
+        cid = rif_client.get(s.get("rif_id")) or (None if s.get("rif") else proj["client_id"])
+        entries.append({"client_id": cid, "rif": s.get("rif") or proj["rif"], "name": s.get("client_name") or proj["name"], "sucursal": s.get("name", "")})
+    if not entries:
+        entries = [{"client_id": r.get("client_id"), "rif": r.get("rif", ""), "name": r.get("client_name", ""), "sucursal": ""} for r in rifs] \
+            or [{**proj, "sucursal": project.get("sede_name") or ""}]
+
+    cache = {}
+    for e in entries:
+        key = e["client_id"] or e["rif"]
+        if key not in cache:
+            q = {"client_id": e["client_id"]} if e["client_id"] else {"rif": e["rif"], "is_branch": {"$ne": True}}
+            cache[key] = await db.clients.find_one(q, {"_id": 0, "grupo_economico": 1, "marca_name": 1, "fantasy_name": 1, "legal_name": 1, "rif": 1}) or {}
+        c = cache[key]
+        e["grupo"] = c.get("grupo_economico") or "—"
+        e["marca"] = c.get("marca_name") or c.get("fantasy_name") or "Sin marca"
+        e["razon"] = c.get("legal_name") or e["name"]
+        e["rif"] = format_rif(c.get("rif") or e["rif"])
+    entries.sort(key=lambda e: (e["marca"].lower(), e["rif"], (e["sucursal"] or "").lower()))
+
+    td = 'padding:8px 12px;border:1px solid #e9ecef;'
+    th = 'padding:10px 12px;text-align:left;border:1px solid #ddd;'
+    html = ('<table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:13px;">'
+            '<thead><tr style="background:#2c3e50;color:white;">'
+            f'<th style="{th}">Grupo Económico</th><th style="{th}">Marca</th>'
+            f'<th style="{th}">RIF / Razón Social</th><th style="{th}">Sucursal</th></tr></thead><tbody>')
+    current = None
+    for idx, e in enumerate(entries):
+        if e["marca"] != current:
+            current = e["marca"]
+            html += f'<tr style="background:#e3f2fd;font-weight:bold;color:#1565c0;"><td colspan="4" style="{td}">{current}</td></tr>'
+        bg = "#f8f9fa" if idx % 2 == 0 else "#ffffff"
+        html += (f'<tr style="background:{bg};"><td style="{td}">{e["grupo"]}</td><td style="{td}">{e["marca"]}</td>'
+                 f'<td style="{td}">{e["rif"]} — {e["razon"]}</td><td style="{td}">{e["sucursal"] or "—"}</td></tr>')
+    return html + '</tbody></table>'
+
+
+
 def _fmt_short_date(value) -> str:
     """ISO → 'dd/mm/yyyy'. Vacío si no parsea."""
     if not value:
@@ -878,6 +923,7 @@ async def resolve_project_template_vars(project: dict, actor_user: dict = None) 
         "Correo_Implementador": correo_implementador,
         "Telefono_Implementador": telefono_implementador,
         "Matriz_Bancos_Productos": matriz_html,
+        "Matriz_Clientes_Proyecto": await _build_clientes_proyecto_html(project),
         "Matriz_MultiRif_Distribucion": _build_multirif_distribution_html(project, with_progress=False),
         "Matriz_MultiRif_Avance": _build_multirif_distribution_html(project, with_progress=True),
         "Matriz_Avance_Proyecto": _build_avance_matrix_html(project),

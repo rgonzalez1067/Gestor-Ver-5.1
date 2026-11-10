@@ -44,7 +44,7 @@ _PROJECT_STATUS_VARS = [
     "Sucursales_Cotizacion", "Cantidad_RIFs_Cotizacion", "Cantidad_Sucursales_Cotizacion", "Total_Cajas_Cotizacion",
     "Tipologia_Proyecto", "Tipo_Patrocinio", "Patrocinador_Cotizacion", "Matriz_Alcance_Cotizacion",
     "Matriz_Avance_Proyecto", "Matriz_Avance_Proyecto_Con_Fecha",
-    "Matriz_Seguimiento_Evolutiva",
+    "Matriz_Seguimiento_Evolutiva", "Matriz_Clientes_Proyecto",
     "usuario_ejecutor", "fecha_sistema",
 ]
 

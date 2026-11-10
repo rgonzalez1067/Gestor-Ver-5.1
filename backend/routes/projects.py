@@ -1979,7 +1979,7 @@ async def preview_notification(project_id: str, body: PreviewNotificationRequest
         "entity_label": email_data["entity_label"],
         "prefix": NOTIFICATION_PREFIXES[prefix_idx],
         "send_number": send_count + 1,
-        "variables": {k: v for k, v in template_vars.items() if k not in ("Matriz_Bancos_Productos", "Matriz_Sucursales", "Matriz_Avance_Proyecto", "Matriz_Avance_Proyecto_Con_Fecha", "Matriz_Seguimiento_Evolutiva")},
+        "variables": {k: v for k, v in template_vars.items() if k not in ("Matriz_Bancos_Productos", "Matriz_Sucursales", "Matriz_Avance_Proyecto", "Matriz_Avance_Proyecto_Con_Fecha", "Matriz_Seguimiento_Evolutiva", "Matriz_Clientes_Proyecto")},
         "matrix_html": template_vars.get("Matriz_Bancos_Productos", ""),
     }
 
@@ -2025,7 +2025,7 @@ async def preview_adhoc_email(project_id: str, body: PreviewAdhocRequest, author
     return {
         "subject": final_subject,
         "html": html,
-        "variables": {k: v for k, v in template_vars.items() if k not in ("Matriz_Bancos_Productos", "Matriz_Sucursales", "Matriz_Avance_Proyecto", "Matriz_Avance_Proyecto_Con_Fecha", "Matriz_Seguimiento_Evolutiva")},
+        "variables": {k: v for k, v in template_vars.items() if k not in ("Matriz_Bancos_Productos", "Matriz_Sucursales", "Matriz_Avance_Proyecto", "Matriz_Avance_Proyecto_Con_Fecha", "Matriz_Seguimiento_Evolutiva", "Matriz_Clientes_Proyecto")},
     }
 
 
@@ -2048,7 +2048,7 @@ async def get_project_template_variables(project_id: str, bank: Optional[str] = 
         matrix_html = _build_matrix_html(
             project.get("implementation_matrix", {}), services=project.get("services", []) or [], bank_filter=bank.strip())
     return {
-        "variables": {k: v for k, v in template_vars.items() if k not in ("Matriz_Bancos_Productos", "Matriz_Sucursales", "Matriz_Avance_Proyecto", "Matriz_Avance_Proyecto_Con_Fecha", "Matriz_Seguimiento_Evolutiva")},
+        "variables": {k: v for k, v in template_vars.items() if k not in ("Matriz_Bancos_Productos", "Matriz_Sucursales", "Matriz_Avance_Proyecto", "Matriz_Avance_Proyecto_Con_Fecha", "Matriz_Seguimiento_Evolutiva", "Matriz_Clientes_Proyecto")},
         "matrix_html": matrix_html,
         "available_tags": [
             {"key": "Nombre_Cliente", "label": "Nombre del Cliente", "source": "Clientes.razon_social"},
@@ -2059,6 +2059,7 @@ async def get_project_template_variables(project_id: str, bank: Optional[str] = 
             {"key": "Matriz_Sucursales", "label": "Tabla de Sucursales (Sucursal / Cantidad de Cajas)", "source": "Proyecto.stores"},
             {"key": "Integrador", "label": "Integrador", "source": "Proyecto.integrador"},
             {"key": "Matriz_Bancos_Productos", "label": "Tabla Bancos/Productos (HTML)", "source": "Proyecto.implementation_matrix"},
+            {"key": "Matriz_Clientes_Proyecto", "label": "Clientes del Proyecto (Grupo / Marca / RIF / Sucursal)", "source": "Proyecto.rifs / stores + Clientes"},
             {"key": "Matriz_MultiRif_Distribucion", "label": "Tabla Multi-RIF: Distribución (Cliente/RIF → Sucursales → Cajas)", "source": "Proyecto.rifs"},
             {"key": "Matriz_MultiRif_Avance", "label": "Tabla Multi-RIF: Distribución + Avance % (3 niveles)", "source": "Proyecto.rifs"},
             {"key": "Matriz_Avance_Proyecto", "label": "Matriz de Avance del Proyecto (Banco→Producto→Fases · % por fase · KPI Global)", "source": "Proyecto.implementation_matrix / stores"},

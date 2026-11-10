@@ -105,6 +105,7 @@ export const VARIABLE_CATEGORIES = [
       { key: 'Tipo_Patrocinio', label: 'Tipo de patrocinio (Banco/Ente o Cliente)' },
       { key: 'Patrocinador_Cotizacion', label: 'Patrocinador seleccionado' },
       { key: 'Matriz_Alcance_Cotizacion', label: 'Tabla de alcance (Marca → RIF → Sucursal → Cajas)' },
+      { key: 'Matriz_Clientes_Proyecto', label: 'Clientes del proyecto (Grupo / Marca / RIF / Sucursal)' },
       { key: 'Matriz_MultiRif_Distribucion', label: 'Multi-RIF: distribución (RIF → sucursales → cajas)' },
       { key: 'Matriz_MultiRif_Avance', label: 'Multi-RIF: distribución + avance % (3 niveles)' },
       { key: 'Matriz_Avance_Proyecto', label: 'Matriz de Avance (Banco→Producto→Fases · % por fase · KPI Global)' },

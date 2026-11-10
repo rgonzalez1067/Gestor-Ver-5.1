@@ -544,6 +544,7 @@ const getTemplateVariables = (templateId) => {
     { key: 'Tipo_Patrocinio', label: 'Tipo de Patrocinio (Banco/Ente o Cliente)' },
     { key: 'Patrocinador_Cotizacion', label: 'Patrocinador seleccionado' },
     { key: 'Matriz_Alcance_Cotizacion', label: 'Tabla de Alcance (Marca → RIF → Sucursal → Cajas)' },
+    { key: 'Matriz_Clientes_Proyecto', label: 'Clientes del Proyecto (Grupo / Marca / RIF / Sucursal)' },
     { key: 'Matriz_MultiRif_Distribucion', label: 'Multi-RIF: Distribución (RIF → Sucursales → Cajas)' },
     { key: 'Matriz_MultiRif_Avance', label: 'Multi-RIF: Distribución + Avance % (3 niveles)' },
     { key: 'Patrocinador', label: 'Patrocinador (Banco/Procesador o Cliente)' },
