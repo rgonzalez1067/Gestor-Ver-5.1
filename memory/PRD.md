@@ -3,6 +3,12 @@
 ## Descripción General
 Plataforma interna de gestión operativa para MegaNexus Venezuela.
 
+### Feature: Mantenimiento Masivo de Sucursales + RBAC Clientes — Nov 2026
+- /clients (Sucursales): checkbox por fila, maestro y "Seleccionar todas las N del filtro"; botón ⚡ Acciones Masivas con 8 acciones (eliminar con ELIMINAR + control de dependencias: proyecto en ejecución, cotización aprobada, taller activo, sucursales asociadas; Grupo→Marca en cascada (solo RIF principales); Coordinador/Implementador con "Aplicar este campo"; Segmento; Ejecutivo; Categoría; Integrador→Aplicativo; Tipo de Servicio). Endpoint `POST /api/clients/mass-action` (routes/clients_mass.py) con validación de catálogos y máx 3000 por lote; auditoría automática vía interceptor.
+- Permiso especial `clientes:mantenimiento_masivo` ("Función Especial: Mantenimiento Masivo"); sin él 403 y UI oculta.
+- RBAC: nuevo grupo de menú `clientes_menu` (Clientes) con módulos initial_contacts, grupos_economicos, marcas (nuevo), clientes (rotulado Sucursales). Migración `rbac_clientes_menu_v1` copia activación de gestion_comercial y nivel de clientes→marcas. /api/marcas usa permiso `marcas`.
+- QA iter371 100% (backend+frontend); validaciones menores aplicadas después.
+
 ### Feature: Cotizaciones VPOS/MPOS con Alcance Jerárquico + Tipo de Patrocinio — Nov 2026
 - VPOS Multi-RIF retirado de la creación (`disabled` en QUOTE_TYPES); las existentes siguen como histórico.
 - Wizard VPOS/MPOS: "¿Cuál es el nivel de la Cotización?" (Grupo/Marca/RIF) → listas A-Z con buscador (Grupo único → Marcas multi/todas → RIFs agrupados por marca → Sucursales por RIF). Cajas: desglose por tienda (suma → Nro de Cajas bloqueado) o carga global. Muestra tipología inferida.

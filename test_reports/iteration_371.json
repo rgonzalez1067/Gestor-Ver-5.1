@@ -1,0 +1,37 @@
+{
+  "summary": "Tested Mantenimiento Masivo de Sucursales end to end. Backend: 17/17 pytest cases passed. They cover all 8 actions, validations, the 403 without the special permission and 200 with it, audit_trails UPDATE/DELETE entries, the delete skip with 'Proyecto en ejecución', and the permission catalog. Frontend (admin): the button is disabled with 0 selected and shows 'Acciones Masivas (N seleccionados)'. The master checkbox selects/clears all filtered rows, the 'Seleccionar todas las N sucursales del filtro' link works, and the menu has 8 actions. Group+Brand cascade: brand is disabled until a group is chosen, then only that group's brands show, A-Z. The grid fantasy name and DB marca_id/grupo_economico_id/fantasy_name were updated for 3 RIF. Integrador cascade: app is disabled until an integrator is chosen, then only its apps show; integrador_id/aplicativo persisted. Delete: lowercase 'eliminar' keeps the button disabled; ELIMINAR gives 2 processed and 1 skipped with 'Proyecto en ejecución'. Non-admin kherrera: without the permission, no mass-actions-bar/mass-select-all/row checkboxes; with the permission (re-login) they appear and a tipo_servicio action works; the coord_impl 'Aplicar este campo' checkbox enables its select. The sidebar 'Clientes' group shows for admin and kherrera, and /marcas is reachable. /admin/profiles shows the Clientes group with its 4 submodules and 'Función Especial: Mantenimiento Masivo'.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/clients/mass-action (categoria/segment/ejecutivo/coord_impl)", "issue": "Payload values are not checked against catalogs: any categoria_comercial string (e.g. 'TEST_MM Cat'), any segment string, and any ejecutivo/coordinator user_id are accepted. A nonexistent user_id sets an empty name."},
+      {"endpoint": "POST /api/clients/mass-action (integrador)", "issue": "payload.aplicativo is not checked against the integrator's app_name; the stored value is whatever the client sends."},
+      {"endpoint": "POST /api/clients/mass-action", "issue": "No limit on the size of client_ids. Each record runs several sequential awaits (dependency counts, propagate_rif), so 'select all N' on a large filter could be slow or hit ingress timeouts."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "MassActionDialog result view", "issue": "After the action runs, onDone clears massSelected, so the result dialog title shows '(0 seleccionados)' next to 'Procesados: N'. Cosmetic: keep the count from when the action started.", "selector": "[data-testid^='mass-dialog-']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_clients_mass_iter371.py", "/app/backend/tests/ui_fixture_iter371_mass.py", "/app/backend/tests/kherrera_iter371.py", "/app/test_reports/pytest/pytest_iter371.xml"],
+  "action_items": [
+    "Optional: check categoria_comercial, segment, ejecutivo, coordinator and implementer ids against catalogs/users before writing.",
+    "Optional: check that aplicativo matches the integrator's app_name.",
+    "Optional: keep the selected count in the result dialog title."
+  ],
+  "critical_code_review_comments": [
+    "clients_mass.py: on delete, branches are processed first so a Principal can be freed in the same batch. Correct.",
+    "group_brand checks that the brand belongs to the group (returns 400 otherwise) and skips branches with the reason 'Hereda la Marca de su Tienda Principal'. Correct.",
+    "SIMPLE_ACTIONS append to inherit_overrides and call propagate_rif only for principals. Behaves as intended.",
+    "The audit interceptor writes UPDATE/DELETE trails (entidad_id = client_id) for mass actions. Verified."
+  ],
+  "updated_files": ["/app/backend/tests/test_clients_mass_iter371.py", "/app/backend/tests/ui_fixture_iter371_mass.py", "/app/backend/tests/kherrera_iter371.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Admin rgonzalez@megasoft.com.ve / MegaSoft2026*. Non-admin kherrera@megasoft.com.ve password reset to Kherrera2026*Qa (must_change_password=False). Its special_permissions are back to the original list (proyectos:create, cotizaciones:equipos, cotizaciones:reparaciones); clientes:mantenimiento_masivo was revoked at the end.",
+  "seed_data_creation": "TEST_MM data (2 groups, 3 brands, 3 integrators, 6 clients J9500000xx, 1 project) was inserted directly into Mongo by ui_fixture_iter371_mass.py and removed with its cleanup, deleting only those ids; 0 remain. The audit_trails entries for cli_testmm_* remain because the audit log is append-only.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run: python /app/backend/tests/ui_fixture_iter371_mass.py setup|cleanup, and kherrera_iter371.py reset|grant|revoke. The pytest file runs setup and cleanup itself. For UI tests, log in via the API and set localStorage session_token/user. Use state='attached' when waiting for mass-actions-btn because the /clients grid is heavy."
+}

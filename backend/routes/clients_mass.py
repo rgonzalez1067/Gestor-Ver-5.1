@@ -27,6 +27,11 @@ SIMPLE_ACTIONS = {
 }
 
 
+SEGMENTS = ["Pymes", "Corporativo", "Emprendedor", "Mixto"]
+TIPOS_SERVICIO = ["VPOS", "MPOS", "Payment Gateway", "Link de Pago"]
+MAX_BATCH = 3000
+
+
 class MassActionRequest(BaseModel):
     action: str
     client_ids: list[str]
@@ -41,8 +46,12 @@ async def _require_mass(authorization):
 
 
 async def _user_name(uid):
-    u = await db.users.find_one({"user_id": uid}, {"_id": 0, "full_name": 1, "name": 1}) if uid else None
-    return (u or {}).get("full_name") or (u or {}).get("name") or ""
+    if not uid:
+        return ""
+    u = await db.users.find_one({"user_id": uid}, {"_id": 0, "full_name": 1, "name": 1})
+    if not u:
+        raise HTTPException(status_code=400, detail="Usuario no encontrado")
+    return u.get("full_name") or u.get("name") or ""
 
 
 async def _dependencies(c: dict) -> list[str]:
@@ -61,15 +70,15 @@ async def _dependencies(c: dict) -> list[str]:
 
 async def _build_set(action: str, p: dict) -> dict:
     if action == "segment":
-        if not p.get("segment"):
+        if p.get("segment") not in SEGMENTS:
             raise HTTPException(status_code=400, detail="Seleccione el segmento")
         return {"segment": p["segment"]}
     if action == "categoria":
-        if not p.get("categoria_comercial"):
-            raise HTTPException(status_code=400, detail="Seleccione la categoría comercial")
+        if not p.get("categoria_comercial") or not await db.commercial_categories.find_one({"name": p["categoria_comercial"]}, {"_id": 1}):
+            raise HTTPException(status_code=400, detail="Seleccione una categoría comercial válida")
         return {"categoria_comercial": p["categoria_comercial"]}
     if action == "tipo_servicio":
-        if not p.get("tipo_servicio"):
+        if not p.get("tipo_servicio") or any(t not in TIPOS_SERVICIO for t in p["tipo_servicio"]):
             raise HTTPException(status_code=400, detail="Seleccione el tipo de servicio")
         return {"tipo_servicio": list(p["tipo_servicio"])}
     if action == "ejecutivo":
@@ -87,9 +96,9 @@ async def _build_set(action: str, p: dict) -> dict:
         return out
     if action == "integrador":
         intg = await db.integrators.find_one({"integrator_id": p.get("integrador_id")}, {"_id": 0, "integrator_id": 1, "name": 1, "app_name": 1})
-        if not intg or not p.get("aplicativo"):
+        if not intg or not (intg.get("app_name") or "").strip():
             raise HTTPException(status_code=400, detail="Seleccione el integrador y el aplicativo")
-        return {"integrador_id": intg["integrator_id"], "integrador_name": intg["name"], "aplicativo": p["aplicativo"]}
+        return {"integrador_id": intg["integrator_id"], "integrador_name": intg["name"], "aplicativo": intg["app_name"]}
     raise HTTPException(status_code=400, detail="Acción no soportada")
 
 
@@ -99,6 +108,8 @@ async def clients_mass_action(req: MassActionRequest, authorization: str | None 
     ids = list(dict.fromkeys(req.client_ids or []))
     if not ids:
         raise HTTPException(status_code=400, detail="Seleccione al menos una sucursal")
+    if len(ids) > MAX_BATCH:
+        raise HTTPException(status_code=400, detail=f"Máximo {MAX_BATCH} registros por lote")
     docs = await db.clients.find({"client_id": {"$in": ids}}, {"_id": 0}).to_list(len(ids))
     updated, skipped = [], []
     label = lambda c: f"{c.get('rif', '')} {c.get('legal_name', '')} — {c.get('sucursal') or 'Principal'}".strip()

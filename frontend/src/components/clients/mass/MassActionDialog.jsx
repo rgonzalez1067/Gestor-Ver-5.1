@@ -34,10 +34,11 @@ export const MassActionDialog = ({ action, clientIds, onClose, onDone }) => {
   const [brands, setBrands] = useState([]);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null);
+  const [count, setCount] = useState(clientIds.length);
   const set = (patch) => setP(prev => ({ ...prev, ...patch }));
 
   useEffect(() => {
-    setP({}); setResult(null);
+    setP({}); setResult(null); setCount(clientIds.length);
     if (action === 'group_brand') {
       api.get('/grupos-economicos').then(r => setGroups(r.data || [])).catch(() => {});
       api.get('/marcas').then(r => setBrands(r.data || [])).catch(() => {});
@@ -142,7 +143,7 @@ export const MassActionDialog = ({ action, clientIds, onClose, onDone }) => {
   return (
     <Dialog open={!!action} onOpenChange={o => !o && onClose()}>
       <DialogContent className="max-w-lg" data-testid={`mass-dialog-${action}`}>
-        <DialogHeader><DialogTitle>{meta?.label} <span className="text-sm font-normal text-slate-500">({clientIds.length} seleccionados)</span></DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{meta?.label} <span className="text-sm font-normal text-slate-500">({count} seleccionados)</span></DialogTitle></DialogHeader>
         {result ? (
           <div className="space-y-3" data-testid="mass-result">
             <p className="text-sm text-emerald-700 font-medium">Procesados: <span data-testid="mass-result-processed">{result.processed}</span></p>

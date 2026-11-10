@@ -14,6 +14,9 @@ Password para todos: Test1234! (reseteado por el agente con config.hash_password
 - Admin (rgonzalez@megasoft.com.ve / Mega2026*): ve TODO (128).
 Regla: usuarios no-admin/no-Director solo ven registros del Histórico cuya `sede` (sede del USUARIO creador) coincida con la suya.
 
+## QA — Mantenimiento Masivo Sucursales (Nov 2026)
+- kherrera@megasoft.com.ve / Kherrera2026*Qa (role user, must_change_password=False). Permiso especial `clientes:mantenimiento_masivo` NO asignado (asignarlo para probar el flujo con permiso).
+
 ## QA — Cotizaciones de Reparación / seriales (Jun 2026)
 - kherrera@megasoft.com.ve / Test1234!  → Analista PYME, role=user (NO admin), special_permissions: proyectos:create, cotizaciones:equipos, cotizaciones:reparaciones. Usado para la prueba cruzada RBAC de paridad de seriales.
 - Cotización reparación de prueba con seriales: quo_fb10e377bbf3 (COT-2026-05-022-PYME).
