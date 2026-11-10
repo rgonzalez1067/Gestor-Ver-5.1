@@ -476,6 +476,8 @@ async def create_indexes():
             await migrate_brands()
             from services.client_hierarchy import relink_orphan_branches
             await relink_orphan_branches()
+            from services.quote_scope import resort_existing_scopes
+            await resort_existing_scopes()
         except Exception as e:
             logging.warning(f"[startup] client brands migration failed: {e}")
 

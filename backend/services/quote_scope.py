@@ -139,3 +139,21 @@ def scope_template_vars(doc: dict) -> dict:
         "Patrocinador_Cotizacion": doc.get("patrocinador_nombre") or "",
         "Matriz_Alcance_Cotizacion": _scope_matrix_html(doc),
     }
+
+
+async def resort_existing_scopes() -> dict:
+    """Única vez: reordena scope_tree/cotizacion_sucursales de cotizaciones previas."""
+    from config import db
+    key = "quote_scope_sort_v1"
+    if await db["_migrations"].find_one({"_id": key}):
+        return {"skipped": True}
+    n = 0
+    async for q in db.quotes.find({"scope_tree.0": {"$exists": True}}, {"_id": 0, "quote_id": 1, **{f: 1 for f in SCOPE_INPUT_FIELDS}}):
+        await db.quotes.update_one({"quote_id": q["quote_id"]}, {"$set": compute_scope(q)})
+        n += 1
+    m = 0
+    async for p in db.projects.find({"scope_tree.0": {"$exists": True}}, {"_id": 0, "project_id": 1, "scope_tree": 1}):
+        await db.projects.update_one({"project_id": p["project_id"]}, {"$set": {"scope_tree": sort_tree(p["scope_tree"])}})
+        m += 1
+    await db["_migrations"].update_one({"_id": key}, {"$set": {"quotes": n, "projects": m}}, upsert=True)
+    return {"quotes": n, "projects": m}

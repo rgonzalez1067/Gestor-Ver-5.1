@@ -1,0 +1,22 @@
+{
+  "summary": "Focused test of (1) structural ordering of the hierarchical scope and (2) hiding the sponsorship/IVA block in 'Nueva Implementación'. BACKEND: new pytest test_scope_order.py 4/4 passed. Setup: brand Zeta created before Alfa, RIFs sent shuffled (Sin marca, Zeta/Kiwi, Alfa/Mango, Zeta/Coco, Alfa/Banana), Banana branches sent reversed (Zulia, Barinas, Principal). After POST /quotes/create-with-pdf, GET scope_tree comes back ordered Alfa(Banana, Mango) → Zeta(Coco, Kiwi) → Sin marca last; Banana stores are Principal, Barinas, Zulia; cotizacion_sucursales follow the same order and box counts. After POST /send-to-implementation, project.rifs, project.stores and project.scope_tree are grouped by brand in that same order (project_type multirif). to_distribution and scope_template_vars (Matriz_Alcance_Cotizacion, Sucursales_Cotizacion, RIFs_Cotizacion) also keep the order. Regression suites test_quote_scope_vpos_mpos.py (8/8) and test_send_to_impl_scope.py (3/3) passed. FRONTEND (Playwright, admin): Implementaciones → Clientes Pymes with no type selected shows sponsored-impl-block in the DOM but not visible; only Tipo/Cliente/Modelo de Precios/Cajas/Bancos are shown in the parameters section. With VPOS (Cajas), quote-scope-selector appears and sponsored-impl-block appears below it (DOM and y position confirmed), with Tipo de Patrocinio / IVA / Servicio Express. MPOS behaves the same. With Payment Gateway the scope selector is hidden and the block shows 'Implementación Patrocinada Sí/No'. Enviar a Implementación modal: the seeded quote's scope_tree was deliberately stored unsorted in Mongo (Kiwi, Mango, Coco, Banana), and multistore-scope-phase still shows Alfa (Banana, Mango) then Zeta (Coco, Kiwi), Multi Marca, total 8, so the frontend sortTree works. All TEST_ORD / J96 data was deleted and a scan of all collections found 0 leftovers.",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "GET /api/quotes/{id} (legacy data)", "issue": "Quotes saved before this change keep their scope_tree and cotizacion_sucursales in the original unsorted order in the DB. Sorting only happens on save and at read time in to_distribution, template vars, send-to-impl and the frontend, so any consumer that reads cotizacion_sucursales directly from legacy quotes (reports/exports) will see them unordered. Optional: a one-time re-sort or sort at read time."}
+  ]},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": [
+    {"screen": "Nueva Implementación (no type selected)", "issues": ["The 'Detalles de Integración y Hardware' section (Integrador, Pinpad, Entidad Patrocinadora) is still visible before a type is chosen. This is not a regression, just noting it in case the intent is a minimal form until a type is picked."]}
+  ]},
+  "test_report_links": ["/app/backend/tests/test_scope_order.py", "/app/backend/tests/_ui_seed_scope_order.py", "/app/test_reports/pytest/pytest_iter368.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Frontend sortTree in scopeUtils.js does not normalize internal whitespace and has no RIF tiebreaker, while backend _k does both. Ties or odd spacing could order slightly differently between modal and PDF. Low risk.",
+    "The sponsored-impl-block is hidden with a CSS 'hidden' class instead of not being rendered. This works, but its validation messages still exist in the DOM when no type is chosen."
+  ],
+  "updated_files": ["/app/backend/tests/test_scope_order.py", "/app/backend/tests/_ui_seed_scope_order.py"],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "100% (all requested flows)"},
+  "test_credentials": "Admin rgonzalez@megasoft.com.ve / MegaSoft2026*",
+  "seed_data_creation": "TEST_ORD group/brands/RIFs (J96...)/branches/quotes/projects created temporarily and deleted afterwards (0 leftovers verified).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "UI seed: cd /app/backend/tests && python _ui_seed_scope_order.py seed creates a Paid Multi Marca quote whose stored scope_tree is deliberately unsorted (writes /tmp/ord_seed.json); clean with '... clean'. To open the send-to-impl modal: click quote-actions-{qid} (dropdown), then send-to-impl-btn-{qid}, then the 'Continuar' button of Personalizar Comunicación, which leads to multistore-scope-phase. The create-quote-button is a Radix dropdown; use menuitem 'Clientes Pymes'. select-quote-type is a Radix Select (role=option)."
+}
