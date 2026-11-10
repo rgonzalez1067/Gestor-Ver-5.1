@@ -422,7 +422,8 @@ async def _build_clientes_proyecto_html(project: dict) -> str:
                 html += (f'<tr style="background:{bg};"><td style="{td}">{e["grupo"]}</td><td style="{td}">{e["marca"]}</td>'
                          f'<td style="{td}">{e["rif"]} — {e["razon"]}</td><td style="{td}">{e["sucursal"] or "—"}</td>'
                          f'<td style="{td}text-align:center;">{e["cajas"]}</td></tr>')
-            html += subtotal(f'Subtotal RIF {rif}', sum(e["cajas"] for e in r_rows), "#f1f5f9", "#475569")
+            if len(r_rows) > 1:
+                html += subtotal(f'Subtotal RIF {rif}', sum(e["cajas"] for e in r_rows), "#f1f5f9", "#475569")
         html += subtotal(f'Subtotal Marca {marca}', sum(e["cajas"] for e in m_rows), "#dbeafe", "#1e40af")
     total = sum(e["cajas"] for e in entries)
     html += (f'<tr style="background:#eef2f7;font-weight:bold;"><td colspan="4" style="{td}">TOTAL GENERAL</td>'
