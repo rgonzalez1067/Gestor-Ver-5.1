@@ -405,15 +405,25 @@ async def _build_clientes_proyecto_html(project: dict) -> str:
             f'<th style="{th}">Grupo Económico</th><th style="{th}">Marca</th>'
             f'<th style="{th}">RIF / Razón Social</th><th style="{th}">Sucursal</th>'
             f'<th style="{th}text-align:center;">Cajas</th></tr></thead><tbody>')
-    current = None
-    for idx, e in enumerate(entries):
-        if e["marca"] != current:
-            current = e["marca"]
-            html += f'<tr style="background:#e3f2fd;font-weight:bold;color:#1565c0;"><td colspan="5" style="{td}">{current}</td></tr>'
-        bg = "#f8f9fa" if idx % 2 == 0 else "#ffffff"
-        html += (f'<tr style="background:{bg};"><td style="{td}">{e["grupo"]}</td><td style="{td}">{e["marca"]}</td>'
-                 f'<td style="{td}">{e["rif"]} — {e["razon"]}</td><td style="{td}">{e["sucursal"] or "—"}</td>'
-                 f'<td style="{td}text-align:center;">{e["cajas"]}</td></tr>')
+    def subtotal(label, value, bg, color):
+        return (f'<tr style="background:{bg};font-weight:bold;color:{color};"><td colspan="4" style="{td}text-align:right;">{label}</td>'
+                f'<td style="{td}text-align:center;">{value}</td></tr>')
+
+    from itertools import groupby
+    idx = 0
+    for marca, m_rows in groupby(entries, key=lambda e: e["marca"]):
+        m_rows = list(m_rows)
+        html += f'<tr style="background:#e3f2fd;font-weight:bold;color:#1565c0;"><td colspan="5" style="{td}">{marca}</td></tr>'
+        for rif, r_rows in groupby(m_rows, key=lambda e: e["rif"]):
+            r_rows = list(r_rows)
+            for e in r_rows:
+                bg = "#f8f9fa" if idx % 2 == 0 else "#ffffff"
+                idx += 1
+                html += (f'<tr style="background:{bg};"><td style="{td}">{e["grupo"]}</td><td style="{td}">{e["marca"]}</td>'
+                         f'<td style="{td}">{e["rif"]} — {e["razon"]}</td><td style="{td}">{e["sucursal"] or "—"}</td>'
+                         f'<td style="{td}text-align:center;">{e["cajas"]}</td></tr>')
+            html += subtotal(f'Subtotal RIF {rif}', sum(e["cajas"] for e in r_rows), "#f1f5f9", "#475569")
+        html += subtotal(f'Subtotal Marca {marca}', sum(e["cajas"] for e in m_rows), "#dbeafe", "#1e40af")
     total = sum(e["cajas"] for e in entries)
     html += (f'<tr style="background:#eef2f7;font-weight:bold;"><td colspan="4" style="{td}">TOTAL GENERAL</td>'
              f'<td style="{td}text-align:center;">{total}</td></tr>')
