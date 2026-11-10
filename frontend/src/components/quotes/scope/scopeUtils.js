@@ -17,9 +17,15 @@ export const scopePayload = (qd) => (isScopeType(qd.quote_type) ? {
   patrocinador_nombre: qd.patrocinador_nombre || null,
 } : {});
 
+const k = (s) => (s || '').trim().toLowerCase();
+// Orden de estructura: Marca (A-Z, sin marca al final) → RIF → Principal y sucursales.
+export const sortTree = (tree = []) => tree
+  .map(r => ({ ...r, stores: [...(r.stores || [])].sort((a, b) => (!!b.is_principal - !!a.is_principal) || k(a.name).localeCompare(k(b.name), 'es')) }))
+  .sort((a, b) => (!a.marca_name - !b.marca_name) || k(a.marca_name).localeCompare(k(b.marca_name), 'es') || k(a.legal_name).localeCompare(k(b.legal_name), 'es'));
+
 // Distribución para el PDF ("Detalle de Tiendas y Sucursales") cuando hay >1 RIF o >1 tienda.
 export const scopeDistribution = (qd) => {
-  const tree = isScopeType(qd.quote_type) ? (qd.scope_tree || []) : [];
+  const tree = sortTree(isScopeType(qd.quote_type) ? (qd.scope_tree || []) : []);
   const stores = tree.reduce((s, r) => s + (r.stores || []).length, 0);
   if (tree.length < 2 && stores < 2) return [];
   return tree.map(r => {

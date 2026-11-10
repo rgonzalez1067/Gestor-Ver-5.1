@@ -20,6 +20,17 @@ def _int(v) -> int:
         return 0
 
 
+def _k(s) -> str:
+    return " ".join((s or "").split()).lower()
+
+
+def sort_tree(tree: list) -> list:
+    """Orden de estructura: Marca (A-Z, sin marca al final) → RIF (razón social) → Principal y sucursales (A-Z)."""
+    for r in tree:
+        r["stores"] = sorted(r.get("stores") or [], key=lambda s: (not s.get("is_principal"), _k(s.get("name"))))
+    return sorted(tree, key=lambda r: (not r.get("marca_name"), _k(r.get("marca_name")), _k(r.get("legal_name")), r.get("rif") or ""))
+
+
 def clean_tree(tree) -> list:
     out = []
     for r in tree or []:
@@ -30,7 +41,7 @@ def clean_tree(tree) -> list:
                   for s in (r.get("stores") or []) if s.get("client_id")]
         out.append({"client_id": r["client_id"], "rif": r.get("rif") or "", "legal_name": r.get("legal_name") or "",
                     "marca_id": r.get("marca_id") or None, "marca_name": r.get("marca_name") or "", "stores": stores})
-    return out
+    return sort_tree(out)
 
 
 def infer_project_type(tree: list) -> str:
@@ -77,8 +88,8 @@ def is_multi(tree: list) -> bool:
 def to_distribution(tree: list, desglose: bool) -> list:
     """Formato `multirif_distribution` (PDF / proyecto) a partir del árbol."""
     dist = []
-    for r in tree or []:
-        stores = [{"name": s["name"], "boxes": s["boxes"] if desglose else 0} for s in r.get("stores") or []]
+    for r in sort_tree([dict(x) for x in tree or []]):
+        stores = [{"name": s.get("name", ""), "boxes": _int(s.get("boxes")) if desglose else 0} for s in r.get("stores") or []]
         label = r.get("legal_name") or r.get("rif")
         if r.get("marca_name"):
             label = f"{r['marca_name']} · {label}"
@@ -88,7 +99,7 @@ def to_distribution(tree: list, desglose: bool) -> list:
 
 
 def _scope_matrix_html(quote: dict) -> str:
-    tree = quote.get("scope_tree") or []
+    tree = sort_tree([dict(x) for x in (quote.get("scope_tree") or [])])
     if not tree:
         return ""
     desglose = quote.get("cajas_desglose")
@@ -110,7 +121,7 @@ def _scope_matrix_html(quote: dict) -> str:
 
 def scope_template_vars(doc: dict) -> dict:
     """Variables de plantilla (cotización o proyecto con los mismos campos)."""
-    tree = doc.get("scope_tree") or []
+    tree = sort_tree([dict(x) for x in (doc.get("scope_tree") or [])])
     marcas = sorted({r.get("marca_name") for r in tree if r.get("marca_name")})
     patrocinio = doc.get("patrocinador_tipo")
     total = total_store_boxes(tree) if doc.get("cajas_desglose") else (doc.get("cantidad_cajas") or doc.get("box_count") or 0)

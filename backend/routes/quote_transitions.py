@@ -331,7 +331,8 @@ async def _create_project_from_quote(
     # Alcance jerárquico VPOS/MPOS (Grupo → Marcas → RIFs → Sucursales): tipificación y árbol.
     scope_tree = quote.get("scope_tree") or []
     if scope_tree and not quote.get("is_multirif"):
-        from services.quote_scope import infer_project_type, to_distribution
+        from services.quote_scope import infer_project_type, to_distribution, sort_tree
+        scope_tree = sort_tree([dict(r) for r in scope_tree])
         tipologia = quote.get("tipo_proyecto_inferido") or infer_project_type(scope_tree)
         desglose = bool(quote.get("cajas_desglose"))
         for k in ("nivel_cotizacion", "grupo_economico_id", "grupo_economico_name", "patrocinador_tipo",

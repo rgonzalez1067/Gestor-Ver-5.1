@@ -1,10 +1,11 @@
 import { Button } from '../../ui/button';
 import { GitBranch, Tag, FileText, MapPin, ArrowRight } from 'lucide-react';
+import { sortTree } from './scopeUtils';
 
 // Estructura completa definida en la cotización (Multi Marca / Multi RIF / Multitienda).
 export const ScopeTreePhase = ({ scope, onContinue }) => {
   const { tipologia, tree, desglose, total } = scope;
-  const byBrand = tree.reduce((m, r) => {
+  const byBrand = sortTree(tree).reduce((m, r) => {
     const k = r.marca_name || 'Sin marca';
     m[k] = [...(m[k] || []), r];
     return m;

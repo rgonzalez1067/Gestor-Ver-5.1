@@ -4,7 +4,7 @@ import { Layers } from 'lucide-react';
 import api from '../../../utils/api';
 import { EntityChecklist } from './EntityChecklist';
 import { StoresBoxesGrid } from './StoresBoxesGrid';
-import { inferTipologia } from './scopeUtils';
+import { inferTipologia, sortTree } from './scopeUtils';
 
 const LEVELS = [['GRUPO', 'Grupo Económico'], ['MARCA', 'Marca'], ['RIF', 'RIF']];
 
@@ -76,13 +76,13 @@ export const QuoteScopeSelector = ({ value, onChange, clients }) => {
   // Emitir árbol
   useEffect(() => {
     const meta = Object.fromEntries(rifItems.map(i => [i.id, i]));
-    const tree = rifIds.map(id => {
+    const tree = sortTree(rifIds.map(id => {
       const m = meta[id] || rifInfo[id] || {};
       const stores = (storesByRif[id]?.length ? storesByRif[id] : (rifInfo[id]?.stores || []))
         .filter(s => (picked[id] || []).includes(s.client_id))
         .map(s => ({ ...s, boxes: parseInt(boxes[s.client_id]) || 0 }));
       return { client_id: id, rif: m.rif || m.sub || '', legal_name: m.legal_name || m.label || '', marca_id: m.marca_id || null, marca_name: m.marca_name || '', stores };
-    });
+    }));
     const g = groups.find(x => x.group_id === groupId[0]);
     const total = tree.reduce((s, r) => s + r.stores.reduce((a, st) => a + st.boxes, 0), 0);
     onChange({

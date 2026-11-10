@@ -766,7 +766,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                 )}
 
                 {/* Implementación Patrocinada — aplica a TODOS los tipos de cotización */}
-                <div className="mt-4 p-4 bg-white border border-slate-200 rounded-lg" data-testid="sponsored-impl-block">
+                <div className={`mt-4 p-4 bg-white border border-slate-200 rounded-lg ${!quoteData.quote_type ? 'hidden' : ''}`} data-testid="sponsored-impl-block">
                   <div className="flex items-start gap-4 flex-wrap">
                     {isMultiRif ? (
                       <div className="flex-1 min-w-0 bg-emerald-50 border border-emerald-200 rounded-lg p-3" data-testid="multirif-implicit-sponsor">
