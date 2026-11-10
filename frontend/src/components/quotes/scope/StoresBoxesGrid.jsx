@@ -18,15 +18,25 @@ export const StoresBoxesGrid = ({ rifs, picked, onPick, boxes, onBoxes, desglose
     </div>
     <div className="max-h-72 overflow-y-auto divide-y">
       {rifs.length === 0 && <p className="text-xs text-slate-400 italic p-3">Seleccione al menos un RIF.</p>}
-      {rifs.map(r => {
+      {rifs.map((r, i) => {
         const sel = picked[r.client_id] || [];
         const allOn = r.stores.length > 0 && r.stores.every(s => sel.includes(s.client_id));
+        const brand = r.marca_name || 'Sin marca';
+        const showBrand = i === 0 || brand !== (rifs[i - 1].marca_name || 'Sin marca');
+        const brandRifs = rifs.filter(x => (x.marca_name || 'Sin marca') === brand);
+        const brandBoxes = brandRifs.reduce((s, x) => s + (picked[x.client_id] || []).reduce((a, sid) => a + (parseInt(boxes[sid]) || 0), 0), 0);
+        const brandStores = brandRifs.reduce((s, x) => s + (picked[x.client_id] || []).length, 0);
         return (
           <div key={r.client_id} data-testid={`scope-rif-block-${r.client_id}`}>
+            {showBrand && (
+              <div className="px-3 py-1.5 bg-teal-600 text-white text-[11px] font-bold uppercase tracking-wide flex items-center justify-between" data-testid={`scope-brand-header-${brand}`}>
+                <span>Marca: {brand}</span>
+                <span className="normal-case font-medium opacity-90">{brandRifs.length} RIF · {brandStores} tienda(s){desglose ? ` · ${brandBoxes} cajas` : ''}</span>
+              </div>
+            )}
             <div className="px-3 py-1.5 bg-indigo-50/60 flex items-center gap-2 text-xs">
               <span className="font-mono text-slate-500">{r.rif}</span>
               <span className="font-semibold text-slate-800 truncate">{r.legal_name}</span>
-              {r.marca_name && <span className="text-[10px] text-teal-700 bg-teal-50 px-1.5 rounded">{r.marca_name}</span>}
               <button type="button" className="ml-auto text-[11px] text-indigo-600 hover:underline" data-testid={`scope-stores-all-${r.client_id}`}
                 onClick={() => onPick(r.client_id, allOn ? [] : r.stores.map(s => s.client_id))}>{allOn ? 'Quitar todas' : 'Todas'}</button>
             </div>

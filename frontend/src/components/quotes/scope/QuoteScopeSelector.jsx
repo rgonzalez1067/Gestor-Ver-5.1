@@ -102,10 +102,10 @@ export const QuoteScopeSelector = ({ value, onChange, clients }) => {
     setRifIds(prev => prev.filter(id => valid.has(id)));
   };
   const total = rifIds.reduce((s, id) => s + (picked[id] || []).reduce((a, sid) => a + (parseInt(boxes[sid]) || 0), 0), 0);
-  const gridRifs = rifIds.map(id => {
+  const gridRifs = sortTree(rifIds.map(id => {
     const m = rifItems.find(i => i.id === id) || rifInfo[id] || {};
     return { client_id: id, rif: m.sub || m.rif, legal_name: m.label || m.legal_name, marca_name: m.marca_name, stores: storesByRif[id]?.length ? storesByRif[id] : (rifInfo[id]?.stores || []) };
-  });
+  }));
 
   return (
     <div className="mt-4 p-4 bg-white border border-indigo-200 rounded-lg space-y-3" data-testid="quote-scope-selector">
