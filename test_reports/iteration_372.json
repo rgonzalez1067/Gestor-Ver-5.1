@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend test of the new multiselect filters on /clients (Ejecutivo Propietario and Implementador) as admin rgonzalez, and how they work with mass selection and mass actions. Used 4 isolated TEST_FLT clients created by a fixture and deleted afterwards. Everything requested works. Both buttons appear next to the segment filter and show 'Todos (Ejecutivo)' / 'Todos (Implementador)'. The lists show 'Sin asignar' plus the values found in the data, sorted A-Z, and the search box filters them. Several values can be checked at once. Values inside one filter combine with OR: Alfa alone shows 2 rows, Alfa+Beta shows 4. Filters combine with each other with AND: Alfa|Beta with Impl Uno shows rows 1 and 3, and adding 'Sin asignar' to the implementer filter gives rows 1, 3 and 4. Adding segment Pymes leaves only row 1. Ejecutivo 'Sin asignar' alone shows 625 rows, matching the API. Button labels read 'Ejecutivo: 2' or the single name. 'Quitar filtro' and client-clear-filters-btn ('Limpiar') both reset to all 1145 rows, and the Limpiar button hides afterwards. The master checkbox selected only the 4 filtered rows. Narrowing the filter cut the selection from 4 to 2 and the master checkbox stayed checked. A mass segment change to Mixto on those 2 rows processed 2. In the DB only cli_testflt_1 and cli_testflt_3 became Mixto; rows 2 and 4 kept Pymes and no other client was touched. Filters stay applied after the grid reloads, and the selection resets to 0.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "MultiSelectFilter (Ejecutivo)", "issue": "Two different users are both named 'Anderson Godoy' (user_54999f93a974 with 15 clients and user_1bb4605153e7 with 3 clients). The list shows two identical 'Anderson Godoy' options that cannot be told apart. CommandItem uses value={o.label}, so cmdk treats them as the same item: both highlight together (data-selected=true on 2 items), and pressing Enter can toggle the wrong one. Fix: use value={`${o.label} ${o.value}`} as SearchableSelect already does. You could also add a hint such as the email to tell them apart, or merge the duplicate user.", "selector": "[data-testid^='client-ejecutivo-filter-option-user_']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/clients filter bar", "issues": ["The Ejecutivo/Implementador buttons (Button size=sm) use smaller text than the segment Select trigger and search input next to them, so the row looks slightly uneven. Consider text-sm to match."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/ui_fixture_iter372_filters.py"],
+  "action_items": [
+    "MultiSelectFilter.jsx: make each CommandItem value unique (label + value) so options with the same name do not highlight or select together",
+    "Optional: make the filter buttons the same font size as the segment select"
+  ],
+  "critical_code_review_comments": [
+    "ejKey/implKey fall back to the name when there is no user_id. If some records of one person have a user_id and others only the name, that person will show up as two options. The current data has no such case, but it is fragile.",
+    "Options are built only from the clients already loaded, so users with no assigned clients never appear. This is fine for filtering.",
+    "Clients.jsx is about 2400 lines, far above the 700-line guideline. The filter logic could move to a hook such as useClientFilters."
+  ],
+  "updated_files": ["/app/backend/tests/ui_fixture_iter372_filters.py"],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "Created 4 TEST_FLT clients (cli_testflt_1..4) with the fixture and deleted them afterwards (cleanup ok). No real data was changed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run python /app/backend/tests/ui_fixture_iter372_filters.py setup|show|cleanup. It creates clients with ejecutivo_propietario TEST_FLT Ejec Alfa/Beta and implementer_name TEST_FLT Impl Uno/Dos/None. Option testids use the key (user_id, or the name when there is no user_id), e.g. client-ejecutivo-filter-option-TEST_FLT Ejec Alfa. For UI tests, log in via the API and set localStorage session_token/user."
+}

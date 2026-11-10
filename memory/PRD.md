@@ -4750,3 +4750,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - `services/report_header.py`: html_with_page_header (WeasyPrint, elemento running) y draw_page_header (ReportLab). Se aplica en Productos por Banco, Bancos por Producto, Carga de Proyectos, Avance de Proyecto, Cotizaciones Irregulares, Resumen Ejecutivo, Integradores, Grupo Económico, Implementadores y Asignación Temporal.
 - Nota de Entrega y Nota de Transferencia: encabezado con logo y título en cada página (topMargin 3 cm, sin solaparse). Si falta el logo indicado se usa uploads/logo.png.
 - Fix: el export PDF de Integradores daba 500 (faltaban los imports de reportlab).
+
+- 2026-06: Filtros multiselección por Ejecutivo Propietario e Implementador en Clientes > Sucursales (incluye "Sin asignar"), integrados con la selección para acciones masivas. Probado (iteración 372).
