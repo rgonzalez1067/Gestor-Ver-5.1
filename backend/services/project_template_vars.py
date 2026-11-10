@@ -380,10 +380,10 @@ async def _build_clientes_proyecto_html(project: dict) -> str:
     entries = []
     for s in stores:
         cid = rif_client.get(s.get("rif_id")) or (None if s.get("rif") else proj["client_id"])
-        entries.append({"client_id": cid, "rif": s.get("rif") or proj["rif"], "name": s.get("client_name") or proj["name"], "sucursal": s.get("name", "")})
+        entries.append({"client_id": cid, "rif": s.get("rif") or proj["rif"], "name": s.get("client_name") or proj["name"], "sucursal": s.get("name", ""), "cajas": int(s.get("box_count") or 0)})
     if not entries:
-        entries = [{"client_id": r.get("client_id"), "rif": r.get("rif", ""), "name": r.get("client_name", ""), "sucursal": ""} for r in rifs] \
-            or [{**proj, "sucursal": project.get("sede_name") or ""}]
+        entries = [{"client_id": r.get("client_id"), "rif": r.get("rif", ""), "name": r.get("client_name", ""), "sucursal": "", "cajas": int(r.get("box_count") or 0)} for r in rifs] \
+            or [{**proj, "sucursal": project.get("sede_name") or "", "cajas": int(project.get("cantidad_cajas") or max((s.get("cantidad_cajas", 0) or 0 for s in project.get("services") or []), default=0) or 0)}]
 
     cache = {}
     for e in entries:
@@ -403,15 +403,20 @@ async def _build_clientes_proyecto_html(project: dict) -> str:
     html = ('<table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:13px;">'
             '<thead><tr style="background:#2c3e50;color:white;">'
             f'<th style="{th}">Grupo Económico</th><th style="{th}">Marca</th>'
-            f'<th style="{th}">RIF / Razón Social</th><th style="{th}">Sucursal</th></tr></thead><tbody>')
+            f'<th style="{th}">RIF / Razón Social</th><th style="{th}">Sucursal</th>'
+            f'<th style="{th}text-align:center;">Cajas</th></tr></thead><tbody>')
     current = None
     for idx, e in enumerate(entries):
         if e["marca"] != current:
             current = e["marca"]
-            html += f'<tr style="background:#e3f2fd;font-weight:bold;color:#1565c0;"><td colspan="4" style="{td}">{current}</td></tr>'
+            html += f'<tr style="background:#e3f2fd;font-weight:bold;color:#1565c0;"><td colspan="5" style="{td}">{current}</td></tr>'
         bg = "#f8f9fa" if idx % 2 == 0 else "#ffffff"
         html += (f'<tr style="background:{bg};"><td style="{td}">{e["grupo"]}</td><td style="{td}">{e["marca"]}</td>'
-                 f'<td style="{td}">{e["rif"]} — {e["razon"]}</td><td style="{td}">{e["sucursal"] or "—"}</td></tr>')
+                 f'<td style="{td}">{e["rif"]} — {e["razon"]}</td><td style="{td}">{e["sucursal"] or "—"}</td>'
+                 f'<td style="{td}text-align:center;">{e["cajas"]}</td></tr>')
+    total = sum(e["cajas"] for e in entries)
+    html += (f'<tr style="background:#eef2f7;font-weight:bold;"><td colspan="4" style="{td}">TOTAL GENERAL</td>'
+             f'<td style="{td}text-align:center;">{total}</td></tr>')
     return html + '</tbody></table>'
 
 
