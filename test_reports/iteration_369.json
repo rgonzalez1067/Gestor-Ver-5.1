@@ -1,0 +1,24 @@
+{
+  "summary": "Short frontend-only test of the 'Características particulares del Proyecto' editor (ProjectFeaturesField, 400ms debounce). Logged in as admin, opened /quotes > Implementaciones > Clientes Pymes, picked type 'Payment Gateway', a client and an integrator. Picking a client and integrator is required because the editor only renders when isHeaderComplete is true; for PG/Link de Pago its testid is 'pg-features-editor', not 'quote-features-editor'. Typed 'Texto de prueba rapido 1234567890 '*6 (204 chars, delay=15). The editor text matched exactly, with no lost or out-of-order characters, and the counter showed 204/1000. Total typing time was 17.5s, about 86ms per key: 15ms delay plus Playwright remote overhead. A 10-char burst with delay=0 took 0.8s and was also correct. Text stayed after clicking outside (blur) and after scrolling up and back down. During a second 50-char run (3.9s) the longtask observer recorded only one long task, 257ms, probably the debounce flush re-rendering the parent form. Per-key main-thread work stayed under 50ms. No quotes were saved.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "None blocking. Optional: the parent Quotes.jsx (>4400 lines) re-renders on each debounce flush (~257ms long task observed); consider memoizing heavy sections if users notice a hitch 400ms after they stop typing."
+  ],
+  "critical_code_review_comments": [
+    "ProjectFeaturesField: the onBlur on the wrapper fires on focus moving between toolbar buttons and the editor (bubbling blur) - harmless (only flushes pending).",
+    "Unmount flush calls onChange of the parent after the dialog closes - fine since setQuoteData is a state setter, but if the dialog resets quoteData on close, a late flush could re-populate notes; verify reset order.",
+    "pages/Quotes.jsx and QuoteWizardDialog.jsx are very large (>2500/4400 lines) - root cause of the original typing lag; should be split."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "seed_data_creation": "None. No quotes were saved.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "In this environment, Playwright wait_for_selector/visible checks on /quotes hang even when the element is visible (probably continuous re-render or animation). Use fixed waits, JS clicks (pointerdown dispatch for Radix DropdownMenu trigger create-quote-button), and click(force=True, no_wait_after=True). The editor needs select-quote-type + select-client + select-integrator. For PG/Link de Pago the testid is pg-features-editor-wrapper; for other types it is quote-features-editor-wrapper. 'Link de Pago/Tokenizador' opens a variant sub-modal with a 'Continuar' button."
+}
