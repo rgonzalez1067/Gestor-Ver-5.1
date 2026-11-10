@@ -59,7 +59,11 @@ export const BatchUpdateModal = ({
 
   const rifs = project?.rifs || [];
   const isMultiRif = rifs.length > 0;
-  const rifLabel = (r) => `${r.client_name || 'Cliente'} — RIF: ${r.rif || ''}`;
+  const rifLabel = (r) => {
+    const raw = r.client_name || 'Cliente';
+    const legal = r.marca_name && raw.startsWith(`${r.marca_name} · `) ? raw.slice(r.marca_name.length + 3) : raw;
+    return `${r.rif || ''} ${legal}${r.marca_name ? ` · ${r.marca_name}` : ''}`;
+  };
   const storesOfRif = (rifId) => stores.filter(s => s.rif_id === rifId);
   const rifPct = (rifId) => weightedProgress(storesOfRif(rifId));
   const globalPct = weightedProgress(stores);
@@ -225,9 +229,13 @@ export const BatchUpdateModal = ({
                       {isMultiRif && batchRif !== '__ALL__' ? 'Este RIF no tiene tiendas' : 'Este proyecto no tiene tiendas'}
                     </p>
                   ) : (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className={`grid gap-2 ${isMultiRif ? 'grid-cols-1' : 'grid-cols-2'}`}>
                       {filteredStores.map(s => {
                         const sp = calcStoreProgress(s);
+                        const r = isMultiRif ? rifs.find(x => x.rif_id === s.rif_id) : null;
+                        const marca = s.marca_name || r?.marca_name || '';
+                        const rawName = r?.client_name || s.client_name || '';
+                        const legal = marca && rawName.startsWith(`${marca} · `) ? rawName.slice(marca.length + 3) : rawName;
                         return (
                           <label key={s.store_id} className="flex items-center gap-2 text-sm p-1.5 rounded hover:bg-white cursor-pointer" data-testid={`batch-store-${s.store_id}`}>
                             <Checkbox
@@ -235,11 +243,25 @@ export const BatchUpdateModal = ({
                               onCheckedChange={() => toggleBatchStore(s.store_id)}
                             />
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-medium text-slate-700 truncate">{s.name}</span>
-                                <span className={`text-[9px] font-bold px-1 py-0.5 rounded-full shrink-0 ${pctChipClass(sp)}`}>{sp}%</span>
-                              </div>
-                              <div className="text-[10px] text-slate-400">{s.code || ''} · {s.box_count || 0} PDV</div>
+                              {r ? (
+                                <>
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="font-mono font-bold text-slate-700 shrink-0">{r.rif || s.rif}</span>
+                                    <span className="font-medium text-slate-700 truncate" data-testid={`batch-store-legal-${s.store_id}`}>{legal}</span>
+                                    {marca && <span className="text-[11px] text-indigo-600 shrink-0" data-testid={`batch-store-marca-${s.store_id}`}>· {marca}</span>}
+                                    <span className={`text-[9px] font-bold px-1 py-0.5 rounded-full shrink-0 ${pctChipClass(sp)}`}>{sp}%</span>
+                                  </div>
+                                  <div className="text-[10px] text-slate-400">{s.name} · {s.box_count || 0} PDV</div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-medium text-slate-700 truncate">{s.name}</span>
+                                    <span className={`text-[9px] font-bold px-1 py-0.5 rounded-full shrink-0 ${pctChipClass(sp)}`}>{sp}%</span>
+                                  </div>
+                                  <div className="text-[10px] text-slate-400">{s.code || ''} · {s.box_count || 0} PDV</div>
+                                </>
+                              )}
                             </div>
                           </label>
                         );
