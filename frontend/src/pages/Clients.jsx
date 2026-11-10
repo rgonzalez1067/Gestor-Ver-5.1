@@ -25,6 +25,7 @@ import { ClientEmailDialog } from '../components/ClientEmailDialog';
 import { ClientsBulkUpdateModal } from '../components/ClientsBulkUpdateModal';
 import { BrandPicker } from '../components/clients/hierarchy/BrandPicker';
 import { MassActionsMenu } from '../components/clients/mass/MassActionsMenu';
+import { MultiSelectFilter, NONE_VALUE } from '../components/clients/MultiSelectFilter';
 import { MassActionDialog } from '../components/clients/mass/MassActionDialog';
 import { BrandDialog } from '../components/clients/hierarchy/BrandDialog';
 import { InheritanceSummary } from '../components/clients/hierarchy/InheritanceSummary';
@@ -79,6 +80,8 @@ export const Clients = () => {
   const [deleteClientData, setDeleteClientData] = useState({ id: null, name: null });
   const [searchTerm, setSearchTerm] = useState('');
   const [segmentFilter, setSegmentFilter] = useState('all');
+  const [ejecutivoFilter, setEjecutivoFilter] = useState([]);
+  const [implementerFilter, setImplementerFilter] = useState([]);
   const [integradorPopoverOpen, setIntegradorPopoverOpen] = useState(false);
   // Email communication
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -1002,14 +1005,32 @@ export const Clients = () => {
   };
 
   // Filtered clients
+  const ejKey = c => c.ejecutivo_user_id || c.ejecutivo_propietario || NONE_VALUE;
+  const implKey = c => c.implementer_user_id || c.implementer_name || NONE_VALUE;
+  const buildOpts = (keyFn, nameFn) => {
+    const m = new Map();
+    clients.forEach(c => { const k = keyFn(c); if (k !== NONE_VALUE && !m.has(k)) m.set(k, nameFn(c) || k); });
+    return [...m].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
+  };
+  const ejecutivoOptions = buildOpts(ejKey, c => c.ejecutivo_propietario);
+  const implementerOptions = buildOpts(implKey, c => c.implementer_name);
+  const hasFilters = segmentFilter !== 'all' || searchTerm || ejecutivoFilter.length > 0 || implementerFilter.length > 0;
   const filtered = clients.filter(c => {
     if (segmentFilter !== 'all' && (c.segment || '') !== segmentFilter) return false;
+    if (ejecutivoFilter.length && !ejecutivoFilter.includes(ejKey(c))) return false;
+    if (implementerFilter.length && !implementerFilter.includes(implKey(c))) return false;
     if (!searchTerm) return true;
     const s = searchTerm.toLowerCase();
     return c.rif?.toLowerCase().includes(s) || c.legal_name?.toLowerCase().includes(s) ||
       c.fantasy_name?.toLowerCase().includes(s) || (c.sucursal || '').toLowerCase().includes(s) ||
       (c.grupo_economico || '').toLowerCase().includes(s);
   });
+  const filterSig = `${segmentFilter}|${searchTerm}|${ejecutivoFilter.join(',')}|${implementerFilter.join(',')}`;
+  useEffect(() => {
+    const ids = new Set(filtered.map(c => c.client_id));
+    setMassSelected(prev => prev.filter(id => ids.has(id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterSig]);
 
   if (loading) {
     return (
@@ -1681,7 +1702,7 @@ export const Clients = () => {
 
           {/* Search */}
           <div className="flex items-center justify-between gap-4 mb-4">
-            <div className="flex items-center gap-3 flex-1">
+            <div className="flex items-center gap-3 flex-1 flex-wrap">
               <div className="max-w-sm relative flex-1">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <DebouncedInput placeholder="Buscar por RIF, nombre, sucursal o grupo económico..." value={searchTerm}
@@ -1700,11 +1721,15 @@ export const Clients = () => {
                   </SelectContent>
                 </Select>
               </div>
-              {(segmentFilter !== 'all' || searchTerm) && (
+              <MultiSelectFilter label="Ejecutivo" options={ejecutivoOptions} selected={ejecutivoFilter}
+                onChange={setEjecutivoFilter} testId="client-ejecutivo-filter" />
+              <MultiSelectFilter label="Implementador" options={implementerOptions} selected={implementerFilter}
+                onChange={setImplementerFilter} testId="client-implementer-filter" />
+              {hasFilters && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => { setSegmentFilter('all'); setSearchTerm(''); }}
+                  onClick={() => { setSegmentFilter('all'); setSearchTerm(''); setEjecutivoFilter([]); setImplementerFilter([]); }}
                   data-testid="client-clear-filters-btn"
                   className="text-slate-500"
                 >
