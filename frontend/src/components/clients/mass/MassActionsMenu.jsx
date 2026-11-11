@@ -3,9 +3,9 @@ import { Button } from '../../ui/button';
 import { Zap, ChevronDown, Trash2, Building2, Users, BarChart3, UserCog, Tag, Cog, Wrench } from 'lucide-react';
 import { MASS_ACTIONS } from './MassActionDialog';
 
-const ICONS = { delete: Trash2, group_brand: Building2, coord_impl: Users, segment: BarChart3, ejecutivo: UserCog, categoria: Tag, integrador: Cog, tipo_servicio: Wrench };
+const ICONS = { delete: Trash2, group_brand: Building2, group: Building2, coord_impl: Users, segment: BarChart3, ejecutivo: UserCog, categoria: Tag, integrador: Cog, tipo_servicio: Wrench };
 
-export const MassActionsMenu = ({ count, onPick }) => (
+export const MassActionsMenu = ({ count, onPick, actions = MASS_ACTIONS }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <Button size="sm" disabled={count === 0} className="bg-amber-500 hover:bg-amber-600 text-white" data-testid="mass-actions-btn">
@@ -13,7 +13,7 @@ export const MassActionsMenu = ({ count, onPick }) => (
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="start" className="w-72">
-      {MASS_ACTIONS.map(a => {
+      {actions.map(a => {
         const Icon = ICONS[a.id];
         return (
           <DropdownMenuItem key={a.id} onSelect={() => onPick(a.id)} data-testid={`mass-action-${a.id}`}

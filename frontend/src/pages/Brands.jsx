@@ -10,9 +10,17 @@ import api from '../utils/api';
 import { usePermission } from '../hooks/usePermission';
 import { BrandDialog } from '../components/clients/hierarchy/BrandDialog';
 import { RifList } from '../components/clients/hierarchy/HierarchyTree';
+import { MassActionsMenu } from '../components/clients/mass/MassActionsMenu';
+import { MassActionDialog, BRAND_MASS_ACTIONS } from '../components/clients/mass/MassActionDialog';
 
 export default function Brands() {
   const { canEdit } = usePermission('marcas');
+  const { isAdmin, hasSpecial } = usePermission('clientes');
+  const canMass = isAdmin || hasSpecial('clientes:mantenimiento_masivo');
+  const [selected, setSelected] = useState([]);
+  const [massAction, setMassAction] = useState(null);
+  const cols = canMass ? 6 : 5;
+  const toggle = (id) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const [brands, setBrands] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +38,8 @@ export default function Brands() {
       if (groupFilter !== 'all') params.group_id = groupFilter;
       const res = await api.get('/marcas', { params });
       setBrands(res.data || []);
+      const ids = new Set((res.data || []).map(b => b.brand_id));
+      setSelected(prev => prev.filter(id => ids.has(id)));
     } catch { toast.error('Error al cargar las marcas'); } finally { setLoading(false); }
   };
 
@@ -68,10 +78,25 @@ export default function Brands() {
             </SelectContent>
           </Select>
         </div>
+        {canMass && (
+          <div className="flex items-center gap-3 mb-3" data-testid="brand-mass-bar">
+            <MassActionsMenu count={selected.length} onPick={setMassAction} actions={BRAND_MASS_ACTIONS} />
+            {selected.length > 0 && (
+              <button type="button" className="text-xs text-slate-500 hover:underline" data-testid="brand-mass-clear" onClick={() => setSelected([])}>Limpiar selección</button>
+            )}
+          </div>
+        )}
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
               <tr>
+                {canMass && (
+                  <th className="px-3 py-3 w-10">
+                    <input type="checkbox" className="h-4 w-4 accent-amber-500" data-testid="brand-mass-select-all"
+                      checked={brands.length > 0 && brands.every(b => selected.includes(b.brand_id))}
+                      onChange={e => setSelected(e.target.checked ? brands.map(b => b.brand_id) : [])} />
+                  </th>
+                )}
                 <th className="text-left px-4 py-3">Marca / Nombre Fantasía</th>
                 <th className="text-left px-4 py-3">Grupo Económico</th>
                 <th className="text-center px-4 py-3">RIFs</th>
@@ -80,11 +105,17 @@ export default function Brands() {
               </tr>
             </thead>
             <tbody>
-              {loading ? <tr><td colSpan={5} className="text-center py-8 text-slate-400">Cargando...</td></tr>
-                : brands.length === 0 ? <tr><td colSpan={5} className="text-center py-8 text-slate-400">No hay marcas.</td></tr>
+              {loading ? <tr><td colSpan={cols} className="text-center py-8 text-slate-400">Cargando...</td></tr>
+                : brands.length === 0 ? <tr><td colSpan={cols} className="text-center py-8 text-slate-400">No hay marcas.</td></tr>
                 : brands.map(b => (
                   <Fragment key={b.brand_id}>
-                    <tr className="border-t hover:bg-slate-50" data-testid={`brand-row-${b.brand_id}`}>
+                    <tr className={`border-t hover:bg-slate-50 ${selected.includes(b.brand_id) ? 'bg-amber-50/60' : ''}`} data-testid={`brand-row-${b.brand_id}`}>
+                      {canMass && (
+                        <td className="px-3 py-3">
+                          <input type="checkbox" className="h-4 w-4 accent-amber-500" data-testid={`brand-mass-select-${b.brand_id}`}
+                            checked={selected.includes(b.brand_id)} onChange={() => toggle(b.brand_id)} />
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <button type="button" onClick={() => setExpanded(p => ({ ...p, [b.brand_id]: !p[b.brand_id] }))}
                           className="flex items-center gap-2 font-medium text-slate-800 hover:text-indigo-700" data-testid={`brand-expand-${b.brand_id}`}>
@@ -102,13 +133,17 @@ export default function Brands() {
                       </td>
                     </tr>
                     {expanded[b.brand_id] && (
-                      <tr className="bg-slate-50/60" data-testid={`brand-tree-${b.brand_id}`}><td colSpan={5} className="px-6 py-2"><RifList brandId={b.brand_id} /></td></tr>
+                      <tr className="bg-slate-50/60" data-testid={`brand-tree-${b.brand_id}`}><td colSpan={cols} className="px-6 py-2"><RifList brandId={b.brand_id} /></td></tr>
                     )}
                   </Fragment>
                 ))}
             </tbody>
           </table>
         </div>
+        {canMass && massAction && (
+          <MassActionDialog scope="brands" action={massAction} clientIds={selected} onClose={() => setMassAction(null)}
+            onDone={() => { fetchBrands(); setSelected([]); }} />
+        )}
         <BrandDialog open={dialog.open} brandId={dialog.id} editable={canEdit} onClose={() => setDialog({ open: false, id: null })} onSaved={fetchBrands} />
         <AlertDialog open={!!deleteTarget} onOpenChange={o => !o && setDeleteTarget(null)}>
           <AlertDialogContent>

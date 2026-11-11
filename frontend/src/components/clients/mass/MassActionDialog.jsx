@@ -20,6 +20,15 @@ export const MASS_ACTIONS = [
   { id: 'integrador', label: 'Asignar Integrador y Aplicativo' },
   { id: 'tipo_servicio', label: 'Actualizar Tipo de Servicio' },
 ];
+export const BRAND_MASS_ACTIONS = [
+  { id: 'delete', label: 'Eliminar Marcas vacías' },
+  { id: 'group', label: 'Asignar Grupo Económico' },
+  { id: 'ejecutivo', label: 'Reasignar Ejecutivo Propietario' },
+  { id: 'segment', label: 'Actualizar Segmento' },
+  { id: 'categoria', label: 'Actualizar Categoría Comercial' },
+  { id: 'coord_impl', label: 'Asignar Coordinador e Implementador' },
+  { id: 'integrador', label: 'Asignar Integrador y Aplicativo' },
+];
 const SEGMENTS = ['Pymes', 'Corporativo', 'Emprendedor', 'Mixto'];
 const TIPOS = ['VPOS', 'MPOS', 'Payment Gateway', 'Link de Pago'];
 const az = (arr) => [...arr].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' }));
@@ -27,7 +36,8 @@ const users = (arr) => az(arr.map(u => ({ id: u.user_id, name: u.full_name })));
 
 const Field = ({ label, children }) => <div><Label className="text-xs mb-1 block">{label}</Label>{children}</div>;
 
-export const MassActionDialog = ({ action, clientIds, onClose, onDone }) => {
+export const MassActionDialog = ({ action, clientIds, onClose, onDone, scope = 'clients' }) => {
+  const isBrands = scope === 'brands';
   const cat = useClientCatalogs();
   const [p, setP] = useState({});
   const [groups, setGroups] = useState([]);
@@ -39,7 +49,7 @@ export const MassActionDialog = ({ action, clientIds, onClose, onDone }) => {
 
   useEffect(() => {
     setP({}); setResult(null); setCount(clientIds.length);
-    if (action === 'group_brand') {
+    if (action === 'group_brand' || action === 'group') {
       api.get('/grupos-economicos').then(r => setGroups(r.data || [])).catch(() => {});
       api.get('/marcas').then(r => setBrands(r.data || [])).catch(() => {});
     }
@@ -47,11 +57,11 @@ export const MassActionDialog = ({ action, clientIds, onClose, onDone }) => {
 
   const intgNames = useMemo(() => az([...new Set(cat.integrators.map(i => i.name).filter(Boolean))].map(n => ({ id: n, name: n }))), [cat.integrators]);
   const apps = cat.integrators.filter(i => i.name === p.integrador_name && (i.app_name || '').trim());
-  const meta = MASS_ACTIONS.find(a => a.id === action);
+  const meta = (isBrands ? BRAND_MASS_ACTIONS : MASS_ACTIONS).find(a => a.id === action);
 
   const valid = {
     delete: p.confirm === 'ELIMINAR',
-    group_brand: !!(p.grupo_economico_id && p.marca_id),
+    group_brand: !!(p.grupo_economico_id && p.marca_id), group: !!p.grupo_economico_id,
     coord_impl: (p.apply_coordinator && p.coordinator_user_id) || (p.apply_implementer && p.implementer_user_id),
     segment: !!p.segment, ejecutivo: !!p.ejecutivo_user_id, categoria: !!p.categoria_comercial,
     integrador: !!(p.integrador_id && p.aplicativo), tipo_servicio: (p.tipo_servicio || []).length > 0,
@@ -60,7 +70,9 @@ export const MassActionDialog = ({ action, clientIds, onClose, onDone }) => {
   const run = async () => {
     setSaving(true);
     try {
-      const { data } = await api.post('/clients/mass-action', { action, client_ids: clientIds, payload: p });
+      const { data } = isBrands
+        ? await api.post('/marcas/mass-action', { action, brand_ids: clientIds, payload: p })
+        : await api.post('/clients/mass-action', { action, client_ids: clientIds, payload: p });
       setResult(data);
       toast.success(`${data.processed} registro(s) procesado(s)`);
       onDone();
@@ -75,7 +87,9 @@ export const MassActionDialog = ({ action, clientIds, onClose, onDone }) => {
         <div className="space-y-3">
           <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800 flex gap-2">
             <AlertTriangle size={18} className="shrink-0" />
-            <span>Se eliminarán {clientIds.length} registro(s). Los que tengan proyectos en ejecución, cotizaciones aprobadas, órdenes de taller activas o sucursales asociadas se omitirán.</span>
+            <span>{isBrands
+              ? `Se eliminarán ${clientIds.length} marca(s). Las que tengan RIF asociados se omitirán.`
+              : `Se eliminarán ${clientIds.length} registro(s). Los que tengan proyectos en ejecución, cotizaciones aprobadas, órdenes de taller activas o sucursales asociadas se omitirán.`}</span>
           </div>
           <Field label='Escriba "ELIMINAR" para confirmar'>
             <Input value={p.confirm || ''} onChange={e => set({ confirm: e.target.value })} data-testid="mass-delete-confirm-input" />
@@ -94,6 +108,14 @@ export const MassActionDialog = ({ action, clientIds, onClose, onDone }) => {
               onChange={o => set({ marca_id: o?.id || '' })} />
           </Field>
           <p className="text-[11px] text-slate-500">Se aplica a los RIF (Tienda Principal). Sus sucursales heredan la Marca automáticamente.</p>
+        </div>);
+      case 'group': return (
+        <div className="space-y-3">
+          <Field label="Grupo Económico *">
+            <SearchableSelect testId="mass-group-select" value={p.grupo_economico_id} emptyLabel="Seleccione un grupo"
+              options={az(groups.map(g => ({ id: g.group_id, name: g.name })))} onChange={o => set({ grupo_economico_id: o?.id || '' })} />
+          </Field>
+          <p className="text-[11px] text-slate-500">Los RIF y sucursales de las marcas seleccionadas pasan a este grupo.</p>
         </div>);
       case 'coord_impl': return (
         <div className="space-y-3">
@@ -158,6 +180,9 @@ export const MassActionDialog = ({ action, clientIds, onClose, onDone }) => {
         ) : (
           <>
             {body()}
+            {isBrands && action !== 'delete' && action !== 'group' && (
+              <p className="text-[11px] text-slate-500 mt-2" data-testid="mass-brand-inherit-note">El valor queda en la Marca. Sus RIF y sucursales lo heredan, salvo los que tengan este dato definido de forma propia.</p>
+            )}
             <div className="flex justify-end gap-2 pt-3 border-t">
               <Button variant="outline" onClick={onClose} data-testid="mass-cancel-btn">Cancelar</Button>
               <Button disabled={!valid || saving} onClick={run} data-testid="mass-apply-btn"

@@ -1,6 +1,6 @@
 """Mantenimiento Masivo de Sucursales (Función Especial clientes:mantenimiento_masivo)."""
 
-from datetime import UTC
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
@@ -160,6 +160,60 @@ async def clients_mass_action(req: MassActionRequest, authorization: str | None 
 
 
 __all__ = ["adopt_orphan_branches", "router"]
+
+
+class BrandMassActionRequest(BaseModel):
+    action: str
+    brand_ids: list[str]
+    payload: dict = {}
+
+
+@router.post("/marcas/mass-action")
+async def brands_mass_action(req: BrandMassActionRequest, authorization: str | None = Header(None)):
+    """Acciones masivas sobre Marcas: el valor queda en la Marca; RIF y sucursales lo heredan
+    salvo los campos que tengan sobrescritos localmente (inherit_overrides)."""
+    from services.client_hierarchy import propagate_brand
+    await _require_mass(authorization)
+    ids = list(dict.fromkeys(req.brand_ids or []))
+    if not ids:
+        raise HTTPException(status_code=400, detail="Seleccione al menos una marca")
+    if len(ids) > MAX_BATCH:
+        raise HTTPException(status_code=400, detail=f"Máximo {MAX_BATCH} marcas por lote")
+    brands = await db.brands.find({"brand_id": {"$in": ids}}, {"_id": 0}).to_list(len(ids))
+    updated, skipped = [], []
+    now = datetime.now(UTC).isoformat()
+
+    if req.action == "delete":
+        if (req.payload.get("confirm") or "") != "ELIMINAR":
+            raise HTTPException(status_code=400, detail="Debe escribir ELIMINAR para confirmar")
+        for b in brands:
+            n = await db.clients.count_documents({"marca_id": b["brand_id"], "is_branch": {"$ne": True}})
+            if n:
+                skipped.append({"client_id": b["brand_id"], "label": b["name"], "reasons": [f"Tiene {n} RIF(s) asociado(s)"]})
+                continue
+            await db.brands.delete_one({"brand_id": b["brand_id"]})
+            updated.append(b["brand_id"])
+        return {"action": "delete", "processed": len(updated), "skipped": skipped}
+
+    if req.action == "group":
+        gid = req.payload.get("grupo_economico_id")
+        if not gid or not await db.economic_groups.find_one({"group_id": gid}, {"_id": 1}):
+            raise HTTPException(status_code=400, detail="Seleccione un Grupo Económico válido")
+        for b in brands:
+            await db.brands.update_one({"brand_id": b["brand_id"]}, {"$set": {"group_id": gid, "updated_at": now}})
+            await propagate_brand(b["brand_id"])
+            updated.append(b["brand_id"])
+        return {"action": req.action, "processed": len(updated), "skipped": skipped}
+
+    if req.action not in SIMPLE_ACTIONS or req.action == "tipo_servicio":
+        raise HTTPException(status_code=400, detail="Acción no soportada")
+    to_set = await _build_set(req.action, req.payload)
+    for b in brands:
+        chars = {**(b.get("characteristics") or {}), **to_set}
+        await db.brands.update_one({"brand_id": b["brand_id"]}, {"$set": {"characteristics": chars, "updated_at": now}})
+        await propagate_brand(b["brand_id"])
+        updated.append(b["brand_id"])
+    return {"action": req.action, "processed": len(updated), "skipped": skipped}
 
 
 async def migrate_rbac_clientes_menu() -> dict:
