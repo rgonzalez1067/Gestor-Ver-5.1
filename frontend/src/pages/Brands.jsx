@@ -13,6 +13,7 @@ import { RifList } from '../components/clients/hierarchy/HierarchyTree';
 import { MassActionsMenu } from '../components/clients/mass/MassActionsMenu';
 import { MassActionDialog, BRAND_MASS_ACTIONS } from '../components/clients/mass/MassActionDialog';
 import { MultiSelectFilter, NONE_VALUE } from '../components/clients/MultiSelectFilter';
+import { BrandsReportButton } from '../components/brands/BrandsReportButton';
 
 export default function Brands() {
   const { canEdit } = usePermission('marcas');
@@ -93,6 +94,12 @@ export default function Brands() {
               onClick={() => { setSearch(''); setGroupFilter([]); setEjecutivoFilter([]); setSegmentFilter([]); }}>Limpiar filtros</Button>
           )}
           <span className="text-xs text-slate-500 ml-auto" data-testid="brand-visible-count">{visible.length} de {brands.length} marcas</span>
+          <BrandsReportButton brandIds={visible.map(b => b.brand_id)} filtersLabel={[
+            search && `Búsqueda "${search}"`,
+            groupFilter.length && `Grupo (${groupFilter.length})`,
+            ejecutivoFilter.length && `Ejecutivo: ${ejecutivoFilter.map(v => ejecutivoOptions.find(o => o.value === v)?.label || 'Sin asignar').join(', ')}`,
+            segmentFilter.length && `Segmento: ${segmentFilter.map(v => v === NONE_VALUE ? 'Sin asignar' : v).join(', ')}`,
+          ].filter(Boolean).join(' · ')} />
         </div>
         {canMass && (
           <div className="flex items-center gap-3 mb-3" data-testid="brand-mass-bar">

@@ -149,6 +149,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
 
   // Alcance jerárquico VPOS/MPOS: el RIF titular es el patrocinador-cliente o el primer RIF seleccionado.
   const isScopeFlow = quoteData.quote_type === 'VPOS' || quoteData.quote_type === 'MPOS';
+  const showRest = !!quoteData.quote_type;
   const handleScopeChange = (s) => setQuoteData(prev => {
     const firstRif = s.scope_tree[0]?.client_id || '';
     const clientId = prev.patrocinador_tipo === 'CLIENTE' && prev.patrocinador_id ? prev.patrocinador_id : firstRif;
@@ -327,13 +328,13 @@ export const QuoteWizardDialog = ({ ctx }) => {
               </DialogHeader>
 
               {/* SECCIÓN 1: Parámetros Iniciales */}
-              <div className="bg-slate-50 rounded-lg p-5 border">
+              <div className={`bg-slate-50 rounded-lg p-5 border ${showRest ? '' : '[&>*:not(h3):not(.qw-params-grid)]:hidden'}`} data-testid="quote-params-section">
                 <h3 className="font-semibold text-lg text-slate-800 mb-4 flex items-center gap-2">
                   <span className="w-7 h-7 rounded-full bg-brand-blue-600 text-white flex items-center justify-center text-sm">1</span>
                   Parámetros de la Cotización
                 </h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className={`qw-params-grid grid grid-cols-1 md:grid-cols-5 gap-4 ${showRest ? '' : '[&>*:not(:first-child)]:hidden'}`}>
                   <div>
                     <Label className="text-sm font-medium text-slate-700 mb-2 block">
                       Tipo de Cotización <span className="text-red-500">*</span>
@@ -915,6 +916,9 @@ export const QuoteWizardDialog = ({ ctx }) => {
                   </div>
                 </div>
               </div>
+
+              {/* Paso inicial: hasta elegir el Tipo de Cotización solo se muestra ese campo */}
+              {showRest && (<>
 
               {/* SECCIÓN 1.5: Detalles de Integración y Hardware */}
               <div className="bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 rounded-lg p-5 border border-blue-100 dark:border-slate-700 mt-4">
@@ -2629,6 +2633,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                   <p className="text-sm mt-1">Seleccione un banco y medio de pago para comenzar</p>
                 </div>
               )}
+              </>)}
             </DialogContent>
           </Dialog>
 
