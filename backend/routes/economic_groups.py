@@ -183,9 +183,8 @@ async def export_economic_group_pdf(group_id: str, authorization: Optional[str] 
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.platypus import (
-        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, HRFlowable,
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
     )
-    from config import UPLOADS_DIR
 
     ACCENT = "#4f46e5"
     ACCENT_DARK = "#3730a3"
@@ -207,18 +206,8 @@ async def export_economic_group_pdf(group_id: str, authorization: Optional[str] 
         Paragraph(f"Grupo Económico: {group.get('name', '')}", title_style),
         Paragraph(f"RIFs asociados: {len(clients)}", sub_style),
     ]
-    logo_file = UPLOADS_DIR / "logo.png"
-    if logo_file.exists():
-        try:
-            img = Image(str(logo_file))
-            target_h = 16 * mm
-            img.drawHeight = target_h
-            img.drawWidth = img.imageWidth * (target_h / img.imageHeight)
-            header_row = Table([[img, header_text]], colWidths=[42 * mm, 132 * mm])
-        except Exception:
-            header_row = Table([[header_text]], colWidths=[174 * mm])
-    else:
-        header_row = Table([[header_text]], colWidths=[174 * mm])
+    # El logo va solo en la banda superior (draw_page_header, esquina superior izquierda).
+    header_row = Table([[header_text]], colWidths=[174 * mm])
     header_row.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0),
