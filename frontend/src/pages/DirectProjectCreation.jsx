@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Checkbox } from '../components/ui/checkbox';
 import { ProcessorLinkBankModal } from '../components/shared/ProcessorLinkBankModal';
-import { DirectMultiRifSection } from '../components/projects/DirectMultiRifSection';
+import { DirectParamsCard } from '../components/projects/direct/DirectParamsCard';
+import { DirectTechFields } from '../components/projects/direct/DirectTechFields';
 import { toast } from 'sonner';
 import api from '../utils/api';
 import { PhaseTag } from '../components/PhaseTag';
@@ -278,6 +279,14 @@ export default function DirectProjectCreation() {
     stores: [],
     boxes_grid: [],
     implementation_instructions: '',
+    // Parámetros (Nivel de la Cotización → árbol Grupo/Marca/RIF/Sucursal)
+    nivel_cotizacion: '',
+    grupo_economico_id: '',
+    grupo_economico_name: '',
+    scope_tree: [],
+    cajas_desglose: true,
+    patrocinador_tipo: 'CLIENTE',
+    fiscal_printer_custom: false,
   };
   const [form, setForm] = useState(INITIAL_FORM);
   // Patrocinio relacional: sub-modal de asociación Procesador → Banco (homologado
@@ -291,8 +300,23 @@ export default function DirectProjectCreation() {
   const [assignModal, setAssignModal] = useState({ open: false, scenario: null, name: '' });
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
-  const isMultirif = form.project_type === 'multirif';
+  const isMultirif = false;
   const isPaymentGateway = PG_LIKE(form.quote_type);
+  const isScope = REQUIRES_HW(form.quote_type);
+  const [scopeKey, setScopeKey] = useState(0);
+  const handleQuoteType = (v) => {
+    set({
+      quote_type: v,
+      boxes_grid: [],
+      integrator_name: '', integrator_id: '', integrator_app_name: '',
+      includes_link_pago: false, includes_tokenizador: false,
+      // Cambiar entre VPOS/MPOS y Gateway/Link reinicia el alcance seleccionado.
+      ...(REQUIRES_HW(v) !== REQUIRES_HW(form.quote_type)
+        ? { client_id: '', scope_tree: [], nivel_cotizacion: '', grupo_economico_id: '', grupo_economico_name: '', cantidad_cajas: 1 } : {}),
+    });
+    if (REQUIRES_HW(v) !== REQUIRES_HW(form.quote_type)) setScopeKey((k) => k + 1);
+    setReelBank(''); setReelChecked({});
+  };
 
   /* Carga inicial */
   const [servers, setServers] = useState([]);
@@ -513,7 +537,20 @@ export default function DirectProjectCreation() {
      - Multitienda: suma de cajas por sucursal = cantidad_cajas. */
   const errors = useMemo(() => {
     const errs = [];
-    if (!form.client_id) errs.push('Debes seleccionar un cliente');
+    if (isScope) {
+      if (!form.nivel_cotizacion) errs.push('Selecciona el Nivel de la Cotización (Grupo, Marca o RIF)');
+      else if (!form.scope_tree.length) errs.push('Selecciona al menos un RIF');
+      form.scope_tree.forEach((r) => {
+        if (!(r.stores || []).length) errs.push(`${r.legal_name || r.rif}: selecciona al menos una sucursal`);
+      });
+      if (form.cajas_desglose) {
+        form.scope_tree.forEach((r) => (r.stores || []).forEach((s) => {
+          if (!(parseInt(s.boxes) > 0)) errs.push(`${s.name}: indica la cantidad de cajas`);
+        }));
+      }
+    } else if (!form.client_id) errs.push('Debes seleccionar un cliente');
+    if (form.patrocinador_tipo === 'BANCO' && !form.sponsor_bank_id) errs.push('Patrocinada por Banco/Ente: selecciona el Banco Patrocinante');
+    if (form.fiscal_printer_custom && !(form.fiscal_printer_model || '').trim()) errs.push('Escribe el modelo de la impresora fiscal');
     if (!form.quote_type) errs.push('Debes seleccionar el tipo de proyecto');
     if (!form.cantidad_cajas || form.cantidad_cajas < 1) errs.push('Cantidad de cajas debe ser >= 1');
     // Modelo de Pinpad y Seriales son OPCIONALES (pueden quedar vacíos en la etapa inicial).
@@ -660,15 +697,26 @@ export default function DirectProjectCreation() {
       if (isMultirif) {
         payload.is_multistore = false;
         payload.stores = [];
-        // Si la implementación la paga el Cliente, no hay banco patrocinante.
-        if (form.multirif_sponsorship === 'client') {
-          payload.sponsor_bank_id = '';
-          payload.sponsor_bank_name = '';
-          payload.sponsor_processor_id = '';
-          payload.sponsor_processor_name = '';
-        }
       } else {
         payload.multirif_distribution = [];
+      }
+      payload.project_type = 'simple';
+      delete payload.fiscal_printer_custom;
+      if (form.patrocinador_tipo !== 'BANCO') {
+        payload.sponsor_bank_id = '';
+        payload.sponsor_bank_name = '';
+        payload.sponsor_processor_id = '';
+        payload.sponsor_processor_name = '';
+      }
+      if (isScope) {
+        // Datos del cliente principal (primer RIF del árbol) para la cabecera.
+        const main = clients.find((c) => c.client_id === form.client_id) || {};
+        const first = form.scope_tree[0] || {};
+        payload.economic_group = form.grupo_economico_name || main.grupo_economico || main.economic_group || '';
+        payload.fantasy_name = first.marca_name || main.fantasy_name || '';
+      } else {
+        payload.scope_tree = [];
+        payload.nivel_cotizacion = 'RIF';
       }
       const res = await api.post('/direct-projects', payload);
       const d = res.data;
@@ -685,6 +733,7 @@ export default function DirectProjectCreation() {
         attachments: d.attachments_count || 0,
       });
       setForm(INITIAL_FORM);
+      setScopeKey((k) => k + 1);
       setBulkSerialsText('');
       setAttachments([]);
       // Esperar un tick para que el remount del combobox limpie el valor visible.
@@ -771,169 +820,19 @@ export default function DirectProjectCreation() {
         </div>
       )}
 
-      {/* Selector de Tipo de Proyecto Directo: Simple vs Multi-RIF
-          (oculto para Payment Gateway / Link de Pago: productos virtuales sin
-          distribución física por RIF/sucursal). */}
-      {!isPaymentGateway && (
-      <Card className="border-indigo-200 shadow-sm" data-testid="dp-project-type-card">
-        <CardContent className="py-4">
-          <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-5">
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 shrink-0">
-              <Layers size={16} className="text-indigo-600" /> Tipo de Proyecto Directo
-            </div>
-            <div className="flex gap-2" role="radiogroup" aria-label="Tipo de Proyecto Directo">
-              <button
-                type="button"
-                onClick={() => set({ project_type: 'simple', multirif_distribution: [] })}
-                data-testid="dp-type-simple"
-                className={`px-4 py-2 rounded-md text-sm font-semibold border-2 transition ${form.project_type === 'simple' ? 'bg-amber-500 text-white border-amber-600 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:border-amber-400'}`}
-              >
-                <Zap size={14} className="inline mr-1.5" /> Directo Simple
-              </button>
-              <button
-                type="button"
-                onClick={() => set({ project_type: 'multirif', is_multistore: false, stores: [] })}
-                data-testid="dp-type-multirif"
-                className={`px-4 py-2 rounded-md text-sm font-semibold border-2 transition ${form.project_type === 'multirif' ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-400'}`}
-              >
-                <Building2 size={14} className="inline mr-1.5" /> Directo Multi-RIF
-              </button>
-            </div>
-            <p className="text-[11px] text-slate-500 md:ml-auto">
-              {isMultirif
-                ? 'Distribución jerárquica por Cliente (RIF) → Sucursales, con cuadre estricto de cajas.'
-                : 'Implementación de un único cliente (puede ser multitienda).'}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-      )}
-
-      {/* Card 1: Cliente */}
-      <Card className="border-blue-100 shadow-sm">
-        <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-blue-50/30 border-b border-blue-100 rounded-t-lg">
-          <CardTitle className="text-base flex items-center gap-2 text-blue-900">
-            <div className="bg-blue-500 rounded-md p-1.5"><Building2 size={14} className="text-white" /></div>
-            Datos del Cliente
-          </CardTitle>
-          <CardDescription className="text-xs text-blue-700/70">Selecciona el cliente; Grupo Económico y Nombre de Fantasía se auto-completan y son editables.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="md:col-span-1">
-              <Label className="text-xs">Cliente *</Label>
-              <ClientCombobox ref={clientRef} clients={clients} value={form.client_id} onChange={handleSelectClient} />
-            </div>
-            <div>
-              <Label className="text-xs">Grupo Económico</Label>
-              <Input value={form.economic_group} onChange={(e) => set({ economic_group: e.target.value })} data-testid="dp-economic-group" placeholder="Editable" />
-            </div>
-            <div>
-              <Label className="text-xs">Nombre de Fantasía</Label>
-              <Input value={form.fantasy_name} onChange={(e) => set({ fantasy_name: e.target.value })} data-testid="dp-fantasy-name" placeholder="Editable" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Card 2: Definición comercial */}
-      <Card className="border-indigo-100 shadow-sm">
-        <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50 to-indigo-50/30 border-b border-indigo-100 rounded-t-lg">
-          <CardTitle className="text-base flex items-center gap-2 text-indigo-900">
-            <div className="bg-indigo-500 rounded-md p-1.5"><ShoppingBag size={14} className="text-white" /></div>
-            Definición Comercial
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {/* Bifurcación de Patrocinio (solo Multi-RIF) */}
-          {isMultirif && (
-            <div className="rounded-md border border-indigo-200 bg-indigo-50/40 p-3" data-testid="dp-multirif-sponsorship">
-              <Label className="text-xs font-semibold text-indigo-900">¿La implementación es patrocinada por un Banco o pagada por el Cliente? *</Label>
-              <div className="flex gap-2 mt-2" role="radiogroup" aria-label="Patrocinio Multi-RIF">
-                <button
-                  type="button"
-                  onClick={() => set({ multirif_sponsorship: 'bank' })}
-                  data-testid="dp-sponsorship-bank"
-                  className={`px-4 py-2 rounded-md text-sm font-semibold border-2 transition ${form.multirif_sponsorship === 'bank' ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-400'}`}
-                >
-                  Patrocinada por un Banco
-                </button>
-                <button
-                  type="button"
-                  onClick={() => set({ multirif_sponsorship: 'client', sponsor_bank_id: '', sponsor_bank_name: '', sponsor_processor_id: '', sponsor_processor_name: '' })}
-                  data-testid="dp-sponsorship-client"
-                  className={`px-4 py-2 rounded-md text-sm font-semibold border-2 transition ${form.multirif_sponsorship === 'client' ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-400'}`}
-                >
-                  Pagada por el Cliente
-                </button>
-              </div>
-              <p className="text-[11px] text-indigo-700/80 mt-1.5">
-                {form.multirif_sponsorship === 'bank'
-                  ? 'Selecciona el Banco Patrocinante abajo (si es un Procesador, designa el banco vinculado).'
-                  : 'El cliente padre (seleccionado arriba) asume el costo de la implementación.'}
-              </p>
-            </div>
-          )}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div>
-              <Label className="text-xs">Tipo de Proyecto *</Label>
-              <Select value={form.quote_type} onValueChange={(v) => {
-                const pg = PG_LIKE(v);
-                set({
-                  quote_type: v,
-                  boxes_grid: [],
-                  // Cambia el filtro de integradores → la selección previa puede no ser compatible.
-                  integrator_name: '', integrator_id: '', integrator_app_name: '',
-                  // Componentes adicionales solo aplican a Payment Gateway → resetear al cambiar tipo.
-                  includes_link_pago: false, includes_tokenizador: false,
-                  // Gateway/Link: productos virtuales → sin cajas, multitienda ni Multi-RIF.
-                  ...(pg ? { project_type: 'simple', is_multistore: false, stores: [], multirif_distribution: [], cantidad_cajas: 1 } : {}),
-                });
-                setReelBank(''); setReelChecked({});
-              }}>
-                <SelectTrigger className="h-10" data-testid="dp-quote-type"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {QUOTE_TYPES.map((qt) => <SelectItem key={qt.id} value={qt.id}>{qt.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            {form.quote_type === 'GATEWAY' && (
-              <>
-                <div>
-                  <Label className="text-xs">¿Incluye Link de Pago? *</Label>
-                  <Select value={form.includes_link_pago ? 'si' : 'no'}
-                          onValueChange={(v) => set({ includes_link_pago: v === 'si' })}>
-                    <SelectTrigger className="h-10" data-testid="dp-includes-link-pago"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="no">No</SelectItem>
-                      <SelectItem value="si">Sí</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">¿Incluye Tokenizador? *</Label>
-                  <Select value={form.includes_tokenizador ? 'si' : 'no'}
-                          onValueChange={(v) => set({ includes_tokenizador: v === 'si' })}>
-                    <SelectTrigger className="h-10" data-testid="dp-includes-tokenizador"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="no">No</SelectItem>
-                      <SelectItem value="si">Sí</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </>
-            )}
-            {!isPaymentGateway && (
-            <div>
-              <Label className="text-xs">Cantidad de Cajas *</Label>
-              <Input type="number" min="1" value={form.cantidad_cajas}
-                     onChange={(e) => set({ cantidad_cajas: e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value) || 1) })}
-                     data-testid="dp-cantidad-cajas" />
-            </div>
-            )}
-            {(!isMultirif || form.multirif_sponsorship === 'bank') && (
-            <div>
-              <Label className="text-xs">Banco Patrocinante{isMultirif && form.multirif_sponsorship === 'bank' ? ' *' : ''}</Label>
+      <DirectParamsCard
+        form={form}
+        set={set}
+        clients={clients}
+        quoteTypes={QUOTE_TYPES}
+        isPaymentGateway={isPaymentGateway}
+        isScope={isScope}
+        scopeKey={scopeKey}
+        onQuoteType={handleQuoteType}
+        clientPicker={<ClientCombobox ref={clientRef} clients={clients.filter((c) => !c.is_branch)} value={form.client_id} onChange={handleSelectClient} />}
+        bankSelect={(
+          <div>
+            <Label className="text-xs">Banco Patrocinante *</Label>
               <Select value={form.sponsor_bank_id || ''} onValueChange={(v) => {
                 const b = banks.find((x) => x.bank_id === v);
                 if (b && b.type === 'Procesador') {
@@ -953,8 +852,21 @@ export default function DirectProjectCreation() {
                   Patrocinador: {form.sponsor_processor_name} — {form.sponsor_bank_name}
                 </p>
               )}
-            </div>
-            )}
+          </div>
+        )}
+      />
+
+      {/* Detalles de Integración: Integrador, Aplicativo, Servidor, Impresora Fiscal, Comunicación, Hardware y Seriales */}
+      <Card className="border-cyan-100 shadow-sm" data-testid="dp-integration-card">
+        <CardHeader className="pb-3 bg-gradient-to-r from-cyan-50 to-cyan-50/30 border-b border-cyan-100 rounded-t-lg">
+          <CardTitle className="text-base flex items-center gap-2 text-cyan-900">
+            <div className="bg-cyan-500 rounded-md p-1.5"><Server size={14} className="text-white" /></div>
+            Detalles de Integración
+          </CardTitle>
+          <CardDescription className="text-xs text-cyan-700/70">Estos datos se archivan en la Ficha Técnica del proyecto.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* Cascada Integrador → App: 1 app = auto-selección; 2+ = drop-list obligatorio */}
             <div>
               <Label className="text-xs">Integrador</Label>
@@ -1024,20 +936,12 @@ export default function DirectProjectCreation() {
               )}
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Card 3: HW (solo VPOS/MPOS) */}
-      {REQUIRES_HW(form.quote_type) && (
-        <Card className="border-emerald-100 shadow-sm">
-          <CardHeader className="pb-3 bg-gradient-to-r from-emerald-50 to-emerald-50/30 border-b border-emerald-100 rounded-t-lg">
-            <CardTitle className="text-base flex items-center gap-2 text-emerald-900">
-              <div className="bg-emerald-500 rounded-md p-1.5"><Cpu size={14} className="text-white" /></div>
-              Hardware <span className="text-xs font-normal text-emerald-700/70">(solo VPOS/MPOS)</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <DirectTechFields form={form} set={set} servers={servers} fiscalPrinters={fiscalPrinters} />
+          {/* Hardware y Seriales (solo VPOS/MPOS) */}
+          {REQUIRES_HW(form.quote_type) && (
+            <div className="border-t border-slate-100 pt-4 space-y-4" data-testid="dp-hw-section">
+              <p className="text-sm font-semibold text-emerald-900 flex items-center gap-2"><Cpu size={14} className="text-emerald-600" /> Hardware y Seriales</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Modelo Pinpad *</Label>
                 <Select value={form.pinpad_model} onValueChange={(v) => set({ pinpad_model: v })}>
@@ -1106,22 +1010,6 @@ export default function DirectProjectCreation() {
                   </p>
                 )}
               </div>
-              <div>
-                <Label className="text-xs">Modelo Impresora Fiscal</Label>
-                <Select value={form.fiscal_printer_model || '__none__'} onValueChange={(v) => set({ fiscal_printer_model: v === '__none__' ? '' : v })}>
-                  <SelectTrigger className="h-10" data-testid="dp-fiscal-printer"><SelectValue placeholder="Seleccionar impresora fiscal..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__" data-testid="dp-fiscal-printer-none">Sin impresora fiscal</SelectItem>
-                    {form.fiscal_printer_model && !fiscalPrinters.includes(form.fiscal_printer_model) && (
-                      <SelectItem value={form.fiscal_printer_model}>{form.fiscal_printer_model}</SelectItem>
-                    )}
-                    {fiscalPrinters.map((p) => (
-                      <SelectItem key={p} value={p} data-testid={`dp-fiscal-printer-option-${p.replace(/\s+/g, '-').toLowerCase()}`}>{p}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {fiscalPrinters.length === 0 && <p className="text-[11px] text-slate-400 mt-1">No hay impresoras en el catálogo (Configuración → Impresoras Fiscales).</p>}
-              </div>
             </div>
 
             {/* Seriales Pinpad (carga interactiva) — Iter38: solo SERIAL es obligatorio. */}
@@ -1177,166 +1065,10 @@ export default function DirectProjectCreation() {
                 ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Card 3.5: Configuración Técnica (Servidor + Comunicación) — siempre visible */}
-      <Card className="border-cyan-100 shadow-sm" data-testid="dp-tech-config-card">
-        <CardHeader className="pb-3 bg-gradient-to-r from-cyan-50 to-cyan-50/30 border-b border-cyan-100 rounded-t-lg">
-          <CardTitle className="text-base flex items-center gap-2 text-cyan-900">
-            <div className="bg-cyan-500 rounded-md p-1.5"><Server size={14} className="text-white" /></div>
-            Configuración Técnica
-          </CardTitle>
-          <CardDescription className="text-xs text-cyan-700/70">Estos datos se archivan en la Ficha Técnica del proyecto.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Fila 1: Servidor de Instalación */}
-          <div>
-            <Label className="text-xs flex items-center gap-1.5"><Server size={12} className="text-cyan-600" /> Servidor de Instalación <span className="text-red-500">*</span></Label>
-            <Select value={form.server_name || ''} onValueChange={(v) => set({ server_name: v, server_name_custom: v === 'Otra' ? form.server_name_custom : '' })}>
-              <SelectTrigger className="h-10 mt-1" data-testid="dp-server-name"><SelectValue placeholder="Seleccionar servidor..." /></SelectTrigger>
-              <SelectContent>
-                {[...(servers.length ? servers : ['Multicomercio MSC', 'Multicomercio MSC2']), 'Otra'].map((opt) => (
-                  <SelectItem key={opt} value={opt} data-testid={`dp-server-option-${opt.replace(/\s+/g, '-').toLowerCase()}`}>{opt}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {form.server_name === 'Otra' && (
-              <Input
-                value={form.server_name_custom}
-                onChange={(e) => set({ server_name_custom: e.target.value })}
-                placeholder="Nombre del servidor (obligatorio)..."
-                className="mt-2"
-                data-testid="dp-server-name-custom"
-              />
-            )}
-          </div>
-
-          {/* Fila 2: Tipo de Comunicación */}
-          <div>
-            <Label className="text-xs flex items-center gap-1.5"><Network size={12} className="text-cyan-600" /> Tipo de Comunicación <span className="text-red-500">*</span></Label>
-            <div className="flex gap-2 mt-1.5" role="radiogroup" aria-label="Tipo de Comunicación">
-              {[{ val: 'SSL', label: 'SSL' }, { val: 'VPN', label: 'VPN' }, { val: 'NO_APLICA', label: 'No aplica' }].map((opt) => (
-                <button
-                  key={opt.val}
-                  type="button"
-                  role="radio"
-                  aria-checked={form.communication_type === opt.val}
-                  onClick={() => set({ communication_type: opt.val })}
-                  data-testid={`dp-comm-${opt.val.toLowerCase()}`}
-                  className={`px-5 py-2 rounded-md text-sm font-semibold border-2 transition ${
-                    form.communication_type === opt.val
-                      ? 'bg-cyan-600 text-white border-cyan-700 shadow-sm'
-                      : 'bg-white text-slate-700 border-slate-200 hover:border-cyan-400'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
-
-      {/* Card 4-MR: Distribución Multi-RIF (reemplaza a Control Multitienda) */}
-      {isMultirif && (
-        <Card className="border-indigo-200 shadow-sm" data-testid="dp-multirif-card">
-          <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50 to-indigo-50/30 border-b border-indigo-100 rounded-t-lg">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <CardTitle className="text-base flex items-center gap-2 text-indigo-900">
-                <div className="bg-indigo-500 rounded-md p-1.5"><Building2 size={14} className="text-white" /></div>
-                Distribución Multi-RIF
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="shared-matrix-toggle" className="text-xs text-indigo-800">
-                  {form.shared_matrix ? 'Todas las tiendas comparten Bancos/Productos' : 'Matriz por RIF'}
-                </Label>
-                <Switch id="shared-matrix-toggle" checked={form.shared_matrix} onCheckedChange={(v) => set({ shared_matrix: v })} data-testid="dp-shared-matrix-toggle" />
-              </div>
-            </div>
-            <CardDescription className="text-xs text-indigo-700/70">
-              Distribuye las {form.cantidad_cajas || 0} caja(s) globales entre Clientes (RIF) y sus Sucursales. El cuadre debe ser exacto.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DirectMultiRifSection
-              clients={clients}
-              banks={banks}
-              quoteType={form.quote_type}
-              sharedMatrix={form.shared_matrix}
-              distribution={form.multirif_distribution}
-              onChange={(next) => setForm((f) => ({ ...f, multirif_distribution: typeof next === 'function' ? next(f.multirif_distribution) : next }))}
-              cantidadCajas={Number(form.cantidad_cajas) || 0}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Card 4: Multitienda (solo Proyecto Directo Simple; no aplica a Gateway/Link) */}
-      {!isMultirif && !isPaymentGateway && (
-      <Card className="border-violet-100 shadow-sm">
-        <CardHeader className="pb-3 bg-gradient-to-r from-violet-50 to-violet-50/30 border-b border-violet-100 rounded-t-lg">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2 text-violet-900">
-              <div className="bg-violet-500 rounded-md p-1.5"><Store size={14} className="text-white" /></div>
-              Control Multitienda
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="multistore-toggle" className="text-xs text-violet-800">{form.is_multistore ? 'Activado' : 'Desactivado'}</Label>
-              <Switch id="multistore-toggle" checked={form.is_multistore} onCheckedChange={(v) => set({ is_multistore: v, stores: v ? form.stores : [] })} data-testid="dp-multistore-toggle" />
-            </div>
-          </div>
-        </CardHeader>
-        {form.is_multistore && (
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-xs text-slate-500 flex items-center gap-2">
-                {totalStoreBoxes === Number(form.cantidad_cajas) ? <CheckCircle2 size={14} className="text-emerald-600" /> : <AlertCircle size={14} className="text-red-500" />}
-                Suma de cajas: <strong className={totalStoreBoxes === Number(form.cantidad_cajas) ? 'text-emerald-600' : 'text-red-600'}>{totalStoreBoxes}</strong> / {form.cantidad_cajas}
-              </p>
-              <div className="flex gap-2">
-                <ExcelUploader kind="branches" testIdPrefix="dp-stores" onParsed={(items) => set({ stores: [...form.stores, ...items] })} />
-                <Button size="sm" variant="outline" onClick={addStore} data-testid="dp-add-store"><Plus size={14} className="mr-1" /> Sucursal</Button>
-              </div>
-            </div>
-
-            {form.stores.length > 0 ? (
-              <div className="border border-slate-200 rounded-md overflow-hidden bg-white" data-testid="dp-stores-grid">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50 border-b border-slate-200">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium text-slate-600 w-12">#</th>
-                      <th className="px-3 py-2 text-left font-medium text-slate-600">Sucursal</th>
-                      <th className="px-3 py-2 text-left font-medium text-slate-600 w-32">Cantidad Cajas</th>
-                      <th className="px-3 py-2 w-12"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {form.stores.map((s, i) => (
-                      <tr key={i} className="border-b border-slate-100" data-testid={`dp-store-row-${i}`}>
-                        <td className="px-3 py-1.5 text-slate-400 font-mono">{i + 1}</td>
-                        <td className="px-3 py-1.5">
-                          <Input value={s.name} onChange={(e) => updateStore(i, { name: e.target.value })} placeholder="Nombre Sucursal" className="h-8 text-sm" />
-                        </td>
-                        <td className="px-3 py-1.5">
-                          <Input type="number" min="1" value={s.box_count} onChange={(e) => updateStore(i, { box_count: Math.max(1, parseInt(e.target.value) || 1) })} className="h-8 text-sm w-24" />
-                        </td>
-                        <td className="px-3 py-1.5">
-                          <Button size="sm" variant="ghost" onClick={() => removeStore(i)} className="text-red-600"><Trash2 size={14} /></Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400 italic">Sin sucursales cargadas. Agrega manualmente o vía Excel.</p>
-            )}
-          </CardContent>
-        )}
-      </Card>
-      )}
 
       {/* Card 5: Reel de distribución de cajas
           (oculto en Multi-RIF con matriz POR RIF: cada RIF tiene su propia matriz) */}

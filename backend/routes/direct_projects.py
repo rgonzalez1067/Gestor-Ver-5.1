@@ -168,6 +168,15 @@ class DirectProjectCreate(BaseModel):
     # Instrucciones para el implementador
     implementation_instructions: Optional[str] = None
 
+    # Parámetros del Proyecto (Nivel de la Cotización → Grupo/Marca/RIF/Sucursal).
+    # Reemplaza la bifurcación Simple / Multi-RIF y el control manual Multitienda.
+    nivel_cotizacion: Optional[str] = None
+    grupo_economico_id: Optional[str] = None
+    grupo_economico_name: Optional[str] = None
+    scope_tree: list[dict] = Field(default_factory=list)
+    cajas_desglose: bool = True
+    patrocinador_tipo: Optional[str] = "CLIENTE"
+
     # Anexos cargados ANTES del envío a Implementación. Cada item es una
     # referencia devuelta por POST /direct-projects/upload-attachment:
     # {attachment_id, filename, url, storage_key, file_size, content_type, category}.
@@ -302,6 +311,28 @@ async def create_direct_project(
     requires_hw = qtype in {"VPOS", "MPOS"}
     # Modelo de Pinpad: OPCIONAL (puede no estar disponible en la etapa inicial del despliegue).
 
+    # ---- Alcance jerárquico (Nivel de la Cotización) ----
+    from services.quote_scope import compute_scope, total_store_boxes
+    scope = compute_scope(payload.model_dump()) if (requires_hw and payload.scope_tree) else {}
+    tree = scope.get("scope_tree") or []
+    if requires_hw and payload.scope_tree:
+        if not tree:
+            raise HTTPException(status_code=400, detail="Selecciona al menos un RIF del alcance del proyecto")
+        for r in tree:
+            if not r["stores"]:
+                raise HTTPException(status_code=400, detail=f"{r['legal_name'] or r['rif']}: selecciona al menos una sucursal")
+        if payload.cajas_desglose:
+            if any(s["boxes"] < 1 for r in tree for s in r["stores"]):
+                raise HTTPException(status_code=400, detail="Cada sucursal debe tener al menos 1 caja")
+            payload.cantidad_cajas = total_store_boxes(tree)
+        payload.is_multistore, payload.stores = False, []
+        payload.project_type, payload.multirif_distribution = "simple", []
+        if payload.client_id != tree[0]["client_id"]:
+            payload.client_id = tree[0]["client_id"]
+            client = await db.clients.find_one({"client_id": payload.client_id}, {"_id": 0}) or client
+    if (payload.patrocinador_tipo or "CLIENTE").upper() != "BANCO":
+        payload.sponsor_bank_id = payload.sponsor_bank_name = None
+        payload.sponsor_processor_id = payload.sponsor_processor_name = None
     if payload.is_multistore:
         if not payload.stores:
             raise HTTPException(status_code=400, detail="Multitienda activado: debe cargar al menos una sucursal")
@@ -488,6 +519,16 @@ async def create_direct_project(
         # `stores` planas (con su rif_id) a partir de esta estructura.
         "is_multirif": is_multirif,
         "multirif_distribution": multirif_distribution or [],
+        # Alcance jerárquico: el builder tipifica (Multi Marca / Multi RIF / Multitienda / Monotienda).
+        "scope_tree": tree,
+        "cajas_desglose": bool(payload.cajas_desglose) if tree else None,
+        "tipo_proyecto_inferido": scope.get("tipo_proyecto_inferido"),
+        "nivel_cotizacion": payload.nivel_cotizacion,
+        "grupo_economico_id": payload.grupo_economico_id,
+        "grupo_economico_name": payload.grupo_economico_name,
+        "patrocinador_tipo": (payload.patrocinador_tipo or "CLIENTE").upper(),
+        "patrocinador_nombre": (payload.sponsor_bank_name if (payload.patrocinador_tipo or "").upper() == "BANCO"
+                                else (client.get("legal_name") or "")),
         # Patrocinador de Pinpads (homologado con Cotizaciones = sponsor_bank): en
         # Proyectos Directos proviene del campo "Banco del Pinpad" (pinpad_bank).
         # Es independiente del Patrocinador de la Implementación.
@@ -577,6 +618,7 @@ async def create_direct_project(
         {"$set": {
             "origin": "direct",
             "direct_project": True,
+            "tipo_proyecto": "DIRECTO",
             # Sede heredada de la ficha del usuario en sesión (seguridad de perfiles).
             "sede": sede,
             "pinpad_provider": _pp_provider or None,
