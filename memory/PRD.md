@@ -4772,3 +4772,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06 (iter 377): Filtros multiselección Grupo/Ejecutivo/Segmento en /marcas (valores de la marca + sus RIF; GET /api/marcas devuelve segments/ejecutivos). Fix: acciones masivas de marca solo re-heredan las unidades tocadas (propagate_brand only_fields) para no borrar valores de RIF.
 
 - 2026-06: Contacto Inicial — ícono de comentario junto al nombre con tooltip de Aspectos de Interés.
+
+- 2026-06: Nuevo tipo de destinatario "Área generadora" (generating_area) en Config. de Acciones → Proyectos Directos → Enviar a Implementación: Ventas Pyme → ventasmerchant_pyme@megasoft.com.ve, Ventas Corporativas → corporativos@megasoft.com.ve (según departamento del creador). Mapa en services/notification_engine.GENERATING_AREA_EMAILS.

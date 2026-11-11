@@ -329,8 +329,12 @@ async def upsert_config(payload: ActionConfigPayload, authorization: Optional[st
             )
 
     for r in payload.recipients:
-        if r.type not in ("client_field", "user", "session_user", "session_executive"):
+        if r.type not in ("client_field", "user", "session_user", "session_executive", "generating_area"):
             raise HTTPException(status_code=400, detail=f"Tipo de destinatario inválido: {r.type}")
+        if r.type == "generating_area" and (payload.business_type, payload.action_id) != ("proyectos_directos", "send_to_implementation"):
+            raise HTTPException(status_code=400, detail="'Área generadora' solo aplica a Proyectos Directos → Enviar a Implementación")
+        if r.type == "generating_area" and r.delivery_channel == "inbox":
+            r.delivery_channel = "email"
         if r.type == "user" and not r.user_id:
             raise HTTPException(status_code=400, detail="user_id requerido para destinatarios de tipo 'user'")
         if r.delivery_channel not in ("email", "inbox"):

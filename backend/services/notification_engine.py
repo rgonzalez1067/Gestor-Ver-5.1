@@ -21,6 +21,13 @@ from services.inbox_service import deliver_to_inbox
 
 logger = logging.getLogger("notification_engine")
 
+# Destinatario "Área generadora" (Proyectos Directos → Enviar a Implementación):
+# subcadena del departamento del generador → (email, nombre).
+GENERATING_AREA_EMAILS = {
+    "ventas pyme": ("ventasmerchant_pyme@megasoft.com.ve", "Ventas Merchant Pyme"),
+    "ventas corporativ": ("corporativos@megasoft.com.ve", "Ventas Corporativas"),
+}
+
 
 def _quote_to_biz_sub(quote: dict) -> tuple[Optional[str], Optional[str]]:
     """Mapea una cotización a (business_type, product_subcategory).
@@ -556,6 +563,16 @@ async def try_dispatch(
                     continue
                 rcpt_email = ee
                 rcpt_name = tpl_vars.get("Nombre_Ejecutivo") or ee
+        elif row.get("type") == "generating_area":
+            # "Área generadora": buzón del departamento comercial del usuario que generó el proyecto.
+            creator_id = quote.get("created_by_user_id") or (current_user or {}).get("user_id")
+            creator = await db.users.find_one({"user_id": creator_id}, {"_id": 0, "departamento": 1}) if creator_id else None
+            dept = ((creator or current_user or {}).get("departamento") or "").strip().lower()
+            area = next((v for k, v in GENERATING_AREA_EMAILS.items() if k in dept), None)
+            if not area:
+                skipped.append({"row_id": row.get("row_id"), "reason": f"Área generadora sin buzón para el departamento '{dept or '—'}'"})
+                continue
+            rcpt_email, rcpt_name = area
         else:
             skipped.append({"row_id": row.get("row_id"), "reason": f"tipo desconocido: {row.get('type')}"})
             continue

@@ -46,7 +46,7 @@ function usersForBiz(users, bizId) {
   return [...list].sort((a, b) => (a.label || '').localeCompare(b.label || '', 'es', { sensitivity: 'base' }));
 }
 
-function MatrixRow({ row, users, templates, onChange, onRemove }) {
+function MatrixRow({ row, users, templates, onChange, onRemove, allowGeneratingArea = false }) {
   // Plantillas filtradas por categoría coherente con el tipo de negocio
   // (la categoría se determina afuera; aquí solo se muestra el dropdown completo).
   const [, forceUpdate] = useState(0);
@@ -68,6 +68,9 @@ function MatrixRow({ row, users, templates, onChange, onRemove }) {
             <SelectItem value="user">👤 Usuario interno</SelectItem>
             <SelectItem value="session_user">⚡ Usuario generador</SelectItem>
             <SelectItem value="session_executive">🧑‍💼 Ejecutivo generador</SelectItem>
+            {(allowGeneratingArea || row.type === 'generating_area') && (
+              <SelectItem value="generating_area" data-testid={`row-type-generating-area-${row.row_id}`}>🏢 Área generadora</SelectItem>
+            )}
           </SelectContent>
         </Select>
       </td>
@@ -86,6 +89,11 @@ function MatrixRow({ row, users, templates, onChange, onRemove }) {
               ))}
             </SelectContent>
           </Select>
+        ) : row.type === 'generating_area' ? (
+          <div className="text-xs text-slate-600 leading-snug" data-testid={`row-generating-area-info-${row.row_id}`}>
+            <p>Ventas Pyme → <span className="font-medium">ventasmerchant_pyme@megasoft.com.ve</span></p>
+            <p>Ventas Corporativas → <span className="font-medium">corporativos@megasoft.com.ve</span></p>
+          </div>
         ) : (
           <span className="text-sm text-slate-500 italic">
             {row.type === 'session_user'
@@ -243,6 +251,7 @@ function ActionAccordion({ action, businessType, subCategory, configs, users, te
                 rows.map((r, idx) => (
                   <MatrixRow
                     key={r.row_id}
+                    allowGeneratingArea={businessType === 'proyectos_directos' && action.id === 'send_to_implementation'}
                     row={r}
                     users={users}
                     templates={templates}
