@@ -4766,3 +4766,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06 (iter 375): Proyectos Directos reestructurados — tipo único DIRECTO (sin Simple/Multi-RIF ni switch Multitienda); tarjeta Parámetros del Proyecto con Nivel de la Cotización (QuoteScopeSelector) + tipología automática + Tipo de Patrocinio (Cliente por defecto / Banco con selector); Gateway/Link: un solo RIF; tarjeta Detalles de Integración (Integrador, App, Servidor, Impresora Fiscal con opción manual, Comunicación, Hardware y Seriales Pinpad). Backend acepta scope_tree y tipifica vía quote_transitions.
 
 - 2026-06 (iter 376): Acciones masivas en Marcas (/marcas): selección + Grupo, Ejecutivo, Segmento, Categoría, Coord/Impl, Integrador (valor en la Marca, herencia respetando overrides) y Eliminar marcas vacías. POST /api/marcas/mass-action (Función Especial clientes:mantenimiento_masivo).
+
+- 2026-06: Nueva Función Especial marcas:mantenimiento_masivo (módulo Marca o Nombre Fantasía) en la grilla de Perfiles; /marcas y POST /api/marcas/mass-action ahora la exigen (separada de clientes:mantenimiento_masivo).

@@ -83,6 +83,10 @@ SPECIAL_PERMISSIONS = [
     {"id": "clientes:mantenimiento_masivo", "module": "clientes",
      "label": "Función Especial: Mantenimiento Masivo",
      "description": "Habilita la selección múltiple y las Acciones Masivas en Sucursales (eliminar, grupo/marca, coordinador/implementador, segmento, ejecutivo, categoría, integrador/aplicativo, tipo de servicio)."},
+    # Marca o Nombre Fantasía — FN_MARCAS_MANTENIMIENTO_MASIVO
+    {"id": "marcas:mantenimiento_masivo", "module": "marcas",
+     "label": "Función Especial: Mantenimiento Masivo",
+     "description": "Habilita la selección múltiple y las Acciones Masivas en Marcas (eliminar marcas vacías, grupo económico, ejecutivo, segmento, categoría, coordinador/implementador, integrador/aplicativo)."},
     # Proyectos
     {"id": "proyectos:create", "module": "proyectos",
      "label": "Crear Proyecto de Integración",

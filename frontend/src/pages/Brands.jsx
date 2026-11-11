@@ -15,8 +15,8 @@ import { MassActionDialog, BRAND_MASS_ACTIONS } from '../components/clients/mass
 
 export default function Brands() {
   const { canEdit } = usePermission('marcas');
-  const { isAdmin, hasSpecial } = usePermission('clientes');
-  const canMass = isAdmin || hasSpecial('clientes:mantenimiento_masivo');
+  const { isAdmin, hasSpecial } = usePermission('marcas');
+  const canMass = isAdmin || hasSpecial('marcas:mantenimiento_masivo');
   const [selected, setSelected] = useState([]);
   const [massAction, setMassAction] = useState(null);
   const cols = canMass ? 6 : 5;

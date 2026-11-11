@@ -15,6 +15,7 @@ from services.client_hierarchy import (
 router = APIRouter()
 
 MASS_PERMISSION = "clientes:mantenimiento_masivo"  # FN_SUCURSALES_MANTENIMIENTO_MASIVO
+BRAND_MASS_PERMISSION = "marcas:mantenimiento_masivo"  # FN_MARCAS_MANTENIMIENTO_MASIVO
 ACTIVE_PROJECT_EXCLUDED = ["Anulado", "Culminado"]
 QUOTE_BLOCKING = ["Aprobada", "Configurada", "Enviada a Imple", "Facturada", "Pagada", "Entregada"]
 SIMPLE_ACTIONS = {
@@ -38,9 +39,9 @@ class MassActionRequest(BaseModel):
     payload: dict = {}
 
 
-async def _require_mass(authorization):
+async def _require_mass(authorization, permission: str = MASS_PERMISSION):
     user = await get_current_user(authorization)
-    if user.get("role") != "admin" and MASS_PERMISSION not in (user.get("special_permissions") or []):
+    if user.get("role") != "admin" and permission not in (user.get("special_permissions") or []):
         raise HTTPException(status_code=403, detail="Requiere la Función Especial: Mantenimiento Masivo")
     return user
 
@@ -173,7 +174,7 @@ async def brands_mass_action(req: BrandMassActionRequest, authorization: str | N
     """Acciones masivas sobre Marcas: el valor queda en la Marca; RIF y sucursales lo heredan
     salvo los campos que tengan sobrescritos localmente (inherit_overrides)."""
     from services.client_hierarchy import propagate_brand
-    await _require_mass(authorization)
+    await _require_mass(authorization, BRAND_MASS_PERMISSION)
     ids = list(dict.fromkeys(req.brand_ids or []))
     if not ids:
         raise HTTPException(status_code=400, detail="Seleccione al menos una marca")
