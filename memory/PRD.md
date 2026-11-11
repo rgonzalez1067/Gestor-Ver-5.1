@@ -4762,3 +4762,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06: PDF cotización — portada reemplaza Cliente/RIF por el patrocinante cuando sponsored_implementation (Banco: Banco+RIF; Procesador+Banco: dos filas con nombre y RIF). Patrocinio por cliente sin cambios. Helper apply_sponsor_cover en routes/quotes.py; también en regenerate-pdf.
 
 - 2026-06: Ficha Técnica — Directorio de Contactos con columna Nivel; incluye contactos con tag Implementación (o sin tags) de todos los niveles (Grupo, Marca, RIF, Sucursal) del cliente y de los RIF del proyecto (services/client_hierarchy.implementation_contacts_for).
+
+- 2026-06 (iter 375): Proyectos Directos reestructurados — tipo único DIRECTO (sin Simple/Multi-RIF ni switch Multitienda); tarjeta Parámetros del Proyecto con Nivel de la Cotización (QuoteScopeSelector) + tipología automática + Tipo de Patrocinio (Cliente por defecto / Banco con selector); Gateway/Link: un solo RIF; tarjeta Detalles de Integración (Integrador, App, Servidor, Impresora Fiscal con opción manual, Comunicación, Hardware y Seriales Pinpad). Backend acepta scope_tree y tipifica vía quote_transitions.

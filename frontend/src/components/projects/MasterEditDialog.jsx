@@ -543,7 +543,7 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
           <section>
             <h3 className="text-sm font-semibold text-slate-800 mb-1 flex items-center gap-2">
               Banco(s) de Implementación y Productos
-              {isBranchProject && <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded"><Store size={10} />Multitienda</span>}
+              {isBranchProject && <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded"><Store size={10} />{project?.tipologia_proyecto || (project?.project_type === 'multirif' ? 'Multi RIF' : 'Multitienda')}</span>}
             </h3>
             <p className="text-xs text-slate-400 mb-2">Los productos se filtran por el Tipo de Proyecto seleccionado.</p>
             {isBranchProject ? (

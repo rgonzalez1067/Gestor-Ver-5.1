@@ -712,8 +712,13 @@ export default function DirectProjectCreation() {
         // Datos del cliente principal (primer RIF del árbol) para la cabecera.
         const main = clients.find((c) => c.client_id === form.client_id) || {};
         const first = form.scope_tree[0] || {};
-        payload.economic_group = form.grupo_economico_name || main.grupo_economico || main.economic_group || '';
-        payload.fantasy_name = first.marca_name || main.fantasy_name || '';
+        const groupsInTree = new Set(form.scope_tree.map((r) => {
+          const c = clients.find((x) => x.client_id === r.client_id) || {};
+          return c.grupo_economico || c.economic_group || '';
+        }));
+        payload.economic_group = form.grupo_economico_name
+          || (groupsInTree.size === 1 ? [...groupsInTree][0] : '');
+        payload.fantasy_name = new Set(form.scope_tree.map((r) => r.marca_name)).size > 1 ? '' : (first.marca_name || main.fantasy_name || '');
       } else {
         payload.scope_tree = [];
         payload.nivel_cotizacion = 'RIF';
@@ -943,7 +948,7 @@ export default function DirectProjectCreation() {
               <p className="text-sm font-semibold text-emerald-900 flex items-center gap-2"><Cpu size={14} className="text-emerald-600" /> Hardware y Seriales</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Modelo Pinpad *</Label>
+                <Label className="text-xs">Modelo Pinpad</Label>
                 <Select value={form.pinpad_model} onValueChange={(v) => set({ pinpad_model: v })}>
                   <SelectTrigger className="h-10" data-testid="dp-pinpad-model">
                     <SelectValue placeholder="Seleccionar pinpad..." />

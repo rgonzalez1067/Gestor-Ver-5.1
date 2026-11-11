@@ -35,7 +35,7 @@ const SponsorBlock = ({ form, set, bankSelect }) => (
 );
 
 export const DirectParamsCard = ({ form, set, clients, quoteTypes, isPaymentGateway, isScope, clientPicker, bankSelect, onQuoteType, scopeKey }) => {
-  const tipologia = isScope && form.scope_tree.length ? inferTipologia(form.scope_tree) : (isPaymentGateway ? 'Monotienda' : '');
+  const tipologia = isScope ? (form.scope_tree.length ? inferTipologia(form.scope_tree) : '') : (form.client_id ? 'Monotienda' : '');
   return (
     <Card className="border-indigo-100 shadow-sm" data-testid="dp-params-card">
       <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50 to-indigo-50/30 border-b border-indigo-100 rounded-t-lg">

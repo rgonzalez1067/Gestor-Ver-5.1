@@ -330,6 +330,10 @@ async def create_direct_project(
         if payload.client_id != tree[0]["client_id"]:
             payload.client_id = tree[0]["client_id"]
             client = await db.clients.find_one({"client_id": payload.client_id}, {"_id": 0}) or client
+    if (payload.patrocinador_tipo or "CLIENTE").upper() not in ("CLIENTE", "BANCO"):
+        raise HTTPException(status_code=400, detail="patrocinador_tipo debe ser CLIENTE o BANCO")
+    if (payload.patrocinador_tipo or "").upper() == "BANCO" and not (payload.sponsor_bank_id or payload.sponsor_processor_id):
+        raise HTTPException(status_code=400, detail="Patrocinada por Banco/Ente: selecciona el Banco Patrocinante")
     if (payload.patrocinador_tipo or "CLIENTE").upper() != "BANCO":
         payload.sponsor_bank_id = payload.sponsor_bank_name = None
         payload.sponsor_processor_id = payload.sponsor_processor_name = None
@@ -619,6 +623,8 @@ async def create_direct_project(
             "origin": "direct",
             "direct_project": True,
             "tipo_proyecto": "DIRECTO",
+            "patrocinador_tipo": synthetic_quote["patrocinador_tipo"],
+            "patrocinador_nombre": synthetic_quote["patrocinador_nombre"],
             # Sede heredada de la ficha del usuario en sesión (seguridad de perfiles).
             "sede": sede,
             "pinpad_provider": _pp_provider or None,

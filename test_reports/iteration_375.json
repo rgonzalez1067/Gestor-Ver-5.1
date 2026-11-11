@@ -1,0 +1,40 @@
+{
+  "summary": "Tested the Direct Projects rework (both backend and frontend). Backend: 8/8 pytest cases passed. They cover Multitienda (multistore with per-branch box_count), Multi Marca (multirif with rifs/stores), Monotienda (single), BANCO with a sponsor bank (sponsored_implementation true), CLIENTE removing a sent bank, rejection of a branch with 0 boxes, and Gateway without scope_tree. UI: dp-params-card and dp-integration-card are present. dp-type-simple, dp-type-multirif and dp-multistore-toggle are gone, and so are the texts Modelo de Precios, Bancos/Entes, Exento de IVA, Servicio Express and Control Multitienda. The tipologia tag showed MULTITIENDA, then MONOTIENDA, then MULTI MARCA as expected. Sponsor type defaults to Cliente. Choosing Banco shows dp-sponsor-bank and the error chip, and picking a bank clears the error. Fiscal printer 'Otro' opens the custom input, which is validated. For Gateway, the level selector and dp-hw-section are hidden and the client combobox appears. E2E: a VPOS Multi Marca project (Cubitt + VIVA BOLEITA, 3 branches, 4 boxes) was created through the UI with Reel Mercantil/Pago C2P, MSC server, VPN and printer Aclas. DB checks passed: origin=direct, tipo_proyecto=DIRECTO, tipologia_proyecto=Multi Marca, project_type=multirif, 2 rifs (1 and 3 boxes), 3 stores, fiscal_printer_model saved, patrocinador_tipo=CLIENTE, sponsored_implementation=false. /projects/<id> shows Multi Marca. Edición Maestra (master edit) shows the branches. All test projects were deleted.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/direct-projects", "issue": "patrocinador_tipo='BANCO' without sponsor_bank_id is accepted (200) and silently creates a non-sponsored project. Only the frontend validates this. Add a 400 in the backend."},
+      {"endpoint": "POST /api/direct-projects", "issue": "patrocinador_tipo is not validated against {CLIENTE, BANCO}. Its value is upper-cased as-is."},
+      {"endpoint": "POST /api/direct-projects (GATEWAY/LINK_PAGO)", "issue": "patrocinador_tipo and patrocinador_nombre are not saved on the project when there is no scope_tree. quote_transitions copies them only inside the scope_tree block, so a Gateway project sponsored by a bank or client loses this field (project.patrocinador_tipo=None)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DirectParamsCard (Gateway)", "issue": "dp-tipologia-tag shows MONOTIENDA before any client is selected", "selector": "[data-testid='dp-tipologia-tag']", "priority": "LOW"},
+      {"component": "MasterEditDialog", "issue": "For a Multi Marca project (project_type=multirif), the banks section badge says 'Multitienda'", "selector": "[data-testid='master-edit-dialog']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Direct Project", "issues": ["The tipologia appears twice: the dp-tipologia-tag in the header and the 'Tipología del proyecto' line (scope-tipologia) inside the selector. This is redundant.", "The 'Modelo Pinpad *' label has an asterisk but the field is optional (it is not validated)", "The sticky footer partly covers the serial-section buttons (Plantilla/Cargar Excel/Manual) while scrolling"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_direct_projects_scope.py", "/app/test_reports/pytest/pytest_direct_scope.xml"],
+  "action_items": [
+    "Backend: return 400 when patrocinador_tipo=BANCO has no sponsor_bank_id/sponsor_processor_id, and validate patrocinador_tipo against {CLIENTE, BANCO}",
+    "Save patrocinador_tipo/patrocinador_nombre on Gateway/Link de Pago projects (no scope_tree)",
+    "Hide dp-tipologia-tag in Gateway mode until a client is selected",
+    "Optional: remove the duplicated tipologia display, the asterisk on Modelo Pinpad, and the Multitienda badge for multirif in Edición Maestra"
+  ],
+  "critical_code_review_comments": [
+    "DirectProjectCreation.jsx is 1458 lines and direct_projects.py is 988 lines. Both are over 700 lines and should be split (Reel/grid, serials and attachments into their own components).",
+    "Dead legacy code remains in the form and backend: is_multistore/stores, multirif_distribution and multirif_sponsorship validations, even though the UI no longer exposes them. The frontend always sends project_type='simple'.",
+    "In MARCA/GRUPO mode, payload.economic_group falls back to the first client's group (e.g. 'Casiolandia' for Cubitt+VIVA) when grupo_economico_name is missing. This may not represent a multi-brand project."
+  ],
+  "updated_files": ["/app/backend/tests/test_direct_projects_scope.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% (core flows); 2 low-priority cosmetic issues"},
+  "seed_data_creation": "None. Test projects were created via API/UI and deleted by project_id: 8 created by pytest, plus prj_50de0cc9fc9e created by the UI.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Test data: Cubitt brand mrc_4600352723dc, RIF cli_2503893281a8 (8 branches, e.g. cli_5aad5a3694a1). VIVA BOLEITA brand mrc_4db35b266746, RIF cli_dad0aa0672ce (branch cli_9e73aeb20566). Bank Banco Mercantil bnk_c970e2dfc93d, VPOS product 'Pago C2P'. UI login: POST /api/auth/login, then localStorage session_token. Creating a project for Cubitt auto-assigns implementer Franklin Fernandez (no notification config). Brand/RIF checklists load asynchronously, so wait for scope-rifs-check-<id> before clicking.",
+  "test_credentials": "rgonzalez@megasoft.com.ve / MegaSoft2026*"
+}
