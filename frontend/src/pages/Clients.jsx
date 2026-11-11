@@ -1811,7 +1811,9 @@ export const Clients = () => {
                       </td>
                       <td className="px-4 py-2.5 max-w-[280px]" data-testid={`client-names-${client.client_id}`}>
                         <span className="block text-sm font-semibold text-slate-900 truncate" title={client.legal_name}>{client.legal_name}</span>
-                        <span className="inline-block max-w-full mt-0.5 px-1.5 py-0.5 rounded bg-sky-100 text-xs text-sky-900 truncate align-top" title={client.fantasy_name} data-testid={`client-fantasy-${client.client_id}`}>{client.fantasy_name || '—'}</span>
+                        {client.fantasy_name
+                          ? <span className="inline-block max-w-full mt-0.5 px-1.5 py-0.5 rounded bg-sky-100 text-xs text-sky-900 truncate align-top" title={client.fantasy_name} data-testid={`client-fantasy-${client.client_id}`}>{client.fantasy_name}</span>
+                          : <span className="block text-xs text-slate-400" data-testid={`client-fantasy-${client.client_id}`}>—</span>}
                         {client.is_branch && client.marca_name && client.marca_name !== client.fantasy_name && (
                           <span className="block text-[10px] text-teal-700 truncate" data-testid={`client-branch-marca-${client.client_id}`}>Marca: {client.marca_name}</span>
                         )}

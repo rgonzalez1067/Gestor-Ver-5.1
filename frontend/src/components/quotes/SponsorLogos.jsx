@@ -3,6 +3,8 @@ import { Landmark } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+const SKIP = new Set(['banco', 'de', 'del', 'la', 'los', 'el', 'y']);
+const initials = (name = '') => name.split(/\s+/).filter(w => w && !SKIP.has(w.toLowerCase())).slice(0, 3).map(w => w[0]).join('').toUpperCase();
 
 const EntityLogo = ({ entity, testId }) => {
   const [failed, setFailed] = useState(false);
@@ -11,7 +13,7 @@ const EntityLogo = ({ entity, testId }) => {
     <span className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-white border border-slate-200 shadow-sm overflow-hidden" data-testid={testId}>
       {url && !failed
         ? <img src={`${API_URL}${url}`} alt={entity.name} className="w-full h-full object-contain p-0.5" onError={() => setFailed(true)} />
-        : <Landmark size={13} className="text-slate-500" />}
+        : <span className="text-[9px] font-bold text-slate-600 leading-none">{initials(entity?.name) || <Landmark size={13} className="text-slate-500" />}</span>}
     </span>
   );
 };

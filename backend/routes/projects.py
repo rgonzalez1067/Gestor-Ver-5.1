@@ -428,7 +428,7 @@ async def get_assignment_timeline(project_id: str, authorization: Optional[str] 
     def _ts(v):
         return datetime.fromisoformat(str(v).replace("Z", "+00:00"))
 
-    events.sort(key=lambda e: e["at"])
+    events.sort(key=lambda e: _ts(e["at"]))
     merged = []
     for e in events:
         if merged and merged[-1]["name"] == e["name"] and abs((_ts(e["at"]) - _ts(merged[-1]["at"])).total_seconds()) < 300:

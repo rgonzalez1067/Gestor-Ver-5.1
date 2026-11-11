@@ -23,7 +23,7 @@ const TimelineItem = ({ item, idx }) => (
 export const AssignmentTimelineButton = ({ projectId }) => {
   const [items, setItems] = useState(null);
   const load = async (open) => {
-    if (!open || items) return;
+    if (!open) return;
     try {
       const res = await api.get(`/projects/${projectId}/assignment-timeline`);
       setItems(res.data.timeline || []);
@@ -35,7 +35,7 @@ export const AssignmentTimelineButton = ({ projectId }) => {
     <Popover onOpenChange={load}>
       <PopoverTrigger asChild>
         <button type="button" title="Historial de implementadores"
-          className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-violet-600 transition-colors"
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-violet-600 transition-colors"
           data-testid="assignment-timeline-btn">
           <History size={12} /> Historial
         </button>

@@ -1,0 +1,36 @@
+{
+  "summary": "Iter374: tested 3 features. (1) Assignment timeline: API returns 2 tramos for prj_92fe734eb1f1 (Omar Jiménez 27 días approx, hasta 19/06/2026; Rosdely Pereira 144 días, actual, Asignado por Doris Collazo). 404 for an unknown project, 401/403 without auth. Reassignment on a TEST clone (prj_test374_tl01) via PUT /assign added a 3rd tramo (current, 0 days) and closed the previous one with until = new.at. The clone was deleted. UI: the assignment-timeline-btn 'Historial' sits next to the Implementador label, the name is still visible below it, and the popover shows item-0/1 with days, dates and the current item highlighted in violet. (2) /clients: the fantasy-name-header and all 1141 client-fantasy-<id> cells have bg rgb(224,242,254) = sky-100. (3) /quotes: the sponsored badge for quo_fe9e9f1c240b shows both sponsor-processor-logo and sponsor-bank-logo, and the tooltip reads 'Procesador: Consorcio CrediCard · Banco Patrocinante: Bancaribe'. However, NO actual logo image renders. Every one of the 38 bank_logo_url files in the DB returns 404 from /api/uploads (not in Object Storage and not in /app/backend/uploads/bank_logos). The component therefore falls back to the generic Landmark icon. Code handles this gracefully, but the feature 'logo del banco' isn't visible in preview.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/uploads/bank_logos/*", "issue": "All 38 banks.bank_logo_url files (e.g. bank_logo_93a76bac.png Bancaribe, bank_logo_9299efcf.png CrediCard, bank_logo_0fda343e.png Mega Soft) return 404. The 47 local files in uploads/bank_logos have different names, and the Object Storage preview namespace misses them. Data/env issue: the DB references logos that only exist in another environment (likely production)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Quotes sponsor logos", "issue": "img onError fallback triggers for every sponsored quote because the logo URLs 404. Users see two identical gray Landmark icons instead of bank and processor logos, so the two entities can't be told apart without hovering.", "affected_selectors": ["[data-testid^='sponsor-bank-logo-']", "[data-testid^='sponsor-processor-logo-']"]}
+    ],
+    "design_issues": [
+      {"screen": "Clients grid", "issues": ["client-fantasy cell shows a blue pill with '—' when fantasy_name is empty (1 row). Consider no background for empty values."]},
+      {"screen": "ProjectDetail", "issues": ["The 'Historial' button is text-slate-400 at 11px. Contrast is low (~2.6:1) for 'discreto pero perceptible'; consider slate-500/violet-500.", "Pre-existing: 'Fecha estimada de entrada en producción' uses the native date input (mm/dd/yyyy) instead of the shadcn calendar."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter374_timeline.py", "/app/backend/tests/test_iter374_reassign_timeline.py", "/app/test_reports/pytest/pytest_iter374.xml"],
+  "action_items": [
+    "Bank logos 404: re-upload logos (or sync Object Storage/uploads/bank_logos) so bank_logo_url files exist in preview. Otherwise the sponsor logo feature can't be verified visually. Optionally make the fallback distinguish processor vs bank (e.g. initials).",
+    "Optional: raise contrast of the Historial button and hide the sky-100 pill when fantasy_name is empty."
+  ],
+  "critical_code_review_comments": [
+    "get_assignment_timeline: the approx initial tramo uses project.created_at as its start date, so the days count is an estimate (flagged with approx=true and shown as '~').",
+    "get_assignment_timeline: events are sorted by ISO string. That's fine as long as all timestamps share the +00:00 format; mixed 'Z' and offset formats could misorder them.",
+    "AssignmentTimelineButton caches items after the first open, so the popover won't refresh after an in-page reassign until reload.",
+    "quo_df611fa9799c (sponsored, no status field) isn't rendered in the default /quotes grid, so it could not be UI-verified."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter374_timeline.py", "/app/backend/tests/test_iter374_reassign_timeline.py"],
+  "success_rate": {"backend": "83% (5/6; the failure is missing logo files)", "frontend": "90% (all testids and behaviors work; logos render as fallback icons)"},
+  "seed_data_creation": "Temporary clone prj_test374_tl01 (inserted directly in the DB from prj_92fe734eb1f1, reassigned to the admin rgonzalez) and deleted after the test. The source project was not modified.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "UI login: POST /api/auth/login (rgonzalez/MegaSoft2026*), then set localStorage session_token and user. The sponsored quote with processor is quo_fe9e9f1c240b (COT-2026-10-191-PYME). The reassign test uses a DB clone to avoid touching real projects and only assigns to the admin to avoid notifying real implementers."
+}
