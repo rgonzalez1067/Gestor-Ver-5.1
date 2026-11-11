@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import QuoteStatusStepper, { isMposLicense } from './QuoteStatusStepper';
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { SponsorLogos } from './SponsorLogos';
 import { getEffectiveStatus as getEffectiveStatusShared, quoteMatchesFilters } from './quoteStatus';
 
 const STATUS_COLORS = {
@@ -62,7 +63,7 @@ const MposConfigureItem = ({ quote, meta, onConfigure }) => {
 };
 
 export const QuotesTable = ({
-  quotes, clients,
+  quotes, clients, banks = [],
   filterClient, filterGroup, filterStatus, filterCategory, filterSegment, filterDateFrom, filterDateTo,
   actionLoading, canEdit,
   highlightedQuoteNumber,
@@ -74,6 +75,7 @@ export const QuotesTable = ({
   opsReadonly = false,
   clearFilters,
 }) => {
+  const banksById = Object.fromEntries((banks || []).map(b => [b.bank_id, b]));
   // Helper: mapea quote → (biz_type, sub_cat) para resolver overrides.
   const resolveBizSub = (q) => {
     const cat = q.quote_category;
@@ -332,26 +334,7 @@ export const QuotesTable = ({
                     ) : (
                       <span className="text-xs text-slate-400">—</span>
                     )}
-                    {quote.sponsored_implementation && (
-                      <TooltipProvider delayDuration={200}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span
-                              className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-red-600 border border-yellow-400 shadow-sm cursor-default"
-                              data-testid={`sponsored-badge-${quote.quote_id}`}
-                              aria-label={`Banco Patrocinante: ${quote.sponsoring_bank_name || 'no especificado'}`}
-                            >
-                              <Landmark size={13} className="text-yellow-300" strokeWidth={2.4} />
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" data-testid={`sponsored-tooltip-${quote.quote_id}`}>
-                            <p className="text-xs">
-                              Banco Patrocinante: {[quote.sponsoring_processor_name, quote.sponsoring_bank_name].filter(Boolean).join(' — ') || 'no especificado'}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
+                    {quote.sponsored_implementation && <SponsorLogos quote={quote} banksById={banksById} />}
                     {quote.iva_exempt && (
                       <TooltipProvider delayDuration={200}>
                         <Tooltip>

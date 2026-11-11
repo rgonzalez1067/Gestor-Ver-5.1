@@ -32,6 +32,7 @@ import { ProjectProgressReportDialog } from '../components/ProjectProgressReport
 import { BatchUpdateModal } from '../components/projects/BatchUpdateModal';
 import { EmailDetailViewer } from '../components/projects/EmailDetailViewer';
 import { RichTextEditor } from '../components/RichTextEditor';
+import { AssignmentTimelineButton } from '../components/projects/AssignmentTimelineButton';
 import { EmailPreviewDialog } from '../components/projects/EmailPreviewDialog';
 import { CommitmentModal } from '../components/CommitmentModal';
 import { ImplementerAlertsModal } from '../components/ImplementerAlertsModal';
@@ -1545,7 +1546,7 @@ const ProjectDetail = () => {
                   <div className="flex items-center gap-3 pt-1 mt-1 border-t border-slate-100">
                     <User size={18} className="text-violet-600 shrink-0" />
                     <div>
-                      <p className="text-xs text-slate-500">Implementador</p>
+                      <p className="text-xs text-slate-500 flex items-center gap-2">Implementador <AssignmentTimelineButton projectId={project.project_id} /></p>
                       <p className="text-sm font-semibold text-slate-700">{project.assigned_to_name}</p>
                       {(project.fecha_asignacion || project.assigned_at) && (
                         <p className="text-[10px] text-slate-400">Asignado el: {new Date(project.fecha_asignacion || project.assigned_at).toLocaleDateString('es-VE')}</p>

@@ -4522,6 +4522,7 @@ export const Quotes = () => {
           <QuotesTable
             quotes={rbacFilteredQuotes}
             clients={clients}
+            banks={banks}
             actionOverrides={actionOverrides}
             customActions={customActions}
             currentUserId={currentUser?.user_id || ''}

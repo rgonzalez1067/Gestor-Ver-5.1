@@ -1766,7 +1766,7 @@ export const Clients = () => {
                   )}
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase w-[130px]">RIF</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase w-[90px]">Sucursal</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Razón Social / Nombre Fantasía</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Razón Social / <span className="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800" data-testid="fantasy-name-header">Nombre Fantasía</span></th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase w-[100px]">Segmento</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase w-[120px]">Categoría</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Contacto Principal</th>
@@ -1811,7 +1811,7 @@ export const Clients = () => {
                       </td>
                       <td className="px-4 py-2.5 max-w-[280px]" data-testid={`client-names-${client.client_id}`}>
                         <span className="block text-sm font-semibold text-slate-900 truncate" title={client.legal_name}>{client.legal_name}</span>
-                        <span className="block text-xs text-slate-500 truncate" title={client.fantasy_name}>{client.fantasy_name || '—'}</span>
+                        <span className="inline-block max-w-full mt-0.5 px-1.5 py-0.5 rounded bg-sky-100 text-xs text-sky-900 truncate align-top" title={client.fantasy_name} data-testid={`client-fantasy-${client.client_id}`}>{client.fantasy_name || '—'}</span>
                         {client.is_branch && client.marca_name && client.marca_name !== client.fantasy_name && (
                           <span className="block text-[10px] text-teal-700 truncate" data-testid={`client-branch-marca-${client.client_id}`}>Marca: {client.marca_name}</span>
                         )}

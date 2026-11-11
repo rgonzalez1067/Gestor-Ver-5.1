@@ -402,6 +402,54 @@ async def get_project(project_id: str, authorization: Optional[str] = Header(Non
     return project
 
 
+_ASSIGN_NOTE_RE = re.compile(r"^Proyecto (?:re)?asignado a (.+?)\.(?:\s|$)")
+
+
+@router.get("/projects/{project_id}/assignment-timeline")
+async def get_assignment_timeline(project_id: str, authorization: Optional[str] = Header(None)):
+    """Línea de tiempo de implementadores (bitácora + historial de reasignaciones), con días por tramo."""
+    user = await get_current_user(authorization)
+    vis = await _build_project_visibility_query(user)
+    project = await db.projects.find_one({"$and": [{"project_id": project_id}, vis]},
+                                         {"_id": 0, "notes": 1, "reassignment_history": 1, "assigned_to_name": 1, "assigned_at": 1, "created_at": 1})
+    if not project:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+
+    events = []
+    for n in project.get("notes") or []:
+        m = _ASSIGN_NOTE_RE.match(n.get("text") or "")
+        if m and n.get("created_at"):
+            events.append({"name": m.group(1).strip(), "at": n["created_at"], "by": n.get("created_by_name", "")})
+    hist = project.get("reassignment_history") or []
+    for h in hist:
+        if h.get("reassigned_at") and h.get("to_name"):
+            events.append({"name": h["to_name"], "at": h["reassigned_at"], "by": h.get("reassigned_by_name", "")})
+
+    def _ts(v):
+        return datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+
+    events.sort(key=lambda e: e["at"])
+    merged = []
+    for e in events:
+        if merged and merged[-1]["name"] == e["name"] and abs((_ts(e["at"]) - _ts(merged[-1]["at"])).total_seconds()) < 300:
+            continue
+        merged.append(e)
+    # Implementador inicial anterior a la primera reasignación registrada sin nota de asignación.
+    if hist and (not merged or merged[0]["name"] != hist[0].get("from_name")) and hist[0].get("from_name"):
+        first_at = project.get("created_at") or hist[0]["reassigned_at"]
+        merged.insert(0, {"name": hist[0]["from_name"], "at": first_at, "by": "", "approx": True})
+    if not merged and project.get("assigned_to_name"):
+        merged = [{"name": project["assigned_to_name"], "at": project.get("assigned_at") or project.get("created_at"), "by": ""}]
+
+    now = datetime.now(timezone.utc)
+    for i, e in enumerate(merged):
+        end = _ts(merged[i + 1]["at"]) if i + 1 < len(merged) else now
+        e["until"] = merged[i + 1]["at"] if i + 1 < len(merged) else None
+        e["days"] = max((end - _ts(e["at"])).days, 0)
+        e["current"] = i == len(merged) - 1
+    return {"timeline": merged}
+
+
 def _status_after_assign(project: dict) -> str:
     """La (re)asignación solo saca al proyecto de 'Por asignar'; cualquier otro estatus se conserva."""
     current = (project.get("status") or "").strip()
