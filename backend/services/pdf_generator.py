@@ -91,6 +91,10 @@ class TemplateQuotePDFRequest(BaseModel):
     multirif_distribution: List[dict] = []  # [{client_id, rif, client_name, boxes, stores:[{name,boxes}]}]
     sponsoring_bank_id: Optional[str] = None
     sponsoring_bank_name: Optional[str] = None
+    # Patrocinio de la implementación (Banco / Procesador): reemplaza Cliente/RIF en la portada.
+    sponsored_implementation: bool = False
+    sponsoring_processor_id: Optional[str] = None
+    cover_parties: List[tuple] = []
     # Segmento del cliente para determinar el tipo de PDF
     client_segment: str = "PYME"  # "PYME" o "CORP"
     # Cliente exento de IVA — suprime impuesto en cálculos del PDF y herencia a facturación
@@ -137,6 +141,13 @@ class DynamicQuotePDFGenerator:
         self.margin = 50
         self.styles = self._create_styles()
         
+    def _cover_party_pairs(self):
+        """Portada: patrocinante(s) Banco/Procesador si aplica; si no, el Cliente."""
+        if self.data.cover_parties:
+            return [tuple(p) for p in self.data.cover_parties]
+        return [("Cliente", self.data.cliente_nombre), ("RIF", self.data.cliente_rif)]
+
+
     def _create_styles(self):
         """Crear estilos personalizados para el documento"""
         styles = getSampleStyleSheet()
@@ -294,19 +305,24 @@ class DynamicQuotePDFGenerator:
             textColor=colors.HexColor("#0F2A47"), leading=15,
         )
         info_rows = []
-        for label, value in info_pairs:
+        for pair in info_pairs:
+            label, value = pair[0], pair[1]
+            text = str(value) if value else "—"
+            if len(pair) > 2:  # (label, nombre, rif): RIF en segunda línea
+                text += f'<br/><font size="9" color="#5C6B7A">RIF: {pair[2] or "—"}</font>'
             info_rows.append([
                 Paragraph(str(label).upper(), label_style),
-                Paragraph(str(value) if value else "—", value_style),
+                Paragraph(text, value_style),
             ])
+        compact = any(len(p) > 2 for p in info_pairs)
 
         info_tbl = Table(info_rows, colWidths=[usable_w * 0.34, usable_w * 0.66])
         info_style = [
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('LEFTPADDING', (0, 0), (-1, -1), 14),
             ('RIGHTPADDING', (0, 0), (-1, -1), 14),
-            ('TOPPADDING', (0, 0), (-1, -1), 9),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 9),
+            ('TOPPADDING', (0, 0), (-1, -1), 6 if compact else 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6 if compact else 9),
             ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor("#E2E8F0")),
             ('BOX', (0, 0), (-1, -1), 0.75, colors.HexColor("#CBD5E1")),
             ('LINEBEFORE', (0, 0), (0, -1), 3, self.COLOR_AZUL),
@@ -978,8 +994,7 @@ class DynamicQuotePDFGenerator:
         
         # ==================== PÁGINA 1: PORTADA (diseño moderno) ====================
         info_portada = [
-            ("Cliente", self.data.cliente_nombre),
-            ("RIF", self.data.cliente_rif),
+            *self._cover_party_pairs(),
             ("Cantidad de Cajas", str(self.data.cantidad_cajas)),
             ("Integrador", self.data.integrator_name),
             ("Aplicativo de Caja", self.data.integrator_app_name),
@@ -1658,8 +1673,7 @@ class DynamicQuotePDFGenerator:
         
         # ==================== PÁGINA 1: PORTADA (diseño moderno, igual a VPOS) ====================
         info_portada = [
-            ("Cliente", self.data.cliente_nombre),
-            ("RIF", self.data.cliente_rif),
+            *self._cover_party_pairs(),
             ("Cantidad de Cajas", str(self.data.cantidad_cajas)),
             ("Integrador", self.data.integrator_name),
             ("Aplicativo de Caja", self.data.integrator_app_name),
@@ -1932,8 +1946,7 @@ class DynamicQuotePDFGenerator:
             pg_subtitle = "Payment Gateway · Plataforma de Pagos"
 
         info_portada = [
-            ("Cliente", self.data.cliente_nombre),
-            ("RIF", self.data.cliente_rif),
+            *self._cover_party_pairs(),
             ("Integrador", self.data.integrator_name or "Sin integrador por el momento"),
             ("Aplicativo", self.data.integrator_app_name),
         ]

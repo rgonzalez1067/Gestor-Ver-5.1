@@ -297,6 +297,8 @@ async def create_quote_with_pdf(data: QuoteCreateWithPDF, authorization: Optiona
                     pdf_request.multirif_distribution = to_distribution(_tree, bool(data.cajas_desglose)) if is_multi(_tree) else []
                 pdf_request.sponsoring_bank_id = pdf_request.sponsoring_bank_id or data.sponsoring_bank_id
                 pdf_request.sponsoring_bank_name = pdf_request.sponsoring_bank_name or data.sponsoring_bank_name
+                pdf_request.sponsored_implementation = bool(getattr(data, "sponsored_implementation", False) or pdf_request.sponsored_implementation)
+                pdf_request.sponsoring_processor_id = pdf_request.sponsoring_processor_id or getattr(data, "sponsoring_processor_id", None)
                 await hydrate_pdf_request(pdf_request)
                 await _enrich_tipo_corp_from_db(pdf_request)
                 
@@ -1342,7 +1344,11 @@ async def regenerate_quote_pdf(quote_id: str, data: dict = {}, authorization: Op
             include_tokenizador=bool(quote.get("include_tokenizador", False)),
             include_link_pago=bool(quote.get("include_link_pago", False)),
             lp_standalone=bool(quote.get("lp_standalone", False)),
+            sponsored_implementation=bool(quote.get("sponsored_implementation")),
+            sponsoring_bank_id=quote.get("sponsoring_bank_id") or None,
+            sponsoring_processor_id=quote.get("sponsoring_processor_id") or None,
         )
+        await apply_sponsor_cover(pdf_request)
         
         # Enriquecer tipo_corp
         await _enrich_tipo_corp_from_db(pdf_request)
@@ -1888,6 +1894,22 @@ async def generate_quote_pdf_from_data(data: QuotePDFRequest, authorization: Opt
 
 # ==================== GENERADOR DE PDF CON PLANTILLA ====================
 
+async def apply_sponsor_cover(data: TemplateQuotePDFRequest):
+    """Patrocinio Banco/Procesador: la portada reemplaza Cliente/RIF por el (los) patrocinante(s)."""
+    data.cover_parties = []
+    if not data.sponsored_implementation or not data.sponsoring_bank_id:
+        return
+    ids = [i for i in (data.sponsoring_processor_id, data.sponsoring_bank_id) if i]
+    found = {b["bank_id"]: b async for b in db.banks.find({"bank_id": {"$in": ids}}, {"_id": 0, "bank_id": 1, "name": 1, "rif": 1})}
+    bank = found.get(data.sponsoring_bank_id) or {"name": data.sponsoring_bank_name or ""}
+    if data.sponsoring_processor_id:
+        proc = found.get(data.sponsoring_processor_id) or {}
+        data.cover_parties = [("Procesador", proc.get("name", ""), format_rif(proc.get("rif", ""))),
+                              ("Banco", bank.get("name", ""), format_rif(bank.get("rif", "")))]
+    else:
+        data.cover_parties = [("Banco", bank.get("name", "")), ("RIF", format_rif(bank.get("rif", "")))]
+
+
 async def hydrate_pdf_request(data: TemplateQuotePDFRequest):
     """Aísla la generación de PDF de la sesión/RBAC del usuario.
 
@@ -1934,6 +1956,8 @@ async def hydrate_pdf_request(data: TemplateQuotePDFRequest):
         data.cliente_rif = (bank.get("rif") if bank else None) or ""
         data.cliente_contacto = ""
         data.cliente_address = ""
+
+    await apply_sponsor_cover(data)
 
     # --- Integrador ---
     if getattr(data, "integrator_id", None):

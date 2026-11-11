@@ -1836,6 +1836,8 @@ export const Quotes = () => {
       multirif_distribution: _isMultiRif ? (quoteData.multirif_distribution || []) : scopeDistribution(quoteData),
       sponsoring_bank_id: quoteData.sponsoring_bank_id || null,
       sponsoring_bank_name: quoteData.sponsoring_bank_name || '',
+      sponsored_implementation: !!quoteData.sponsored_implementation,
+      sponsoring_processor_id: quoteData.sponsoring_processor_id || null,
       // IDs para hidratación server-side (aislamiento de RBAC): el backend resuelve
       // los nombres autoritativos desde Mongo → Previsualizar/Exportar/Guardar idénticos.
       client_id: quoteData.client_id || null,
@@ -2142,6 +2144,8 @@ export const Quotes = () => {
         multirif_distribution: isMultiRif ? (quoteData.multirif_distribution || []) : scopeDistribution(quoteData),
         sponsoring_bank_id: quoteData.sponsoring_bank_id || null,
         sponsoring_bank_name: quoteData.sponsoring_bank_name || '',
+        sponsored_implementation: !!quoteData.sponsored_implementation,
+        sponsoring_processor_id: quoteData.sponsoring_processor_id || null,
         quote_type: quoteData.quote_type,
         pricing_model: quoteData.pricing_model,
         cantidad_cajas: quoteData.cantidad_cajas || 1,

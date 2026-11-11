@@ -4758,3 +4758,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06 (iter 373): Reasignación conserva estatus; Edición Maestra recalcula rollup_progress (ponderado por cajas); Clientes columna combinada Razón Social/Fantasía; cobro recurrente en Proyectos Directos (client_segment = equipo del creador, 394 migrados) + nota en bitácora; ícono patrocinio rojo/amarillo con tooltip en Cotizaciones; Histórico segmentado por departamento (Ventas Pyme→PYME, Ventas Corp→CORP; admin/Director/Gerente todo + selector).
 
 - 2026-06 (iter 374): Botón "Historial" de implementadores en detalle de proyecto (GET /api/projects/{id}/assignment-timeline); fondo azul claro en Nombre Fantasía (Sucursales); logos de banco/procesador en grilla de Cotizaciones con tooltip (fallback a iniciales si el archivo de logo no existe; en preview los 38 logos devuelven 404).
+
+- 2026-06: PDF cotización — portada reemplaza Cliente/RIF por el patrocinante cuando sponsored_implementation (Banco: Banco+RIF; Procesador+Banco: dos filas con nombre y RIF). Patrocinio por cliente sin cambios. Helper apply_sponsor_cover en routes/quotes.py; también en regenerate-pdf.
