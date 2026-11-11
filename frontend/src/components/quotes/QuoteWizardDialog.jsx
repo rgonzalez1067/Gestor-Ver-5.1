@@ -328,13 +328,13 @@ export const QuoteWizardDialog = ({ ctx }) => {
               </DialogHeader>
 
               {/* SECCIÓN 1: Parámetros Iniciales */}
-              <div className={`bg-slate-50 rounded-lg p-5 border ${showRest ? '' : '[&>*:not(h3):not(.qw-params-grid)]:hidden'}`} data-testid="quote-params-section">
+              <div className="bg-slate-50 rounded-lg p-5 border" data-testid="quote-params-section">
                 <h3 className="font-semibold text-lg text-slate-800 mb-4 flex items-center gap-2">
                   <span className="w-7 h-7 rounded-full bg-brand-blue-600 text-white flex items-center justify-center text-sm">1</span>
                   Parámetros de la Cotización
                 </h3>
                 
-                <div className={`qw-params-grid grid grid-cols-1 md:grid-cols-5 gap-4 ${showRest ? '' : '[&>*:not(:first-child)]:hidden'}`}>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div>
                     <Label className="text-sm font-medium text-slate-700 mb-2 block">
                       Tipo de Cotización <span className="text-red-500">*</span>
@@ -437,6 +437,8 @@ export const QuoteWizardDialog = ({ ctx }) => {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {showRest && (<>
 
                   {!isScopeFlow && (
                   <div>
@@ -629,6 +631,8 @@ export const QuoteWizardDialog = ({ ctx }) => {
                       className="h-10"
                     />
                   </div>
+                  </>)}
+
                   {/* End conditional for non-PG fields */}
                   </>)}
                 </div>

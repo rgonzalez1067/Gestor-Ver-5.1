@@ -1,0 +1,28 @@
+{
+  "summary": "Iter379: (1) Reporte General de Marcas works. Backend: 5 of 5 pytest pass (PDF, XLSX, empty list returns 400, no auth returns 401, PDF of all 785 brands in about 2s). UI /marcas: with the Segmento filter set to 'Sin asignar', the button shows 'Reporte General (18)', matching brand-visible-count '18 de 781 marcas'. The PDF (117KB) and the Excel (exactly 18 distinct brands) both download and contain the filters label. (2) Nueva Implementación wizard first screen: PARTIAL FAIL. Before a type is chosen, the screen hides the sponsor/IVA/Express block, Detalles de Integración and later sections as intended. But Cliente, Modelo de Precios, Cajas (VTID) and Bancos/Entes are STILL VISIBLE next to 'Tipo de Cotización'. After choosing VPOS, the usual fields appear (nivel selector, sponsor, IVA exempt, integration). Payment Gateway shows its own flow. Editing an existing VPOS quote opens with all fields visible. In the VPOS regression, with pricing model, RIF level, client sponsor and integrator filled in, the medios de pago section (select-bank) and submit button appear. Nothing was saved.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "QuoteWizardDialog – Sección 1 (qw-params-grid)", "issue": "Before Tipo de Cotización is chosen, the grid still shows Cliente*, Modelo de Precios*, Cajas (VTID)* and Bancos/Entes. RCA: the hiding relies on the CSS class '[&>*:not(:first-child)]:hidden' on the grid. In preview, the conditional JSX children ({!isScopeFlow && ...} etc.) are wrapped by the visual-edit runtime in <span data-ve-dynamic style=\"display: contents\">. The inline display:contents beats the stylesheet's display:none, so the spans and their children still render. The Tailwind rule IS compiled and present in the stylesheet (checked); computed display of the wrappers = 'contents'. The section-level rule only works on the plain DIV child (the sponsor block is hidden: display:none).", "selector": "[data-testid=quote-params-section] .qw-params-grid > span", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_brands_report_iter379.py", "/app/test_reports/pytest/iter379.xml"],
+  "action_items": [
+    "QuoteWizardDialog: replace CSS-based hiding with conditional rendering. Wrap every qw-params-grid child except Tipo de Cotización, and the section-1 blocks after the grid, in {showRest && (...)}, or put 'hidden' on each element directly. Do not rely on the parent '[&>*...]:hidden' selectors, which break when children are wrapped in display:contents elements.",
+    "Then re-verify: on a new Implementación, only the 'Tipo de Cotización' select and the section title are visible."
+  ],
+  "critical_code_review_comments": [
+    "QuoteWizardDialog.jsx is 2714 lines; it should be split (pre-existing).",
+    "brands_report: the 'Sucursales' column counts branches + 1 (includes the principal RIF), so a RIF with no branches shows 1. This is consistent with the 'N sucursales' total in the PDF subtitle, but confirm it is the intended meaning.",
+    "brands_report: when filtering by Ejecutivo/Segmento, all RIFs of each visible brand are listed, not only the matching RIFs. This matches the chosen design (brand-level filter), but users may expect RIF-level filtering.",
+    "Some RIFs render like 'J-411682551' (no check-digit hyphen) via format_rif for certain stored values; this is pre-existing formatter behavior."
+  ],
+  "updated_files": ["/app/backend/tests/test_brands_report_iter379.py"],
+  "success_rate": {"backend": "100% (5/5)", "frontend": "80% (4/5 checks; initial-screen hiding fails)"},
+  "seed_data_creation": "Used existing fixture ui_fixture_iter377_brand_filters.py (setup/cleanup TEST_377 brands/groups/clients) inside the pytest module; cleaned up after. No quotes saved (edit flow opened only, not saved).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login: POST /api/auth/login with rgonzalez@megasoft.com.ve / MegaSoft2026* returns session_token. For the UI, set localStorage 'session_token' AND 'user' (the /api/auth/me JSON) before going to /quotes. Without 'user', ProtectedRoute redirects to /dashboard. On /quotes, Playwright wait_for_selector/click on create-quote-button often hangs even though the locator resolves (heavy page). Use page.mouse.click on getBoundingClientRect centers after a ~6s sleep. Wizard: create-quote-button, then new-impl-pyme, then select-quote-type (options 'VPOS (Cajas)', 'MPOS', 'MPOS (Imple + POS)', 'Payment Gateway', 'Link de Pago/Tokenizador'). To retest the fix, check that [data-testid=quote-params-section] innerText contains no 'Cliente', 'Modelo de Precios', 'Cajas' or 'Bancos/Entes' before a type is chosen."
+}

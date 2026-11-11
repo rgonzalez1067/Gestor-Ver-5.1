@@ -56,7 +56,6 @@ MODULES = [
     {"id": "proyectos",         "name": "Proyectos",          "group": "gestion_implementacion"},
     {"id": "proyectos_directos","name": "Proyectos Directos", "group": "gestion_implementacion"},
     {"id": "integradores",      "name": "Integradores",       "group": "gestion_implementacion"},
-    {"id": "datos_imple",       "name": "Datos de Imple",     "group": "gestion_implementacion"},
     {"id": "condiciones_banco_mediopago", "name": "Condiciones Banco/Medio de Pago", "group": "gestion_implementacion"},
     {"id": "reportes_implementadores", "name": "Reporte de Implementadores", "group": "gestion_implementacion"},
     # Nuevos Productos
