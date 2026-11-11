@@ -4760,3 +4760,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06 (iter 374): Botón "Historial" de implementadores en detalle de proyecto (GET /api/projects/{id}/assignment-timeline); fondo azul claro en Nombre Fantasía (Sucursales); logos de banco/procesador en grilla de Cotizaciones con tooltip (fallback a iniciales si el archivo de logo no existe; en preview los 38 logos devuelven 404).
 
 - 2026-06: PDF cotización — portada reemplaza Cliente/RIF por el patrocinante cuando sponsored_implementation (Banco: Banco+RIF; Procesador+Banco: dos filas con nombre y RIF). Patrocinio por cliente sin cambios. Helper apply_sponsor_cover en routes/quotes.py; también en regenerate-pdf.
+
+- 2026-06: Ficha Técnica — Directorio de Contactos con columna Nivel; incluye contactos con tag Implementación (o sin tags) de todos los niveles (Grupo, Marca, RIF, Sucursal) del cliente y de los RIF del proyecto (services/client_hierarchy.implementation_contacts_for).

@@ -269,6 +269,37 @@ async def effective_contacts(client: dict) -> list:
     return [c for c in contacts if c.get("effective")]
 
 
+async def implementation_contacts(clients: list) -> list:
+    """Contactos con tag 'implementacion' en TODOS los niveles (Sucursal, RIF, Marca, Grupo)
+    de los clientes dados, identificando el nivel de procedencia. Sin duplicados."""
+    out, seen = [], set()
+    order = {"grupo": 0, "marca": 1, "principal": 2, "local": 3}
+    for client in clients:
+        if not client:
+            continue
+        for scope, doc, name in await lineage(client):
+            for c in (doc.get("contacts") or []):
+                purposes = c.get("purposes") or []
+                # Sin tags = contacto aún no perfilado → válido para todos los módulos.
+                if purposes and "implementacion" not in purposes:
+                    continue
+                key = (scope, doc.get("client_id") or doc.get("brand_id") or doc.get("group_id"),
+                       c.get("contact_id") or (c.get("email") or "").lower() or c.get("full_name"))
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append({**c, "scope": scope, "level_label": LEVEL_LABELS[scope], "level_name": name})
+    out.sort(key=lambda c: (order[c["scope"]], c.get("level_name") or ""))
+    return out
+
+
+async def implementation_contacts_for(main_client: dict, extra_client_ids=None) -> list:
+    """Igual que implementation_contacts, sumando los RIF/sucursales adicionales del proyecto/cotización."""
+    ids = [i for i in dict.fromkeys(extra_client_ids or []) if i and i != (main_client or {}).get("client_id")]
+    extra = await db.clients.find({"client_id": {"$in": ids}}, {"_id": 0}).to_list(500) if ids else []
+    return await implementation_contacts([main_client] + extra)
+
+
 def _display(vals: dict, unit: tuple):
     v = vals.get(unit[-1]) if len(unit) > 1 else vals.get(unit[0])
     if isinstance(v, list):

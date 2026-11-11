@@ -1382,7 +1382,8 @@ async def download_ficha_tecnica(project_id: str, authorization: Optional[str] =
         "ficha_emission_date": pick(project.get("created_at"), quote_like.get("created_at")),
     })
 
-    contacts = client.get("contacts", []) if client else []
+    from services.client_hierarchy import implementation_contacts_for
+    contacts = await implementation_contacts_for(client, [r.get("client_id") for r in (project.get("rifs") or [])]) if client else []
     branches = quote_like.get("branch_details") or project.get("branch_details") or []
     if not branches and project.get("stores"):
         branches = [

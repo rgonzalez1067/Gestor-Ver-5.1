@@ -591,6 +591,7 @@ def generate_implementation_pdf(quote: dict, client: dict, contacts: list, branc
     elements.append(Spacer(1, 6))
 
     contact_header = [
+        Paragraph("<b>Nivel</b>", styles['SmallWhite']),
         Paragraph("<b>Nombre</b>", styles['SmallWhite']),
         Paragraph("<b>Cargo / Rol</b>", styles['SmallWhite']),
         Paragraph("<b>Telefono</b>", styles['SmallWhite']),
@@ -600,22 +601,25 @@ def generate_implementation_pdf(quote: dict, client: dict, contacts: list, branc
 
     if contacts:
         for c in contacts:
-            name = c.get('full_name') or f"{c.get('first_name', '')} {c.get('last_name', '')}".strip() or 'NO_APLICA'
+            name = c.get('full_name') or f"{c.get('first_name') or ''} {c.get('last_name') or ''}".strip() or 'NO_APLICA'
+            level = f"<b>{c.get('level_label', '')}</b><br/>{c.get('level_name') or ''}" if c.get('level_label') else '-'
             contact_data.append([
+                Paragraph(level, styles['SmallText']),
                 Paragraph(str(name), styles['SmallText']),
-                Paragraph(str(c.get('role', c.get('position', 'NO_APLICA'))), styles['SmallText']),
-                Paragraph(str(c.get('phone', 'NO_APLICA')), styles['SmallText']),
-                Paragraph(str(c.get('email', 'NO_APLICA')), styles['SmallText']),
+                Paragraph(str(c.get('role') or c.get('position') or 'NO_APLICA'), styles['SmallText']),
+                Paragraph(str(c.get('phone') or 'NO_APLICA'), styles['SmallText']),
+                Paragraph(str(c.get('email') or 'NO_APLICA'), styles['SmallText']),
             ])
     else:
         contact_data.append([
-            Paragraph("Sin contactos registrados", styles['SmallText']),
+            Paragraph("Sin contactos con tag Implementación", styles['SmallText']),
+            Paragraph("-", styles['SmallText']),
             Paragraph("-", styles['SmallText']),
             Paragraph("-", styles['SmallText']),
             Paragraph("-", styles['SmallText']),
         ])
 
-    contact_table = Table(contact_data, colWidths=[130, 110, 110, 130])
+    contact_table = Table(contact_data, colWidths=[110, 100, 80, 80, 130])
     contact_style = [
         ('BACKGROUND', (0, 0), (-1, 0), COLOR_AZUL),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),

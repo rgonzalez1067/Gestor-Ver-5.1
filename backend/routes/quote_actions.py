@@ -1769,7 +1769,9 @@ async def send_quote_to_implementation(quote_id: str, body: Optional[SendToImple
 
     # Generar PDF de Ficha Técnica de Implementación
     from services.implementation_pdf import generate_implementation_pdf
-    contacts = client.get('contacts', []) if client else []
+    from services.client_hierarchy import implementation_contacts_for
+    _scope_ids = [r.get("client_id") for r in (quote.get("multirif_distribution") or [])]
+    contacts = await implementation_contacts_for(client, _scope_ids) if client else []
 
     # PASO 1: Resolver distribución de sucursales (priorizar datos del modal multitienda)
     if body and body.is_multistore and body.stores:

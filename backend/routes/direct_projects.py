@@ -642,7 +642,8 @@ async def create_direct_project(
     synthetic_quote_for_pdf["quote_number"] = prd_number
     # Fecha de emisión CONGELADA = fecha de creación del proyecto.
     synthetic_quote_for_pdf["ficha_emission_date"] = project.get("created_at") or now_iso
-    contacts = client.get("contacts") or []
+    from services.client_hierarchy import implementation_contacts_for
+    contacts = await implementation_contacts_for(client)
     try:
         pdf_bytes = generate_implementation_pdf(
             synthetic_quote_for_pdf, client, contacts, branch_details,
