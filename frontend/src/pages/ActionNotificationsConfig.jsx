@@ -19,6 +19,7 @@ import {
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
 import api from '../utils/api';
+import { GeneratingAreaInfo } from '../components/notifications/GeneratingAreaInfo';
 
 /**
  * Configuración de Acciones de Cotizaciones — Fase 3.
@@ -90,10 +91,7 @@ function MatrixRow({ row, users, templates, onChange, onRemove, allowGeneratingA
             </SelectContent>
           </Select>
         ) : row.type === 'generating_area' ? (
-          <div className="text-xs text-slate-600 leading-snug" data-testid={`row-generating-area-info-${row.row_id}`}>
-            <p>Ventas Pyme → <span className="font-medium">ventasmerchant_pyme@megasoft.com.ve</span></p>
-            <p>Ventas Corporativas → <span className="font-medium">corporativos@megasoft.com.ve</span></p>
-          </div>
+          <GeneratingAreaInfo rowId={row.row_id} />
         ) : (
           <span className="text-sm text-slate-500 italic">
             {row.type === 'session_user'

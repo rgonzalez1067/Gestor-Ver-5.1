@@ -164,6 +164,36 @@ class ActionConfigPayload(BaseModel):
 
 
 # ---------- Endpoints ----------
+class GeneratingAreaIn(BaseModel):
+    pyme_email: str
+    corp_email: str
+
+
+@router.get("/action-notifications/generating-areas")
+async def get_generating_areas(authorization: Optional[str] = Header(None)):
+    await _require_admin(authorization)
+    from services.notification_engine import load_generating_areas
+    areas = await load_generating_areas()
+    return {"pyme_email": areas["ventas pyme"][0], "corp_email": areas["ventas corporativ"][0]}
+
+
+@router.put("/action-notifications/generating-areas")
+async def put_generating_areas(payload: GeneratingAreaIn, authorization: Optional[str] = Header(None)):
+    user = await _require_admin(authorization)
+    import re as _re
+    vals = {"pyme_email": payload.pyme_email.strip().lower(), "corp_email": payload.corp_email.strip().lower()}
+    for k, v in vals.items():
+        if not _re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", v):
+            raise HTTPException(status_code=400, detail=f"Correo inválido: {v or '(vacío)'}")
+    before = await get_generating_areas(authorization)
+    await db.app_settings.update_one({"key": "generating_area_emails"},
+                                     {"$set": {"key": "generating_area_emails", **vals,
+                                               "updated_at": datetime.now(timezone.utc).isoformat(),
+                                               "updated_by": user.get("email")}}, upsert=True)
+    logger.info("generating_area_emails updated by %s: %s -> %s", user.get("email"), before, vals)
+    return vals
+
+
 @router.get("/action-notifications/catalog")
 async def get_catalog(authorization: Optional[str] = Header(None)):
     """Devuelve catálogo completo: tipos negocio, sub-categorías, acciones,

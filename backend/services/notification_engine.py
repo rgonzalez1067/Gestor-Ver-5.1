@@ -29,6 +29,15 @@ GENERATING_AREA_EMAILS = {
 }
 
 
+async def load_generating_areas() -> dict:
+    """Buzones por área (editables en Configuración → app_settings), con defaults."""
+    doc = await db.app_settings.find_one({"key": "generating_area_emails"}, {"_id": 0}) or {}
+    return {
+        "ventas pyme": (doc.get("pyme_email") or GENERATING_AREA_EMAILS["ventas pyme"][0], GENERATING_AREA_EMAILS["ventas pyme"][1]),
+        "ventas corporativ": (doc.get("corp_email") or GENERATING_AREA_EMAILS["ventas corporativ"][0], GENERATING_AREA_EMAILS["ventas corporativ"][1]),
+    }
+
+
 def _quote_to_biz_sub(quote: dict) -> tuple[Optional[str], Optional[str]]:
     """Mapea una cotización a (business_type, product_subcategory).
 
@@ -568,7 +577,7 @@ async def try_dispatch(
             creator_id = quote.get("created_by_user_id") or (current_user or {}).get("user_id")
             creator = await db.users.find_one({"user_id": creator_id}, {"_id": 0, "departamento": 1}) if creator_id else None
             dept = ((creator or current_user or {}).get("departamento") or "").strip().lower()
-            area = next((v for k, v in GENERATING_AREA_EMAILS.items() if k in dept), None)
+            area = next((v for k, v in (await load_generating_areas()).items() if k in dept), None)
             if not area:
                 skipped.append({"row_id": row.get("row_id"), "reason": f"Área generadora sin buzón para el departamento '{dept or '—'}'"})
                 continue
