@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
-import { Plus, Phone, Mail, Building2, User, Search, BookOpen, UserPlus, ArrowRightLeft, Rocket, ChevronDown, ChevronUp, Filter, Trash2, Send, XCircle, MessageSquare, RotateCcw, Pencil } from 'lucide-react';
+import { Plus, Phone, Mail, Building2, User, Search, BookOpen, UserPlus, ArrowRightLeft, Rocket, ChevronDown, ChevronUp, Filter, Trash2, Send, XCircle, MessageSquare, RotateCcw, Pencil, MessageSquareText } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import api from '../utils/api';
 import { toast } from 'sonner';
 import { InitialContactEmailDialog } from '../components/InitialContactEmailDialog';
@@ -352,6 +353,22 @@ export const InitialContacts = () => {
                           {(c.contact_name || '??').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                         </div>
                         <span className="text-sm font-medium text-slate-800">{c.contact_name}</span>
+                        {(c.interest_notes || '').trim() && (
+                          <TooltipProvider delayDuration={100}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-amber-50 border border-amber-200 text-amber-600 cursor-help shrink-0"
+                                  data-testid={`contact-interest-icon-${c.contact_id}`} aria-label="Aspectos de interés">
+                                  <MessageSquareText size={13} />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs" data-testid={`contact-interest-tooltip-${c.contact_id}`}>
+                                <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70 mb-1">Aspectos de interés</p>
+                                <p className="text-xs whitespace-pre-line">{c.interest_notes}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-700">{c.legal_name}</td>

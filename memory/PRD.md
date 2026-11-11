@@ -4770,3 +4770,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06: Nueva Función Especial marcas:mantenimiento_masivo (módulo Marca o Nombre Fantasía) en la grilla de Perfiles; /marcas y POST /api/marcas/mass-action ahora la exigen (separada de clientes:mantenimiento_masivo).
 
 - 2026-06 (iter 377): Filtros multiselección Grupo/Ejecutivo/Segmento en /marcas (valores de la marca + sus RIF; GET /api/marcas devuelve segments/ejecutivos). Fix: acciones masivas de marca solo re-heredan las unidades tocadas (propagate_brand only_fields) para no borrar valores de RIF.
+
+- 2026-06: Contacto Inicial — ícono de comentario junto al nombre con tooltip de Aspectos de Interés.
