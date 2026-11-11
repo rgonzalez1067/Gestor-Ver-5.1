@@ -1,0 +1,24 @@
+{
+  "summary": "Brand mass actions (/marcas) tested end-to-end. Backend: 10/10 pytest passed for POST /api/marcas/mass-action (403 for a user without the special function, 400 for tipo_servicio/unknown action/empty ids/invalid segment/invalid group/bad confirm, segment inheritance honoring inherit_overrides incl. branch, categoria, ejecutivo, coord_impl, integrador, group propagation to RIFs and branches, delete empty + skip brand with RIF). UI (admin): brand-mass-bar, disabled button with no selection, select-all and per-row selection, counter, all 7 actions present (no tipo_servicio), segment dialog with inherit note, applied from UI and verified in DB (RIF with 'segment' override kept 'Mixto'), group applied from UI and verified in DB, delete shows processed=1 and mass-result-skipped lists the brand with RIF. Non-permission user (jdolande): no mass bar or checkboxes. Regression on /clients: 8 actions incl. group_brand, segment dialog opens, no brand note. All test data was isolated TEST_376 groups/brands/clients and was cleaned up; no real data was touched.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/marcas/mass-action", "issue": "brand_ids that do not exist are silently ignored: processed can be lower than the number selected and skipped does not say why."},
+      {"endpoint": "POST /api/marcas/mass-action (delete)", "issue": "Only counts principal RIFs (is_branch != True). It does not check branches that have marca_id or other references (quotes/projects with marca_id). The brand's contacts are deleted without a warning."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_brands_mass_iter376.py", "/app/backend/tests/ui_fixture_iter376_brand_mass.py", "/app/test_reports/pytest/pytest_iter376.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "brands_mass_action runs propagate_brand one brand at a time with no batching. With up to 3000 brands, each with many RIFs, the request could take a long time. Consider a background job or bulk_write.",
+    "skipped entries reuse the key 'client_id' to hold the brand_id. It works with the shared dialog but the naming is misleading.",
+    "No audit or history record is written for mass changes to brands (same as clients mass-action). Consider logging who changed what."
+  ],
+  "updated_files": ["/app/backend/tests/test_brands_mass_iter376.py", "/app/backend/tests/ui_fixture_iter376_brand_mass.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Isolated fixture: grp_test376_a/b, brd_test376_1/2/empty, cli_test376_r1 (+ branch r1s), r2 (segment override 'Mixto'), r3. Created with 'setup' and removed with 'cleanup' (verified 0 remaining).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run: cd /app/backend && python -m pytest tests/test_brands_mass_iter376.py -p no:xdist (the fixture sets up and cleans up automatically). For UI, run 'python tests/ui_fixture_iter376_brand_mass.py setup', search 'TEST_376' on /marcas, then run 'cleanup'. Log in through the API (session_token goes in localStorage 'session_token' and 'user'). User without permission: jdolande@megasoft.com.ve / QaMegaSoft2026*x."
+}

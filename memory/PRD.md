@@ -4764,3 +4764,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06: Ficha Técnica — Directorio de Contactos con columna Nivel; incluye contactos con tag Implementación (o sin tags) de todos los niveles (Grupo, Marca, RIF, Sucursal) del cliente y de los RIF del proyecto (services/client_hierarchy.implementation_contacts_for).
 
 - 2026-06 (iter 375): Proyectos Directos reestructurados — tipo único DIRECTO (sin Simple/Multi-RIF ni switch Multitienda); tarjeta Parámetros del Proyecto con Nivel de la Cotización (QuoteScopeSelector) + tipología automática + Tipo de Patrocinio (Cliente por defecto / Banco con selector); Gateway/Link: un solo RIF; tarjeta Detalles de Integración (Integrador, App, Servidor, Impresora Fiscal con opción manual, Comunicación, Hardware y Seriales Pinpad). Backend acepta scope_tree y tipifica vía quote_transitions.
+
+- 2026-06 (iter 376): Acciones masivas en Marcas (/marcas): selección + Grupo, Ejecutivo, Segmento, Categoría, Coord/Impl, Integrador (valor en la Marca, herencia respetando overrides) y Eliminar marcas vacías. POST /api/marcas/mass-action (Función Especial clientes:mantenimiento_masivo).

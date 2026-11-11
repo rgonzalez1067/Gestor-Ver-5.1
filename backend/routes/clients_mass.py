@@ -181,15 +181,17 @@ async def brands_mass_action(req: BrandMassActionRequest, authorization: str | N
         raise HTTPException(status_code=400, detail=f"Máximo {MAX_BATCH} marcas por lote")
     brands = await db.brands.find({"brand_id": {"$in": ids}}, {"_id": 0}).to_list(len(ids))
     updated, skipped = [], []
+    found = {b["brand_id"] for b in brands}
+    skipped += [{"client_id": i, "label": i, "reasons": ["Marca no encontrada"]} for i in ids if i not in found]
     now = datetime.now(UTC).isoformat()
 
     if req.action == "delete":
         if (req.payload.get("confirm") or "") != "ELIMINAR":
             raise HTTPException(status_code=400, detail="Debe escribir ELIMINAR para confirmar")
         for b in brands:
-            n = await db.clients.count_documents({"marca_id": b["brand_id"], "is_branch": {"$ne": True}})
+            n = await db.clients.count_documents({"marca_id": b["brand_id"]})
             if n:
-                skipped.append({"client_id": b["brand_id"], "label": b["name"], "reasons": [f"Tiene {n} RIF(s) asociado(s)"]})
+                skipped.append({"client_id": b["brand_id"], "label": b["name"], "reasons": [f"Tiene {n} RIF/sucursal(es) asociado(s)"]})
                 continue
             await db.brands.delete_one({"brand_id": b["brand_id"]})
             updated.append(b["brand_id"])
