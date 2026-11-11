@@ -12,6 +12,7 @@ import { BrandDialog } from '../components/clients/hierarchy/BrandDialog';
 import { RifList } from '../components/clients/hierarchy/HierarchyTree';
 import { MassActionsMenu } from '../components/clients/mass/MassActionsMenu';
 import { MassActionDialog, BRAND_MASS_ACTIONS } from '../components/clients/mass/MassActionDialog';
+import { MultiSelectFilter, NONE_VALUE } from '../components/clients/MultiSelectFilter';
 
 export default function Brands() {
   const { canEdit } = usePermission('marcas');
@@ -25,7 +26,9 @@ export default function Brands() {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [groupFilter, setGroupFilter] = useState('all');
+  const [groupFilter, setGroupFilter] = useState([]);
+  const [ejecutivoFilter, setEjecutivoFilter] = useState([]);
+  const [segmentFilter, setSegmentFilter] = useState([]);
   const [expanded, setExpanded] = useState({});
   const [dialog, setDialog] = useState({ open: false, id: null });
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -35,16 +38,29 @@ export default function Brands() {
     try {
       const params = {};
       if (search) params.search = search;
-      if (groupFilter !== 'all') params.group_id = groupFilter;
       const res = await api.get('/marcas', { params });
       setBrands(res.data || []);
-      const ids = new Set((res.data || []).map(b => b.brand_id));
-      setSelected(prev => prev.filter(id => ids.has(id)));
     } catch { toast.error('Error al cargar las marcas'); } finally { setLoading(false); }
   };
 
+  const matches = (vals, filter) => !filter.length || (vals.length ? vals.some(v => filter.includes(v)) : filter.includes(NONE_VALUE));
+  const visible = brands.filter(b =>
+    matches(b.group_id ? [b.group_id] : [], groupFilter)
+    && matches((b.ejecutivos || []).map(e => e.id), ejecutivoFilter)
+    && matches(b.segments || [], segmentFilter));
+  const ejecutivoOptions = Object.values(Object.fromEntries(brands.flatMap(b => b.ejecutivos || []).map(e => [e.id, { value: e.id, label: e.name }])))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const segmentOptions = [...new Set(brands.flatMap(b => b.segments || []))].sort().map(s => ({ value: s, label: s }));
+  const groupOptions = groups.map(g => ({ value: g.group_id, label: g.name }));
+  const filterSig = `${search}|${groupFilter}|${ejecutivoFilter}|${segmentFilter}|${brands.length}`;
+  useEffect(() => {
+    const ids = new Set(visible.map(b => b.brand_id));
+    setSelected(prev => prev.filter(id => ids.has(id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterSig]);
+
   useEffect(() => { api.get('/grupos-economicos').then(r => setGroups(r.data || [])).catch(() => {}); }, []);
-  useEffect(() => { const t = setTimeout(fetchBrands, 300); return () => clearTimeout(t); /* eslint-disable-next-line */ }, [search, groupFilter]);
+  useEffect(() => { const t = setTimeout(fetchBrands, 300); return () => clearTimeout(t); /* eslint-disable-next-line */ }, [search]);
 
   const doDelete = async () => {
     try {
@@ -64,19 +80,19 @@ export default function Brands() {
           </div>
           {canEdit && <Button onClick={() => setDialog({ open: true, id: null })} className="bg-indigo-600 hover:bg-indigo-700" data-testid="create-brand-btn"><Plus size={16} className="mr-1.5" /> Nueva Marca</Button>}
         </div>
-        <div className="flex gap-3 mb-4">
-          <div className="relative max-w-md flex-1">
+        <div className="flex gap-3 mb-4 flex-wrap items-center">
+          <div className="relative max-w-md flex-1 min-w-[240px]">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input placeholder="Buscar marca..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" data-testid="brand-search-input" />
           </div>
-          <Select value={groupFilter} onValueChange={setGroupFilter}>
-            <SelectTrigger className="w-72" data-testid="brand-group-filter"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los grupos</SelectItem>
-              <SelectItem value="_none_">— Sin grupo —</SelectItem>
-              {groups.map(g => <SelectItem key={g.group_id} value={g.group_id}>{g.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <MultiSelectFilter label="Grupo" options={groupOptions} selected={groupFilter} onChange={setGroupFilter} testId="brand-group-filter" />
+          <MultiSelectFilter label="Ejecutivo" options={ejecutivoOptions} selected={ejecutivoFilter} onChange={setEjecutivoFilter} testId="brand-ejecutivo-filter" />
+          <MultiSelectFilter label="Segmento" options={segmentOptions} selected={segmentFilter} onChange={setSegmentFilter} testId="brand-segment-filter" />
+          {(groupFilter.length + ejecutivoFilter.length + segmentFilter.length > 0 || search) && (
+            <Button variant="ghost" size="sm" className="text-slate-500" data-testid="brand-clear-filters"
+              onClick={() => { setSearch(''); setGroupFilter([]); setEjecutivoFilter([]); setSegmentFilter([]); }}>Limpiar filtros</Button>
+          )}
+          <span className="text-xs text-slate-500 ml-auto" data-testid="brand-visible-count">{visible.length} de {brands.length} marcas</span>
         </div>
         {canMass && (
           <div className="flex items-center gap-3 mb-3" data-testid="brand-mass-bar">
@@ -93,8 +109,8 @@ export default function Brands() {
                 {canMass && (
                   <th className="px-3 py-3 w-10">
                     <input type="checkbox" className="h-4 w-4 accent-amber-500" data-testid="brand-mass-select-all"
-                      checked={brands.length > 0 && brands.every(b => selected.includes(b.brand_id))}
-                      onChange={e => setSelected(e.target.checked ? brands.map(b => b.brand_id) : [])} />
+                      checked={visible.length > 0 && visible.every(b => selected.includes(b.brand_id))}
+                      onChange={e => setSelected(e.target.checked ? visible.map(b => b.brand_id) : [])} />
                   </th>
                 )}
                 <th className="text-left px-4 py-3">Marca / Nombre Fantasía</th>
@@ -106,8 +122,8 @@ export default function Brands() {
             </thead>
             <tbody>
               {loading ? <tr><td colSpan={cols} className="text-center py-8 text-slate-400">Cargando...</td></tr>
-                : brands.length === 0 ? <tr><td colSpan={cols} className="text-center py-8 text-slate-400">No hay marcas.</td></tr>
-                : brands.map(b => (
+                : visible.length === 0 ? <tr><td colSpan={cols} className="text-center py-8 text-slate-400">No hay marcas.</td></tr>
+                : visible.map(b => (
                   <Fragment key={b.brand_id}>
                     <tr className={`border-t hover:bg-slate-50 ${selected.includes(b.brand_id) ? 'bg-amber-50/60' : ''}`} data-testid={`brand-row-${b.brand_id}`}>
                       {canMass && (

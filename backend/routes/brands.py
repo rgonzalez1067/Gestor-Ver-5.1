@@ -24,16 +24,32 @@ async def _brand_rows(query: dict) -> list:
     gids = list({b.get("group_id") for b in brands if b.get("group_id")})
     gmap = {g["group_id"]: g["name"] for g in await db.economic_groups.find(
         {"group_id": {"$in": gids}}, {"_id": 0, "group_id": 1, "name": 1}).to_list(10000)}
-    counts = {r["_id"]: r["n"] for r in await db.clients.aggregate([
+    agg = {r["_id"]: r for r in await db.clients.aggregate([
         {"$match": {"is_branch": {"$ne": True}, "marca_id": {"$in": [b["brand_id"] for b in brands]}}},
-        {"$group": {"_id": "$marca_id", "n": {"$sum": 1}}},
+        {"$group": {"_id": "$marca_id", "n": {"$sum": 1}, "segs": {"$addToSet": "$segment"},
+                    "ejs": {"$addToSet": {"id": "$ejecutivo_user_id", "name": "$ejecutivo_propietario"}}}},
     ]).to_list(None)}
-    return [{
-        "brand_id": b["brand_id"], "name": b["name"], "group_id": b.get("group_id"),
-        "group_name": gmap.get(b.get("group_id")), "description": b.get("description") or "",
-        "rif_count": counts.get(b["brand_id"], 0), "contacts_count": _contacts_count(b),
-        "characteristics_count": len([k for k in (b.get("characteristics") or {}) if not k.endswith(("_name", "_propietario"))]),
-    } for b in brands]
+
+    def _filters(b):
+        # Valores para filtros: los de la Marca + los de sus RIF (lo que efectivamente tiene la marca).
+        ch, a = b.get("characteristics") or {}, agg.get(b["brand_id"], {})
+        segs = {s for s in [ch.get("segment"), *a.get("segs", [])] if s}
+        ejs = {(e.get("id") or e.get("name")): e.get("name") or e.get("id")
+               for e in [{"id": ch.get("ejecutivo_user_id"), "name": ch.get("ejecutivo_propietario")}, *a.get("ejs", [])]
+               if e.get("id") or e.get("name")}
+        return sorted(segs), [{"id": k, "name": v} for k, v in ejs.items()]
+
+    rows = []
+    for b in brands:
+        segs, ejs = _filters(b)
+        rows.append({
+            "brand_id": b["brand_id"], "name": b["name"], "group_id": b.get("group_id"),
+            "group_name": gmap.get(b.get("group_id")), "description": b.get("description") or "",
+            "rif_count": agg.get(b["brand_id"], {}).get("n", 0), "contacts_count": _contacts_count(b),
+            "characteristics_count": len([k for k in (b.get("characteristics") or {}) if not k.endswith(("_name", "_propietario"))]),
+            "segments": segs, "ejecutivos": ejs,
+        })
+    return rows
 
 
 @router.get("/marcas")
