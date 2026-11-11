@@ -1,0 +1,26 @@
+{
+  "summary": "Iter380: retest A (wizard initial step only shows Tipo de Cotización), B (Datos de Imple removed), C (Integradores 'Con Certificado' filter). All PASS. Backend 3/3 pytest pass. UI verified via Playwright on preview URL.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/datos-imple (and any unknown route)", "issues": ["App.js has no catch-all route, so a removed/unknown URL renders a blank page with no sidebar. Consider <Route path='*' element={<Navigate to='/dashboard' replace/>} />. This is not a regression; the old page is correctly gone."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter380_imple_removal_certs.py", "/app/test_reports/pytest/pytest_iter380.xml"],
+  "action_items": [
+    "Optional: add a catch-all route for unknown paths like /datos-imple",
+    "Optional cleanup: backend/scripts/generate_user_manual.py still documents 'Datos de Imple' (sections 6.11 and 12.3). The comment at routes/clients.py:677 also still mentions it."
+  ],
+  "critical_code_review_comments": [
+    "Integrators.jsx filter at line 1118 correctly uses certCounts[id] > 0. certCounts is parsed from {counts:{}} at line 199 and refreshed via fetchCertCounts. Limpiar resets filterCert and its visibility condition includes filterCert.",
+    "QuoteWizardDialog: showRest = !!quote_type wraps the section-1 fields (441-637) and section 1.5 onward (925). The edit flow sets quote_type (defaults to VPOS) so all fields show when editing."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter380_imple_removal_certs.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "A: Before a type is chosen, quote-params-section shows only the title and 'Tipo de Cotización'. Cliente, Modelo de Precios, Cajas, Bancos/Entes, Patrocinio and Detalles de Integración are hidden. VPOS shows level chips (Grupo Económico/Marca/RIF), modelo, cajas, bancos, patrocinio and Detalles de Integración. PG shows Cliente, Implementación Patrocinada, IVA and Express. Edit was checked by code review only, not in the UI. B: The sidebar group no longer lists Datos de Imple. The catalog has no datos_imple. PUT /api/clients/x/imple-data returns 404/405. /datos-imple renders blank. C: Preview has 0 certificates (counts = {}). With the toggle on, the table shows 'No se encontraron integradores' and the button reads 'Con Certificado (0)'. Toggling off restores 103 rows and Limpiar resets the toggle. The search combination and the positive case could not be checked because no certificates exist in preview."
+}

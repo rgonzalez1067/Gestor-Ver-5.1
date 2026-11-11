@@ -4776,3 +4776,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06: Nuevo tipo de destinatario "Área generadora" (generating_area) en Config. de Acciones → Proyectos Directos → Enviar a Implementación: Ventas Pyme → ventasmerchant_pyme@megasoft.com.ve, Ventas Corporativas → corporativos@megasoft.com.ve (según departamento del creador). Mapa en services/notification_engine.GENERATING_AREA_EMAILS.
 
 - 2026-06: Buzones del Área generadora editables (lápiz en la fila de la matriz) → db.app_settings key generating_area_emails; GET/PUT /api/action-notifications/generating-areas (admin, valida formato).
+
+- 2026-06 (iter 379-380): Reporte General de Marcas (PDF/Excel, marca + detalle de RIF, respeta filtros; POST /api/marcas/report). Wizard de Nueva Implementación: primera pantalla solo Tipo de Cotización. Eliminada función Datos de Imple (menú, ruta, página, permiso, endpoint imple-data). Integradores: filtro toggle "Con Certificado". Fix logo PDF de Grupos (solo esquina sup. izq.).
