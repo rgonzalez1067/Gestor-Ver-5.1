@@ -60,13 +60,13 @@ export const TemplatesAdminDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl" data-testid="templates-dialog">
+      <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col overflow-hidden" data-testid="templates-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><ClipboardList size={20} className="text-slate-600" />Gestionar Plantillas de Correo</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-12 gap-4 min-h-[480px]">
+        <div className="grid grid-cols-12 gap-4 min-h-0 flex-1">
           {/* Lista de plantillas */}
-          <div className="col-span-3 border-r border-slate-200 pr-4">
+          <div className="col-span-3 border-r border-slate-200 pr-4 min-h-0 overflow-y-auto">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold text-slate-500 uppercase">
                 Plantillas <span className="text-slate-300 mx-0.5">·</span> <span className="text-slate-400">{emailTemplates.length}</span>
@@ -148,9 +148,9 @@ export const TemplatesAdminDialog = ({
           </div>
 
           {/* Formulario */}
-          <div className="col-span-6">
+          <div className="col-span-6 min-h-0 overflow-y-auto pr-2 flex flex-col" data-testid="template-form-scroll">
             <p className="text-xs font-semibold text-slate-500 uppercase mb-3">{editingTemplateId ? 'Editar Plantilla' : 'Nueva Plantilla'}</p>
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1">
               <div>
                 <Label className="text-sm">Nombre <span className="text-red-500">*</span></Label>
                 <Input placeholder="Ej: Solicitud de acceso, Confirmación de pruebas..." value={templateForm.name}
@@ -179,7 +179,7 @@ export const TemplatesAdminDialog = ({
                   maxHeight={420}
                 />
               </div>
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 py-3 sticky bottom-0 bg-white border-t border-slate-100 z-10">
                 <Button onClick={handleSaveTemplate} disabled={templateSaving || !templateForm.name.trim() || !templateForm.subject.trim()}
                   className="bg-blue-600 hover:bg-blue-700 text-white text-sm" data-testid="save-template-btn">
                   {templateSaving ? 'Guardando...' : editingTemplateId ? 'Actualizar Plantilla' : 'Crear Plantilla'}
@@ -193,7 +193,7 @@ export const TemplatesAdminDialog = ({
           </div>
 
           {/* Diccionario de variables */}
-          <div className="col-span-3 border-l border-slate-200 pl-4">
+          <div className="col-span-3 border-l border-slate-200 pl-4 min-h-0 overflow-y-auto">
             <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Variables Disponibles</p>
             <p className="text-[10px] text-slate-400 mb-2">
               Clic en una variable para insertarla donde tengas el cursor (Asunto o Cuerpo). Pasa el cursor sobre ella para ver una vista previa.
