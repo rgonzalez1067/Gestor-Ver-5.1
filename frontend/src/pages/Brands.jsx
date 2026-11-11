@@ -122,7 +122,7 @@ export default function Brands() {
             </thead>
             <tbody>
               {loading ? <tr><td colSpan={cols} className="text-center py-8 text-slate-400">Cargando...</td></tr>
-                : visible.length === 0 ? <tr><td colSpan={cols} className="text-center py-8 text-slate-400">No hay marcas.</td></tr>
+                : visible.length === 0 ? <tr><td colSpan={cols} className="text-center py-8 text-slate-400" data-testid="brand-empty">{brands.length ? 'Ninguna marca coincide con los filtros.' : 'No hay marcas.'}</td></tr>
                 : visible.map(b => (
                   <Fragment key={b.brand_id}>
                     <tr className={`border-t hover:bg-slate-50 ${selected.includes(b.brand_id) ? 'bg-amber-50/60' : ''}`} data-testid={`brand-row-${b.brand_id}`}>

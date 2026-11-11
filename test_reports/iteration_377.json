@@ -1,0 +1,29 @@
+{
+  "summary": "Tested /marcas filters (Grupo/Ejecutivo/Segmento) end to end with isolated TEST_377 data: 4 brands, 2 groups, 3 RIFs, created by a fixture and then deleted. Backend: GET /api/marcas and GET /api/grupos-economicos/{id}/marcas return segments[] (brand + RIF values, nulls dropped, sorted) and ejecutivos[{id,name}] (brand + RIF values, a name is used as the id when there is no id). All 781 real rows have the fields and the response takes about 0.5s. UI: every filter opens, the option, search and clear testids work, and the button text reads 'TEST_377 Grupo A' or 'Grupo: 2'. OR inside a filter, AND between filters and AND with the search all work. 'Sin asignar' works on all three filters: 679 brands with no group (678 real + Delta, and the Grupo column shows only '—'), 357 with no ejecutivo, 19 with no segment. The 'X de Y marcas' counter and brand-clear-filters (which also clears the search) work. With a filter active, select-all picks only the visible brands (2) and mass-actions-btn shows '2 seleccionados'. Removing a filter value cut the selection to 1, and adding it back did not re-select the hidden brand. Mass action Segmento=Corporativo on the 2 filtered brands processed 2 and changed only Alfa and Gamma; Beta and its RIF stayed the same. Regression: name search and expanding a brand to see its RIFs both work.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/marcas/mass-action (segment) -> propagate_brand", "issue": "Existing inheritance behaviour, not new in this change, seen as a side effect. A segment mass action re-runs the full inheritance for each RIF, so a RIF whose ejecutivo is not listed in inherit_overrides and whose brand/group has no ejecutivo loses it (ejecutivo_user_id and ejecutivo_propietario become None). In the test, Gamma's RIF lost ejecutivo 'usr_test377_ej1', so Gamma then dropped out of the Ejecutivo filter. 1 of 472 real RIFs that have an ejecutivo is in this state. Consider propagating only the units the action touches."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/marcas", "issues": ["When the filters hide every brand the table only says 'No hay marcas.'; a message like 'Ninguna marca coincide con los filtros' would be clearer", "Filter choices are not kept in the URL or in storage, so they are lost on reload (optional)"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_brand_filters_iter377.py", "/app/backend/tests/ui_fixture_iter377_brand_filters.py", "/app/test_reports/pytest/iter377.xml"],
+  "action_items": ["Optional: in mass actions, propagate only the fields that were changed, so RIF values not covered by overrides (for example ejecutivo) are not wiped", "Optional: show a 'no matches' empty-state message when filters are active"],
+  "critical_code_review_comments": [
+    "Brands.jsx: the effect that reduces the selection uses a string signature (filterSig) with brands.length. That works, but if a reload returns the same number of brands with different contents, the selection is not trimmed. Low risk, because onDone already clears the selection.",
+    "Ejecutivo options mix user ids and bare names (when a RIF has ejecutivo_propietario but no ejecutivo_user_id), so the same person could appear twice if one place has an id and another does not. Real data has no such duplicates today.",
+    "A selected filter value that disappears from the options after a refetch stays active; the button shows only the label fallback and the user cannot untick it from the list (the clear button still works)."
+  ],
+  "updated_files": ["/app/backend/tests/test_brand_filters_iter377.py", "/app/backend/tests/ui_fixture_iter377_brand_filters.py"],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "100% of the requested flows"},
+  "seed_data_creation": "TEST_377 groups/brands/RIFs (brd_test377_*, grp_test377_*, cli_test377_*) were created by the fixture and removed by id afterwards. No real data was changed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run with: python tests/ui_fixture_iter377_brand_filters.py setup|cleanup. The pytest run needs REACT_APP_BACKEND_URL exported. For UI login, inject session_token and user into localStorage (via /api/auth/me). Option testids are <filter>-option-<value>; for ejecutivos the value is the user id."
+}

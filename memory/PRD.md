@@ -4768,3 +4768,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06 (iter 376): Acciones masivas en Marcas (/marcas): selección + Grupo, Ejecutivo, Segmento, Categoría, Coord/Impl, Integrador (valor en la Marca, herencia respetando overrides) y Eliminar marcas vacías. POST /api/marcas/mass-action (Función Especial clientes:mantenimiento_masivo).
 
 - 2026-06: Nueva Función Especial marcas:mantenimiento_masivo (módulo Marca o Nombre Fantasía) en la grilla de Perfiles; /marcas y POST /api/marcas/mass-action ahora la exigen (separada de clientes:mantenimiento_masivo).
+
+- 2026-06 (iter 377): Filtros multiselección Grupo/Ejecutivo/Segmento en /marcas (valores de la marca + sus RIF; GET /api/marcas devuelve segments/ejecutivos). Fix: acciones masivas de marca solo re-heredan las unidades tocadas (propagate_brand only_fields) para no borrar valores de RIF.

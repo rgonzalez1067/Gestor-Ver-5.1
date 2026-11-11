@@ -204,7 +204,7 @@ async def brands_mass_action(req: BrandMassActionRequest, authorization: str | N
             raise HTTPException(status_code=400, detail="Seleccione un Grupo Económico válido")
         for b in brands:
             await db.brands.update_one({"brand_id": b["brand_id"]}, {"$set": {"group_id": gid, "updated_at": now}})
-            await propagate_brand(b["brand_id"])
+            await propagate_brand(b["brand_id"], only_fields=())
             updated.append(b["brand_id"])
         return {"action": req.action, "processed": len(updated), "skipped": skipped}
 
@@ -214,7 +214,7 @@ async def brands_mass_action(req: BrandMassActionRequest, authorization: str | N
     for b in brands:
         chars = {**(b.get("characteristics") or {}), **to_set}
         await db.brands.update_one({"brand_id": b["brand_id"]}, {"$set": {"characteristics": chars, "updated_at": now}})
-        await propagate_brand(b["brand_id"])
+        await propagate_brand(b["brand_id"], only_fields=to_set.keys())
         updated.append(b["brand_id"])
     return {"action": req.action, "processed": len(updated), "skipped": skipped}
 

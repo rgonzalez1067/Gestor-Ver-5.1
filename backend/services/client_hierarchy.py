@@ -99,11 +99,14 @@ def compute_overrides(data: dict, parent_vals: dict) -> list:
     return out
 
 
-def apply_inheritance(data: dict, parent_vals: dict, overrides: list) -> dict:
-    """Rellena las unidades NO sobrescritas con el valor del padre. Retorna los cambios."""
+def apply_inheritance(data: dict, parent_vals: dict, overrides: list, only_fields=None) -> dict:
+    """Rellena las unidades NO sobrescritas con el valor del padre. Retorna los cambios.
+    only_fields: si se indica, solo se re-heredan las unidades que contienen esos campos."""
     changes = {}
     for unit in INHERIT_UNITS:
         if unit[0] in overrides:
+            continue
+        if only_fields is not None and not set(unit) & set(only_fields):
             continue
         for f in unit:
             new = parent_vals.get(f)
@@ -174,12 +177,12 @@ async def prepare_client_data(data: dict, self_client_id=None):
     return data
 
 
-async def propagate_rif(client: dict):
+async def propagate_rif(client: dict, only_fields=None):
     """Re-aplica la herencia RIF → Sucursales."""
     parent_vals = {f: client.get(f) for f in INHERIT_FIELDS}
     sync = {k: client.get(k) for k in ("marca_id", "marca_name", "grupo_economico_id", "grupo_economico")}
     async for br in db.clients.find({"parent_client_id": client["client_id"]}, {"_id": 0}):
-        changes = apply_inheritance(dict(br), parent_vals, br.get("inherit_overrides") or [])
+        changes = apply_inheritance(dict(br), parent_vals, br.get("inherit_overrides") or [], only_fields)
         for k, v in sync.items():
             if br.get(k) != v:
                 changes[k] = v
@@ -187,7 +190,7 @@ async def propagate_rif(client: dict):
             await db.clients.update_one({"client_id": br["client_id"]}, {"$set": changes})
 
 
-async def propagate_brand(brand_id: str, old_name=None):
+async def propagate_brand(brand_id: str, old_name=None, only_fields=None):
     brand = await db.brands.find_one({"brand_id": brand_id}, {"_id": 0})
     if not brand:
         return
@@ -197,14 +200,14 @@ async def propagate_brand(brand_id: str, old_name=None):
     sync = {"marca_name": brand["name"], "fantasy_name": brand["name"],
             "grupo_economico_id": gid if g else None, "grupo_economico": g["name"] if g else None}
     async for c in db.clients.find({"marca_id": brand_id, "is_branch": {"$ne": True}}, {"_id": 0}):
-        changes = apply_inheritance(c, vals, c.get("inherit_overrides") or [])
+        changes = apply_inheritance(c, vals, c.get("inherit_overrides") or [], only_fields)
         for k, v in sync.items():
             if c.get(k) != v:
                 changes[k] = v
                 c[k] = v
         if changes:
             await db.clients.update_one({"client_id": c["client_id"]}, {"$set": changes})
-        await propagate_rif(c)
+        await propagate_rif(c, only_fields)
     if old_name and old_name != brand["name"]:
         await db.clients.update_many(
             {"marca_id": brand_id, "is_branch": True, "fantasy_name": old_name},
