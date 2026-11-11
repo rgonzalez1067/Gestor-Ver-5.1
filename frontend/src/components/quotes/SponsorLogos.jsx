@@ -10,10 +10,10 @@ const EntityLogo = ({ entity, testId }) => {
   const [failed, setFailed] = useState(false);
   const url = entity?.bank_logo_url;
   return (
-    <span className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-white border border-slate-200 shadow-sm overflow-hidden" data-testid={testId}>
+    <span className="inline-flex items-center justify-center w-[34px] h-[34px] rounded-md bg-white border border-slate-200 shadow-sm overflow-hidden" data-testid={testId}>
       {url && !failed
         ? <img src={`${API_URL}${url}`} alt={entity.name} className="w-full h-full object-contain p-0.5" onError={() => setFailed(true)} />
-        : <span className="text-[9px] font-bold text-slate-600 leading-none">{initials(entity?.name) || <Landmark size={13} className="text-slate-500" />}</span>}
+        : <span className="text-[11px] font-bold text-slate-600 leading-none">{initials(entity?.name) || <Landmark size={16} className="text-slate-500" />}</span>}
     </span>
   );
 };
