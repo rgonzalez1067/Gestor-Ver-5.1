@@ -1,21 +1,21 @@
 import { useState } from 'react';
-import { FileText, FileSpreadsheet, Loader2, ChevronDown } from 'lucide-react';
+import { FileText, FileSpreadsheet, Loader2, ChevronDown, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import api from '../../utils/api';
 
 export const BrandsReportButton = ({ brandIds, filtersLabel }) => {
   const [busy, setBusy] = useState(false);
-  const download = async (format) => {
+  const download = async (format, grouped = false) => {
     if (!brandIds.length) { toast.error('No hay marcas visibles para el reporte'); return; }
     setBusy(true);
     try {
-      const res = await api.post(`/marcas/report?format=${format}`, { brand_ids: brandIds, filters_label: filtersLabel }, { responseType: 'blob' });
+      const res = await api.post(`/marcas/report?format=${format}${grouped ? '&group_by=group' : ''}`, { brand_ids: brandIds, filters_label: filtersLabel }, { responseType: 'blob' });
       const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       const url = URL.createObjectURL(res.data);
       const a = document.createElement('a');
-      a.href = url; a.download = `Reporte_Marcas_${stamp}.${format}`;
+      a.href = url; a.download = `Reporte_Marcas_${stamp}${grouped ? '_PorGrupo' : ''}.${format}`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
     } catch {
@@ -36,6 +36,14 @@ export const BrandsReportButton = ({ brandIds, filtersLabel }) => {
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => download('xlsx')} data-testid="brands-report-xlsx">
           <FileSpreadsheet size={14} className="mr-2 text-emerald-600" /> Descargar Excel
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs flex items-center gap-1.5 text-muted-foreground"><Layers size={12} /> Agrupado por Grupo Económico</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => download('pdf', true)} data-testid="brands-report-grouped-pdf">
+          <FileText size={14} className="mr-2 text-red-600" /> PDF por Grupo
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => download('xlsx', true)} data-testid="brands-report-grouped-xlsx">
+          <FileSpreadsheet size={14} className="mr-2 text-emerald-600" /> Excel por Grupo
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

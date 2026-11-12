@@ -4778,3 +4778,7 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06: Buzones del Área generadora editables (lápiz en la fila de la matriz) → db.app_settings key generating_area_emails; GET/PUT /api/action-notifications/generating-areas (admin, valida formato).
 
 - 2026-06 (iter 379-380): Reporte General de Marcas (PDF/Excel, marca + detalle de RIF, respeta filtros; POST /api/marcas/report). Wizard de Nueva Implementación: primera pantalla solo Tipo de Cotización. Eliminada función Datos de Imple (menú, ruta, página, permiso, endpoint imple-data). Integradores: filtro toggle "Con Certificado". Fix logo PDF de Grupos (solo esquina sup. izq.).
+
+## 2026-06 — Reporte de Marcas agrupado por Grupo Económico
+- Nuevas opciones "PDF por Grupo" y "Excel por Grupo" en el menú Reporte General (Marcas), respetan filtros.
+- Backend: `POST /api/marcas/report?format=pdf|xlsx&group_by=group`. Subtotales por grupo (marcas, RIF, sucursales), bloque "Sin Grupo" al final y Total General.
