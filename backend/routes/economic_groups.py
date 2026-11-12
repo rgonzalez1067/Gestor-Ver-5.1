@@ -176,14 +176,25 @@ async def export_economic_group_pdf(group_id: str, authorization: Optional[str] 
     group = await db.economic_groups.find_one({"group_id": group_id}, {"_id": 0})
     if not group:
         raise HTTPException(status_code=404, detail="Grupo Económico no encontrado")
-    clients = await _associated_clients(group_id)
+    from routes.brands_report import _report_data
+    from services.rif_formatter import format_rif
+    brand_ids = [b["brand_id"] for b in await db.brands.find({"group_id": group_id}, {"_id": 0, "brand_id": 1}).to_list(None)]
+    brands = await _report_data(brand_ids) if brand_ids else []
+    covered = {r["rif"] for b in brands for r in b["rifs"]}
+    loose = [c for c in await _associated_clients(group_id) if format_rif(c["rif"]) not in covered]
+    if loose:
+        brands.append({"name": "Sin Marca asignada", "group": "", "rifs": [
+            {"rif": format_rif(c["rif"]), "legal_name": c["legal_name"], "branches": 1, "segment": "", "ejecutivo": ""} for c in loose]})
+    n_rifs = sum(len(b["rifs"]) for b in brands)
+    n_br = sum(r["branches"] for b in brands for r in b["rifs"])
+    n_brands = len(brand_ids)
 
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.platypus import (
-        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, KeepTogether,
     )
 
     ACCENT = "#4f46e5"
@@ -204,7 +215,7 @@ async def export_economic_group_pdf(group_id: str, authorization: Optional[str] 
 
     header_text = [
         Paragraph(f"Grupo Económico: {group.get('name', '')}", title_style),
-        Paragraph(f"RIFs asociados: {len(clients)}", sub_style),
+        Paragraph(f"{n_brands} marcas · {n_rifs} RIF · {n_br} sucursales", sub_style),
     ]
     # El logo va solo en la banda superior (draw_page_header, esquina superior izquierda).
     header_row = Table([[header_text]], colWidths=[174 * mm])
@@ -216,29 +227,39 @@ async def export_economic_group_pdf(group_id: str, authorization: Optional[str] 
     story = [header_row, Spacer(1, 6),
              HRFlowable(width="100%", thickness=1.2, color=colors.HexColor(ACCENT)), Spacer(1, 12)]
 
-    # Grilla: 1º Nombre de Fantasía, 2º RIF, 3º Nombre Jurídico
-    header = ["Nombre de Fantasía", "RIF", "Nombre Jurídico"]
-    rows = [header] + [[
-        Paragraph(c["fantasy_name"], cell_style),
-        Paragraph(c["rif"], cell_style),
-        Paragraph(c["legal_name"], cell_style),
-    ] for c in clients]
-    if len(rows) == 1:
-        rows.append([Paragraph("Sin RIFs asociados.", cell_style), "", ""])
-    t = Table(rows, colWidths=[62 * mm, 42 * mm, 70 * mm], repeatRows=1)
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(ACCENT)),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, 0), 9.5),
-        ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ("LEFTPADDING", (0, 0), (-1, -1), 8), ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-        ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#e2e8f0")),
-        ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#e2e8f0")),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    brand_style = ParagraphStyle("b", parent=styles["Normal"], fontName="Helvetica-Bold",
+                                 fontSize=10.5, textColor=colors.HexColor(ACCENT_DARK), leading=13)
+    summary = Table([[f"{n_brands}", f"{n_rifs}", f"{n_br}"], ["Marcas", "RIF", "Sucursales"]], colWidths=[58 * mm] * 3)
+    summary.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#eef2ff")), ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"), ("FONTSIZE", (0, 0), (-1, 0), 16),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor(ACCENT_DARK)), ("FONTSIZE", (0, 1), (-1, 1), 8.5),
+        ("TEXTCOLOR", (0, 1), (-1, 1), colors.HexColor("#64748b")), ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("LINEAFTER", (0, 0), (1, -1), 0.6, colors.white),
     ]))
-    story.append(t)
+    story += [summary, Spacer(1, 14)]
+    if not brands:
+        story.append(Paragraph("Sin marcas ni RIF asociados.", cell_style))
+    for b in brands:
+        rows = [["RIF", "Razón Social", "Sucursales", "Segmento", "Ejecutivo Propietario"]]
+        rows += [[r["rif"], Paragraph(r["legal_name"], cell_style), str(r["branches"]), r["segment"] or "—",
+                  Paragraph(r["ejecutivo"] or "—", cell_style)] for r in b["rifs"]] or [["", Paragraph("Sin RIF asociados", cell_style), "", "", ""]]
+        t = Table(rows, colWidths=[28 * mm, 62 * mm, 18 * mm, 26 * mm, 40 * mm], repeatRows=1)
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(ACCENT)),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+            ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("ALIGN", (2, 1), (2, -1), "CENTER"),
+            ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#e2e8f0")),
+            ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#e2e8f0")),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ]))
+        head = Paragraph(f"{b['name']}  <font size='8.5' color='#64748b'>· {len(b['rifs'])} RIF · {sum(r['branches'] for r in b['rifs'])} sucursales</font>", brand_style)
+        block = [head, Spacer(1, 3), t]
+        story += ([KeepTogether(block)] if len(rows) < 25 else block) + [Spacer(1, 10)]
 
     def _footer(canvas, doc_):
         canvas.saveState()
