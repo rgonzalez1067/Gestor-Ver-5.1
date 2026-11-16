@@ -7,7 +7,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Textarea } from '../components/ui/textarea';
-import { Plus, Pencil, Trash2, DollarSign, Upload, Download, Cpu, Cable, Box, Smartphone, Package, Wrench, Settings2, Cog, FileSpreadsheet, FileText, FileDown, AlertCircle, CheckCircle2, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, DollarSign, Upload, Download, Cpu, Cable, Box, Smartphone, Package, Wrench, Settings2, Cog, FileSpreadsheet, FileText, FileDown, AlertCircle, CheckCircle2, X, Search } from 'lucide-react';
 import api from '../utils/api';
 import { toast } from 'sonner';
 import { usePermission } from '../hooks/usePermission';
@@ -47,6 +47,16 @@ export const Hardware = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteHardwareData, setDeleteHardwareData] = useState({ id: null, name: null });
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [nameQuery, setNameQuery] = useState('');
+  const [nameMode, setNameMode] = useState('prefix');
+  const [searchDesc, setSearchDesc] = useState(false);
+  const norm = (v) => (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const matchesQuery = (h) => {
+    const q = norm(nameQuery);
+    if (!q) return true;
+    const fields = [h.name, ...(searchDesc ? [h.description] : [])].map(norm);
+    return fields.some(f => nameMode === 'prefix' ? f.startsWith(q) : f.includes(q));
+  };
   const [formData, setFormData] = useState({
     name: '',
     category: 'dispositivos',
@@ -583,7 +593,29 @@ export const Hardware = () => {
           </div>
 
           {/* Filter Bar */}
-          <div className="bg-white rounded-lg border border-slate-200 p-3 mb-4">
+          <div className="bg-white rounded-lg border border-slate-200 p-3 mb-4 flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2" data-testid="filter-hw-search">
+              <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+                {[['prefix', 'Empieza con'], ['contains', 'Contiene la palabra']].map(([id, label]) => (
+                  <button key={id} onClick={() => setNameMode(id)} data-testid={`filter-hw-mode-${id}`}
+                    className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${nameMode === id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{label}</button>
+                ))}
+              </div>
+              <div className="relative">
+                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input value={nameQuery} onChange={(e) => setNameQuery(e.target.value)} data-testid="filter-hw-query"
+                  placeholder={nameMode === 'prefix' ? 'Ej: Verifone P630' : 'Ej: Licencia'}
+                  className="h-8 w-64 pl-8 pr-7 text-sm rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-green-500/30" />
+                {nameQuery && (
+                  <button onClick={() => setNameQuery('')} data-testid="filter-hw-query-clear"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={13} /></button>
+                )}
+              </div>
+              <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+                <input type="checkbox" checked={searchDesc} onChange={(e) => setSearchDesc(e.target.checked)} data-testid="filter-hw-include-desc" />
+                Incluir descripción
+              </label>
+            </div>
             <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5" data-testid="filter-hw-category">
               <button onClick={() => setSelectedCategory('all')}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${selectedCategory === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
@@ -632,7 +664,7 @@ export const Hardware = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {hardwareList
-                  .filter(h => selectedCategory === 'all' || h.type === selectedCategory)
+                  .filter(h => (selectedCategory === 'all' || h.type === selectedCategory) && matchesQuery(h))
                   .map((hardware) => (
                   <tr key={hardware.hardware_id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3">
