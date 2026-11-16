@@ -92,6 +92,8 @@ async def update_hardware(hardware_id: str, hardware_data: HardwareCreate, autho
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Hardware not found")
+    from services.item_name_sync import sync_item_names
+    await sync_item_names(hardware_id)
     hardware = await db.hardware.find_one({"hardware_id": hardware_id}, {"_id": 0})
     if isinstance(hardware['created_at'], str):
         hardware['created_at'] = datetime.fromisoformat(hardware['created_at'])

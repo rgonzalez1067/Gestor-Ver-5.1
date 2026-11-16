@@ -4783,3 +4783,4 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Nuevas opciones "PDF por Grupo" y "Excel por Grupo" en el menú Reporte General (Marcas), respetan filtros.
 - Backend: `POST /api/marcas/report?format=pdf|xlsx&group_by=group`. Subtotales por grupo (marcas, RIF, sucursales), bloque "Sin Grupo" al final y Total General.
 - 2026-06: PDF individual de Grupo Económico (`GET /api/grupos-economicos/{id}/export-pdf`) ahora muestra resumen (marcas/RIF/sucursales) y un bloque por marca con su tabla de RIF (reusa `_report_data` de brands_report). RIF del grupo sin marca → bloque "Sin Marca asignada".
+- 2026-06: Fix nombres de ítems desalineados en Inventario. Causa: `inventory_movements`/`serial_assignments` guardan `item_name` copiado al crear; al renombrar en catálogo quedaba el nombre viejo. Nuevo `services/item_name_sync.py` (`sync_item_names`) se ejecuta al arrancar el backend y en `PUT /api/hardware/{id}`.

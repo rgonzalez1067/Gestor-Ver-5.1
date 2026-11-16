@@ -123,6 +123,11 @@ async def _on_startup():
     except Exception as e:
         logging.warning(f"[startup] migrate_bank_product_status failed: {e}")
     try:
+        from services.item_name_sync import sync_item_names
+        await sync_item_names()
+    except Exception as e:
+        logging.warning(f"[startup] sync_item_names failed: {e}")
+    try:
         # Precargar snapshot de feriados para el fallback síncrono del generador de PDF.
         from services.business_calendar import get_holiday_sets
         await get_holiday_sets()
