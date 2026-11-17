@@ -46,7 +46,9 @@ export const StoresBoxesGrid = ({ rifs, picked, onPick, boxes, onBoxes, desglose
                 <div key={s.client_id} className="px-3 py-1 flex items-center gap-2 text-xs" data-testid={`scope-store-${s.client_id}`}>
                   <input type="checkbox" checked={on} data-testid={`scope-store-check-${s.client_id}`} className="accent-indigo-600"
                     onChange={() => onPick(r.client_id, on ? sel.filter(x => x !== s.client_id) : [...sel, s.client_id])} />
-                  <span className={`truncate ${s.is_principal ? 'font-semibold text-indigo-700' : 'text-slate-700'}`}>{s.is_principal ? `Principal · ${s.name}` : s.name}</span>
+                  <span className={`truncate ${s.is_principal ? 'font-semibold text-indigo-700' : 'text-slate-700'}`} data-testid={`scope-store-label-${s.client_id}`}>
+                    <span className="font-mono text-slate-500">{r.rif}</span> — {r.legal_name} — {s.is_principal ? `Sede Principal${s.name && s.name !== 'Principal' ? ` · ${s.name}` : ''}` : s.name}
+                  </span>
                   {desglose && on && (
                     <Input type="number" min="0" value={boxes[s.client_id] ?? ''} placeholder="Cajas" data-testid={`scope-store-boxes-${s.client_id}`}
                       onChange={e => onBoxes(s.client_id, e.target.value === '' ? '' : Math.max(parseInt(e.target.value) || 0, 0))}

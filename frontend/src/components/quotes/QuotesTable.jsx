@@ -1,4 +1,6 @@
 import { FileText, Search, X, FolderOpen, MoreHorizontal, RefreshCw, Mail, CheckCircle, Receipt, Banknote, Truck, Send, Trash2, Eye, Wrench, Settings, Package, Landmark, Sparkles, UserCheck } from 'lucide-react';
+import { QuoteClientScopeTooltip } from './QuoteClientScopeTooltip';
+import { quoteEntityTree, quoteClientLabel } from './scope/scopeUtils';
 import { formatDateTime, formatDate, formatTime } from '../../utils/dateFormat';
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '../ui/button';
@@ -379,6 +381,11 @@ export const QuotesTable = ({
                     // Mostrar Razón Social (legal_name) en la celda. En el
                     // hover mostramos el Nombre de Fantasía como dato
                     // complementario.
+                    const scopeTree = quoteEntityTree(quote, clients);
+                    const scopeLabel = quoteClientLabel(scopeTree);
+                    if (scopeLabel && scopeLabel.kind !== 'single') {
+                      return <QuoteClientScopeTooltip label={scopeLabel} tree={scopeTree} quoteId={quote.quote_id} />;
+                    }
                     const legal = client?.legal_name || '';
                     const fantasy = client?.fantasy_name || '';
                     const display = legal || quote.client_name || fantasy || 'N/A';

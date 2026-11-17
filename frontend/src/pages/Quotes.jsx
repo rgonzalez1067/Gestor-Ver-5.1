@@ -41,7 +41,7 @@ import { getProductStatus } from '../utils/bankProductStatus';
 import { AssignClientDialog, SendPreliminaryDialog } from '../components/quotes/PreliminaryQuoteDialogs';
 import { contactMatchesPurpose, purposeForQuoteCategory } from '../utils/contactPurposes';
 import { toast } from 'sonner';
-import { EMPTY_SCOPE, scopePayload, scopeDistribution, isScopeValid, scopeFromQuote, inferTipologia } from '../components/quotes/scope/scopeUtils';
+import { EMPTY_SCOPE, scopePayload, scopeDistribution, scopeSingleBranchName, isScopeValid, scopeFromQuote, inferTipologia } from '../components/quotes/scope/scopeUtils';
 import { usePermission } from '../hooks/usePermission';
 import { useQuoteFilters } from '../hooks/useQuoteFilters';
 import { useQuoteRbac } from '../hooks/useQuoteRbac';
@@ -1834,6 +1834,7 @@ export const Quotes = () => {
       cliente_address: _isMultiRif ? '' : (client.address || ''),
       is_multirif: _isMultiRif,
       multirif_distribution: _isMultiRif ? (quoteData.multirif_distribution || []) : scopeDistribution(quoteData),
+      cliente_sucursal: _isMultiRif ? '' : scopeSingleBranchName(quoteData, client),
       sponsoring_bank_id: quoteData.sponsoring_bank_id || null,
       sponsoring_bank_name: quoteData.sponsoring_bank_name || '',
       sponsored_implementation: !!quoteData.sponsored_implementation,
@@ -2142,6 +2143,7 @@ export const Quotes = () => {
         cliente_address: isMultiRif ? '' : (client?.address || ''),
         is_multirif: !!isMultiRif,
         multirif_distribution: isMultiRif ? (quoteData.multirif_distribution || []) : scopeDistribution(quoteData),
+        cliente_sucursal: isMultiRif ? '' : scopeSingleBranchName(quoteData, client),
         sponsoring_bank_id: quoteData.sponsoring_bank_id || null,
         sponsoring_bank_name: quoteData.sponsoring_bank_name || '',
         sponsored_implementation: !!quoteData.sponsored_implementation,

@@ -4,6 +4,8 @@ Generador de PDFs dinámico para cotizaciones VPOS y Payment Gateway.
 from pydantic import BaseModel, field_validator
 from typing import List, Optional
 import re
+from xml.sax.saxutils import escape
+from services.rif_formatter import format_rif
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -41,6 +43,7 @@ class TemplateQuotePDFRequest(BaseModel):
     cliente_rif: str = ""
     cliente_contacto: str = ""  # Persona de contacto
     cliente_address: str = ""
+    cliente_sucursal: str = ""  # Sucursal beneficiaria (1 RIF + sucursal específica)
     # Datos de la solicitud (campos amarillos)
     integrator_name: str = ""
     integrator_app_name: str = ""  # Nombre del Aplicativo de Caja
@@ -241,8 +244,9 @@ class DynamicQuotePDFGenerator:
         usable_w = self.page_width - 2 * self.margin
         cover_accent = colors.HexColor("#D4A017")  # dorado Gestor - CRM
 
+        tight = self._cover_scope_block_needed()
         # 1) Espaciado superior tras el encabezado del logo
-        elements.append(Spacer(1, 30))
+        elements.append(Spacer(1, 8 if tight else 30))
 
         # 2) Hero card (bloque azul oscuro con título centrado en blanco)
         eyebrow_style = ParagraphStyle(
@@ -266,12 +270,12 @@ class DynamicQuotePDFGenerator:
         hero_tbl = Table(hero_inner, colWidths=[usable_w])
         hero_tbl.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), self.COLOR_AZUL),
-            ('TOPPADDING', (0, 0), (-1, 0), 22),
+            ('TOPPADDING', (0, 0), (-1, 0), 12 if tight else 22),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 0),
             ('TOPPADDING', (0, 1), (-1, 1), 2),
             ('BOTTOMPADDING', (0, 1), (-1, 1), 2),
             ('TOPPADDING', (0, 2), (-1, 2), 0),
-            ('BOTTOMPADDING', (0, 2), (-1, 2), 26),
+            ('BOTTOMPADDING', (0, 2), (-1, 2), 14 if tight else 26),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('LEFTPADDING', (0, 0), (-1, -1), 30),
             ('RIGHTPADDING', (0, 0), (-1, -1), 30),
@@ -285,7 +289,7 @@ class DynamicQuotePDFGenerator:
         ]))
         elements.append(accent)
 
-        elements.append(Spacer(1, 32))
+        elements.append(Spacer(1, 18 if self._cover_scope_block_needed() else 32))
 
         # 4) Encabezado de la sección de datos
         section_label_style = ParagraphStyle(
@@ -304,6 +308,13 @@ class DynamicQuotePDFGenerator:
             'CoverInfoValue', fontName='Helvetica-Bold', fontSize=12,
             textColor=colors.HexColor("#0F2A47"), leading=15,
         )
+        info_pairs = list(info_pairs)
+        scope_rifs = self._cover_scope_rifs()
+        if len(scope_rifs) > 1 and not self.data.cover_parties and not self.data.is_multirif:
+            info_pairs = [("Cliente", f"Varios RIF ({len(scope_rifs)})") if p[0] == "Cliente" else p
+                          for p in info_pairs if p[0] != "RIF"]
+        elif self.data.cliente_sucursal and len(scope_rifs) <= 1:
+            info_pairs.append(("Sucursal Beneficiaria", self.data.cliente_sucursal))
         info_rows = []
         for pair in info_pairs:
             label, value = pair[0], pair[1]
@@ -321,8 +332,8 @@ class DynamicQuotePDFGenerator:
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('LEFTPADDING', (0, 0), (-1, -1), 14),
             ('RIGHTPADDING', (0, 0), (-1, -1), 14),
-            ('TOPPADDING', (0, 0), (-1, -1), 6 if compact else 9),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6 if compact else 9),
+            ('TOPPADDING', (0, 0), (-1, -1), 6 if (compact or self._cover_scope_block_needed()) else 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6 if (compact or self._cover_scope_block_needed()) else 9),
             ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor("#E2E8F0")),
             ('BOX', (0, 0), (-1, -1), 0.75, colors.HexColor("#CBD5E1")),
             ('LINEBEFORE', (0, 0), (0, -1), 3, self.COLOR_AZUL),
@@ -335,8 +346,12 @@ class DynamicQuotePDFGenerator:
                 )
         info_tbl.setStyle(TableStyle(info_style))
         elements.append(info_tbl)
+        scope_block = self._cover_scope_block(usable_w)
+        if scope_block:
+            elements.append(Spacer(1, 12))
+            elements.extend(scope_block)
 
-        elements.append(Spacer(1, 28))
+        elements.append(Spacer(1, 10 if scope_block else 28))
 
         # 6) Tarjeta inferior: # Cotización + Fecha (2 columnas)
         meta_label = ParagraphStyle(
@@ -409,14 +424,14 @@ class DynamicQuotePDFGenerator:
             ('LINEBEFORE', (0, 0), (0, -1), 4, cover_accent),
             ('LEFTPADDING', (0, 0), (-1, -1), 18),
             ('RIGHTPADDING', (0, 0), (-1, -1), 18),
-            ('TOPPADDING', (0, 0), (-1, -1), 16),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 16),
+            ('TOPPADDING', (0, 0), (-1, -1), 8 if tight else 16),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8 if tight else 16),
             ('LINEABOVE', (0, 0), (-1, 0), 0.5, colors.HexColor("#CBD5E1")),
             ('LINEBELOW', (0, -1), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
         ]))
         elements.append(meta_card)
 
-        elements.append(Spacer(1, 18))
+        elements.append(Spacer(1, 8 if tight else 18))
 
         # 7) Sello de confidencialidad sutil
         seal_style = ParagraphStyle(
@@ -431,6 +446,61 @@ class DynamicQuotePDFGenerator:
 
         elements.append(PageBreak())
         return elements
+
+    def _cover_scope_rifs(self):
+        """RIFs del alcance (Marca → RIF → Sucursales) para la portada."""
+        out = []
+        for r in self.data.multirif_distribution or []:
+            marca = (r.get("marca_name") or "").strip()
+            name = r.get("client_name") or ""
+            if marca and name.startswith(f"{marca} · "):
+                name = name[len(marca) + 3:]
+            out.append({"marca": marca, "rif": format_rif(r.get("rif") or ""), "legal_name": name,
+                        "stores": [s.get("name") or "" for s in r.get("stores") or [] if s.get("name")]})
+        return out
+
+    def _cover_scope_block_needed(self):
+        rifs = self._cover_scope_rifs()
+        return bool(rifs) and (len(rifs) > 1 or len(rifs[0]["stores"]) > 1)
+
+    def _cover_scope_block(self, usable_w):
+        """Bloque 'Alcance de la Cotización' en portada: árbol Marca → RIF → Sucursales."""
+        rifs = self._cover_scope_rifs()
+        if not self._cover_scope_block_needed():
+            return []
+        max_rifs = 6
+        shown, extra = rifs[:max_rifs], len(rifs) - max_rifs
+        head = ParagraphStyle('CovScopeHead', fontName='Helvetica-Bold', fontSize=9, textColor=self.COLOR_AZUL, leading=11, letterSpacing=1.5)
+        brand_st = ParagraphStyle('CovScopeBrand', fontName='Helvetica-Bold', fontSize=8.5, textColor=colors.white, leading=10)
+        rif_st = ParagraphStyle('CovScopeRif', fontName='Helvetica-Bold', fontSize=8.5, textColor=colors.HexColor("#0F2A47"), leading=10.5)
+        st_st = ParagraphStyle('CovScopeStores', fontName='Helvetica', fontSize=7.5, textColor=colors.HexColor("#475569"), leading=9.5)
+        n_st = sum(len(r["stores"]) for r in rifs)
+        rows, style = [], [
+            ('LEFTPADDING', (0, 0), (-1, -1), 8), ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 2.5), ('BOTTOMPADDING', (0, 0), (-1, -1), 2.5),
+            ('BOX', (0, 0), (-1, -1), 0.75, colors.HexColor("#CBD5E1")), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]
+        last_brand = None
+        for r in shown:
+            brand = r["marca"] or "Sin marca"
+            if brand != last_brand:
+                rows.append([Paragraph(f"Marca: {escape(brand)}", brand_st), ""])
+                style.append(('SPAN', (0, len(rows) - 1), (-1, len(rows) - 1)))
+                style.append(('BACKGROUND', (0, len(rows) - 1), (-1, len(rows) - 1), self.COLOR_AZUL))
+                last_brand = brand
+            stores = ["Sede Principal" if n == "Principal" else n for n in r["stores"]]
+            if len(stores) > 4:
+                stores = stores[:4] + [f"+{len(stores) - 4} más"]
+            rows.append([Paragraph(f"&bull; {escape(r['rif'])} &nbsp;—&nbsp; {escape(r['legal_name'])}", rif_st),
+                         Paragraph(escape(" / ".join(stores)) or "—", st_st)])
+            style.append(('LINEBELOW', (0, len(rows) - 1), (-1, len(rows) - 1), 0.3, colors.HexColor("#E2E8F0")))
+        if extra > 0:
+            rows.append([Paragraph(f"+ {extra} RIF adicional(es) — ver «Detalle de Tiendas y Sucursales»", st_st), ""])
+            style.append(('SPAN', (0, len(rows) - 1), (-1, len(rows) - 1)))
+        tbl = Table(rows, colWidths=[usable_w * 0.55, usable_w * 0.45])
+        tbl.setStyle(TableStyle(style))
+        return [Paragraph(f"ALCANCE DE LA COTIZACIÓN &nbsp;<font size='8' color='#64748b'>{len({r['marca'] for r in rifs})} marca(s) · {len(rifs)} RIF · {n_st} sucursal(es)</font>", head),
+                Spacer(1, 4), tbl]
 
     def _header_footer(self, canvas, doc):
         """Añadir encabezado y pie de página a cada página"""

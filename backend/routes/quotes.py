@@ -1228,6 +1228,21 @@ async def update_quote(quote_id: str, quote_update: QuoteUpdate, authorization: 
     return updated_quote
 
 
+def _regen_distribution(quote: dict) -> list:
+    if quote.get("multirif_distribution"):
+        return quote["multirif_distribution"]
+    tree = quote.get("scope_tree") or []
+    return to_distribution(tree, bool(quote.get("cajas_desglose"))) if tree and is_multi(tree) else []
+
+
+def _regen_sucursal(quote: dict, client: dict) -> str:
+    tree = quote.get("scope_tree") or []
+    if len(tree) == 1 and len(tree[0].get("stores") or []) == 1:
+        st = tree[0]["stores"][0]
+        return "" if st.get("is_principal") else (st.get("name") or "")
+    return (client.get("sucursal") or "").strip() if client.get("is_branch") and not tree else ""
+
+
 @router.post("/quotes/{quote_id}/regenerate-pdf")
 async def regenerate_quote_pdf(quote_id: str, data: dict = {}, authorization: Optional[str] = Header(None)):
     """Regenera el PDF de una cotización desde sus datos almacenados, lo guarda en disco y lo registra en los anexos."""
@@ -1347,6 +1362,8 @@ async def regenerate_quote_pdf(quote_id: str, data: dict = {}, authorization: Op
             sponsored_implementation=bool(quote.get("sponsored_implementation")),
             sponsoring_bank_id=quote.get("sponsoring_bank_id") or None,
             sponsoring_processor_id=quote.get("sponsoring_processor_id") or None,
+            multirif_distribution=_regen_distribution(quote),
+            cliente_sucursal=_regen_sucursal(quote, client),
         )
         await apply_sponsor_cover(pdf_request)
         
@@ -1939,6 +1956,8 @@ async def hydrate_pdf_request(data: TemplateQuotePDFRequest):
             data.cliente_nombre = client.get("legal_name") or client.get("fantasy_name") or data.cliente_nombre
             data.cliente_rif = client.get("rif") or data.cliente_rif
             data.cliente_address = client.get("address") or data.cliente_address
+            if client.get("is_branch") and not data.cliente_sucursal:
+                data.cliente_sucursal = (client.get("sucursal") or "").strip()
             contacts = client.get("contacts") or []
             if contacts:
                 c0 = contacts[0] or {}
