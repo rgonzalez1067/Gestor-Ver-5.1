@@ -66,7 +66,7 @@ const MposConfigureItem = ({ quote, meta, onConfigure }) => {
 
 export const QuotesTable = ({
   quotes, clients, banks = [],
-  filterClient, filterGroup, filterStatus, filterCategory, filterSegment, filterDateFrom, filterDateTo,
+  filterClient, filterGroup, filterStatus, filterCategory, filterSegment, filterDateFrom, filterDateTo, filterBranch,
   actionLoading, canEdit,
   highlightedQuoteNumber,
   onOpenAnexos, onEditQuote, onSendToClient,
@@ -224,6 +224,7 @@ export const QuotesTable = ({
 
   const filteredQuotes = quotes.filter(quote => quoteMatchesFilters(quote, {
     filterClient, filterGroup, filterStatus, filterCategory, filterSegment, filterDateFrom, filterDateTo,
+    filterBranch, branchClients: clients,
   }, { includeStatus: true }));
 
   // === Doble scrollbar sincronizado (arriba + abajo) ===

@@ -12,6 +12,7 @@ export function useQuoteFilters() {
   const [filterSegment, setFilterSegment] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
+  const [filterBranch, setFilterBranch] = useState('');
 
   const clearFilters = useCallback(() => {
     setFilterClient('');
@@ -21,6 +22,7 @@ export function useQuoteFilters() {
     setFilterSegment('');
     setFilterDateFrom('');
     setFilterDateTo('');
+    setFilterBranch('');
   }, []);
 
   return {
@@ -31,6 +33,7 @@ export function useQuoteFilters() {
     filterSegment, setFilterSegment,
     filterDateFrom, setFilterDateFrom,
     filterDateTo, setFilterDateTo,
+    filterBranch, setFilterBranch,
     clearFilters,
   };
 }

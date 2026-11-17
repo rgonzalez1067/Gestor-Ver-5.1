@@ -44,6 +44,7 @@ class TemplateQuotePDFRequest(BaseModel):
     cliente_contacto: str = ""  # Persona de contacto
     cliente_address: str = ""
     cliente_sucursal: str = ""  # Sucursal beneficiaria (1 RIF + sucursal específica)
+    cliente_saludo: str = ""  # Destinatario de la carta en cotizaciones de varios RIF (Grupo / Marca)
     # Datos de la solicitud (campos amarillos)
     integrator_name: str = ""
     integrator_app_name: str = ""  # Nombre del Aplicativo de Caja
@@ -458,6 +459,18 @@ class DynamicQuotePDFGenerator:
             out.append({"marca": marca, "rif": format_rif(r.get("rif") or ""), "legal_name": name.strip(),
                         "stores": [s["name"].strip() for s in r.get("stores") or [] if (s.get("name") or "").strip()]})
         return sorted(out, key=lambda x: (not x["marca"], x["marca"].lower()))
+
+    def _carta_header(self):
+        rifs = self._cover_scope_rifs()
+        if self.data.cliente_saludo and len(rifs) > 1:
+            return f"""
+        <b>Señores:</b> {escape(self.data.cliente_saludo)}<br/>
+        <b>RIF:</b> Varios RIF ({len(rifs)}) — ver detalle de alcance<br/><br/>
+        """
+        return f"""
+        <b>Señores:</b> {self.data.cliente_nombre}<br/>
+        <b>RIF:</b> {self.data.cliente_rif}<br/><br/>
+        """
 
     def _cover_scope_block_needed(self):
         rifs = self._cover_scope_rifs()
@@ -1086,10 +1099,7 @@ class DynamicQuotePDFGenerator:
         
         # ==================== PÁGINA 2: CUERPO DEL DOCUMENTO ====================
         # Carta de presentación
-        carta_header = f"""
-        <b>Señores:</b> {self.data.cliente_nombre}<br/>
-        <b>RIF:</b> {self.data.cliente_rif}<br/><br/>
-        """
+        carta_header = self._carta_header()
         elements.append(Paragraph(carta_header, self.styles['TextoNormal']))
         
         # Texto corregido según solicitud del usuario
@@ -1764,10 +1774,7 @@ class DynamicQuotePDFGenerator:
         ))
         
         # ==================== PÁGINA 2: RESUMEN EJECUTIVO (igual que VPOS estándar) ====================
-        carta_header = f"""
-        <b>Señores:</b> {self.data.cliente_nombre}<br/>
-        <b>RIF:</b> {self.data.cliente_rif}<br/><br/>
-        """
+        carta_header = self._carta_header()
         elements.append(Paragraph(carta_header, self.styles['TextoNormal']))
         
         carta_body = f"""
@@ -2035,10 +2042,7 @@ class DynamicQuotePDFGenerator:
         
         # ==================== PÁGINA 2: RESUMEN EJECUTIVO ====================
         # Carta de presentación (idéntica a VPOS)
-        carta_header = f"""
-        <b>Señores:</b> {self.data.cliente_nombre}<br/>
-        <b>RIF:</b> {self.data.cliente_rif}<br/><br/>
-        """
+        carta_header = self._carta_header()
         elements.append(Paragraph(carta_header, self.styles['TextoNormal']))
         
         if standalone:

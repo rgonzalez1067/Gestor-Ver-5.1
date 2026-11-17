@@ -309,6 +309,7 @@ async def create_quote_with_pdf(data: QuoteCreateWithPDF, authorization: Optiona
                     logo_path = str(logo_file)
                 
                 # Crear generador
+                await _apply_greeting(pdf_request)
                 generator = DynamicQuotePDFGenerator(pdf_request, logo_path)
                 
                 # Generar PDF
@@ -400,6 +401,7 @@ async def create_quote_with_pdf(data: QuoteCreateWithPDF, authorization: Optiona
                         pdf_request.fecha_vencimiento = (await _ced(_dtv.now(_tzv.utc).date(), 20)).strftime("%d/%m/%Y")
                     except Exception as _ve:
                         logging.warning(f"[quotes PG] no se pudo calcular fecha de vencimiento: {_ve}")
+                    await _apply_greeting(pdf_request)
                     generator = DynamicQuotePDFGenerator(pdf_request, logo_path)
                     pdf_buffer = generator.generate()
                     # Segmento PyME/Corporativo: resolver y aplicar el anexo correspondiente
@@ -1381,6 +1383,7 @@ async def regenerate_quote_pdf(quote_id: str, data: dict = {}, authorization: Op
             pdf_request.fecha_vencimiento = (await _ced2(_dtv2.now(_tzv2.utc).date(), 20)).strftime("%d/%m/%Y")
         except Exception as _ve2:
             logging.warning(f"[quotes CORP] no se pudo calcular fecha de vencimiento: {_ve2}")
+        await _apply_greeting(pdf_request)
         generator = DynamicQuotePDFGenerator(pdf_request, logo_path)
         pdf_buffer = generator.generate()
         
@@ -1927,6 +1930,12 @@ async def apply_sponsor_cover(data: TemplateQuotePDFRequest):
         data.cover_parties = [("Banco", bank.get("name", "")), ("RIF", format_rif(bank.get("rif", "")))]
 
 
+async def _apply_greeting(data: TemplateQuotePDFRequest):
+    from services.quote_scope import multirif_greeting
+    if not data.cliente_saludo and len(data.multirif_distribution or []) > 1:
+        data.cliente_saludo = await multirif_greeting(data.multirif_distribution)
+
+
 async def hydrate_pdf_request(data: TemplateQuotePDFRequest):
     """Aísla la generación de PDF de la sesión/RBAC del usuario.
 
@@ -2059,6 +2068,7 @@ async def generate_quote_pdf_with_template(data: TemplateQuotePDFRequest, author
             logo_path = str(logo_file)
         
         # Crear generador
+        await _apply_greeting(data)
         generator = DynamicQuotePDFGenerator(data, logo_path)
         
         # Generar PDF
@@ -2110,6 +2120,7 @@ async def preview_quote_pdf_with_template(data: TemplateQuotePDFRequest, authori
             logo_path = str(logo_file)
         
         # Crear generador
+        await _apply_greeting(data)
         generator = DynamicQuotePDFGenerator(data, logo_path)
         
         # Generar PDF

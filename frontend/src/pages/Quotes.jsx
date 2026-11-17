@@ -85,6 +85,7 @@ export const Quotes = () => {
     filterSegment, setFilterSegment,
     filterDateFrom, setFilterDateFrom,
     filterDateTo, setFilterDateTo,
+    filterBranch, setFilterBranch,
     clearFilters,
   } = useQuoteFilters();
 
@@ -4473,7 +4474,7 @@ export const Quotes = () => {
           {/* Iter49: KPI cards — computados del array de cotizaciones, no requiere backend */}
           <QuotesKpiCards
             quotes={rbacFilteredQuotes}
-            filters={{ filterClient, filterGroup, filterStatus, filterCategory, filterSegment, filterDateFrom, filterDateTo }}
+            filters={{ filterClient, filterGroup, filterStatus, filterCategory, filterSegment, filterDateFrom, filterDateTo, filterBranch, branchClients: clients }}
           />
 
           {/* Botones de Nueva Cotización — Visibilidad por Permisos Especiales */}
@@ -4495,6 +4496,7 @@ export const Quotes = () => {
             filterSegment={filterSegment} setFilterSegment={setFilterSegment}
             filterDateFrom={filterDateFrom} setFilterDateFrom={setFilterDateFrom}
             filterDateTo={filterDateTo} setFilterDateTo={setFilterDateTo}
+            filterBranch={filterBranch} setFilterBranch={setFilterBranch}
           />
 
           {/* Widget de Cotizaciones Irregulares */}
@@ -4556,6 +4558,7 @@ export const Quotes = () => {
             filterSegment={filterSegment}
             filterDateFrom={filterDateFrom}
             filterDateTo={filterDateTo}
+            filterBranch={filterBranch}
             actionLoading={actionLoading}
             canEdit={canEdit || rbac.isOpsReadonly}
             opsReadonly={rbac.isOpsReadonly}

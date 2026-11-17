@@ -163,6 +163,7 @@ export const QuoteFilters = ({
   filterSegment, setFilterSegment,
   filterDateFrom, setFilterDateFrom,
   filterDateTo, setFilterDateTo,
+  filterBranch, setFilterBranch,
 }) => {
   const clearFilters = () => {
     setFilterClient('');
@@ -172,9 +173,10 @@ export const QuoteFilters = ({
     setFilterSegment('');
     setFilterDateFrom('');
     setFilterDateTo('');
+    setFilterBranch('');
   };
 
-  const hasFilters = filterClient || filterGroup || filterStatus || filterCategory || filterSegment || filterDateFrom || filterDateTo;
+  const hasFilters = filterClient || filterGroup || filterStatus || filterCategory || filterSegment || filterDateFrom || filterDateTo || filterBranch;
 
   return (
     <div className="bg-slate-50 rounded-lg p-4 mb-4 border border-slate-200" data-testid="quote-filters">
@@ -260,6 +262,12 @@ export const QuoteFilters = ({
           <Label className="text-xs text-slate-500 mb-1 block">Hasta</Label>
           <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)}
             className="h-9 bg-white" data-testid="filter-date-to" />
+        </div>
+
+        <div>
+          <Label className="text-xs text-slate-500 mb-1 block">Sucursal</Label>
+          <Input value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)} placeholder="Ej: Altamira"
+            className="h-9 bg-white" data-testid="filter-branch" />
         </div>
       </div>
     </div>

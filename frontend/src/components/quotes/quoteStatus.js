@@ -1,3 +1,4 @@
+import { quoteEntityTree } from './scope/scopeUtils';
 // Lógica compartida de estatus y filtrado de cotizaciones.
 // Se usa tanto en la grilla (QuotesTable) como en las tarjetas de KPI
 // (QuotesKpiCards) para garantizar que los contadores de los KPIs coincidan
@@ -37,8 +38,15 @@ export function getEffectiveStatus(q) {
 export function quoteMatchesFilters(quote, filters, { includeStatus = true } = {}) {
   const {
     filterClient, filterGroup, filterStatus, filterCategory,
-    filterSegment, filterDateFrom, filterDateTo,
+    filterSegment, filterDateFrom, filterDateTo, filterBranch, branchClients,
   } = filters;
+
+  if (filterBranch && filterBranch.trim()) {
+    const norm = (v) => (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    const q = norm(filterBranch);
+    const tree = quoteEntityTree(quote, branchClients || []);
+    if (!tree.some(r => (r.stores || []).some(s => norm(s.is_principal ? `sede principal ${s.name}` : s.name).includes(q)))) return false;
+  }
 
   if (filterClient && filterClient !== 'all') {
     const allowedIds = filterClient.split(',');

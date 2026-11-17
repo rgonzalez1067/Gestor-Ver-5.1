@@ -157,3 +157,26 @@ async def resort_existing_scopes() -> dict:
         m += 1
     await db["_migrations"].update_one({"_id": key}, {"$set": {"quotes": n, "projects": m}}, upsert=True)
     return {"quotes": n, "projects": m}
+
+
+async def multirif_greeting(distribution: list) -> str:
+    """Saludo de la carta para varios RIF: Grupo Económico común; si no hay, la(s) Marca(s)."""
+    from config import db
+    ids = [r.get("client_id") for r in distribution or [] if r.get("client_id")]
+    if len(ids) < 2:
+        return ""
+    clients = await db.clients.find({"client_id": {"$in": ids}}, {"_id": 0, "marca_id": 1, "grupo_economico_id": 1}).to_list(None)
+    brand_ids = list(dict.fromkeys(c["marca_id"] for c in clients if c.get("marca_id")))
+    brands = await db.brands.find({"brand_id": {"$in": brand_ids}}, {"_id": 0, "brand_id": 1, "name": 1, "group_id": 1}).to_list(None)
+    bmap = {b["brand_id"]: b for b in brands}
+    groups = {bmap.get(c.get("marca_id"), {}).get("group_id") or c.get("grupo_economico_id") for c in clients}
+    groups.discard(None)
+    groups.discard("")
+    if len(groups) == 1:
+        g = await db.economic_groups.find_one({"group_id": groups.pop()}, {"_id": 0, "name": 1})
+        if g and g.get("name"):
+            return g["name"]
+    names = [bmap[b]["name"] for b in brand_ids if b in bmap and bmap[b].get("name")]
+    if not names:
+        names = list(dict.fromkeys((r.get("marca_name") or "").strip() for r in distribution if (r.get("marca_name") or "").strip()))
+    return ", ".join(names)
