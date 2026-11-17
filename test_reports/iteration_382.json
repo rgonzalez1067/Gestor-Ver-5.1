@@ -1,0 +1,34 @@
+{
+  "summary": "Tested branches (Sucursales) as a tab inside the RIF file and the rename to 'Razón Social'. All requested flows work in the UI: sidebar link /clients shows 'Razón Social', page title is 'Razón Social', the RBAC profile module is 'Razón Social' with 'Función Especial: Mantenimiento Masivo'. Grid: 0 branch-badge rows and 63 branch-count badges. Searching 'Caricuao' returns only the principal J-505366220 INVERSIONES COLD 2024 (+7). 'Gestionar Sucursales' (add-branch-{id}) opens the file directly on the Sucursales tab; 'Editar' opens on Datos. Create, edit and delete work, and so do the frontend validations. 'Tienda Norte QA' (3 cajas, own contact) shows 'Propios (1)'. 'Tienda Sur QA' (2 cajas, no contacts) shows 'Heredados RIF' and the branch-inherited-contacts box with the RIF contact. Neither branch appears as a grid row; the principal shows +2. In the VPOS wizard at RIF level, the labels read 'RIF — Razón Social — Tienda Norte QA/Tienda Sur QA', cajas preload 3 and 2, Sede Principal is empty, total 5, and editing Norte to 6 gives total 8. Backend: 12/14 pass. The 2 failures are missing server-side validation.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/clients/{parent_id}/branches (create_branch)", "issue": "The backend only validates the sucursal name. It accepts branch_address='' and cantidad_cajas=0/missing and returns 200, although the requirement makes Dirección Física and Cajas>=1 mandatory. The rule is enforced only in BranchFormDialog. It also has no 150-char max check on sucursal."},
+      {"endpoint": "PUT /api/clients/{id}/branch-data (update_branch_data)", "issue": "Accepts an empty branch_address and stores None (200). Cajas>=1, name, duplicate name and the 404 for non-branches are validated correctly. There is no 150-char check on the name."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Cotizador VPOS scope grid", "issues": ["The brand header says '3 tienda(s)' for a RIF with 2 branches, because the Sede Principal row (0 cajas, empty input) is counted as a store. This is cosmetic and could confuse users."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter382_branches_in_rif.py", "/app/test_reports/pytest/iter382.xml"],
+  "action_items": [
+    "Add server-side validation in create_branch and update_branch_data: branch_address required (non-empty after strip), cantidad_cajas int >=1, sucursal <=150 chars",
+    "Optional: exclude the 0-cajas Sede Principal from the 'N tienda(s)' count in StoresBoxesGrid when the RIF has branches"
+  ],
+  "critical_code_review_comments": [
+    "Clients.jsx is 2378 lines and should be split further. The branch count is computed with clients.filter(...) per grid row and in the tab (O(n^2) with about 1000 clients). Precompute a Map of parent_client_id to count once.",
+    "BranchesSection delete uses window.confirm instead of the app's AlertDialog, which is inconsistent with contact-delete-dialog.",
+    "BranchFormDialog: a contact row with only a phone counts as a contact for the backend payload filter, but the inherited box and 'Propios' badge check only full_name/email. A phone-only contact is saved, yet the badge still shows 'Heredados RIF'.",
+    "consolidated-contacts for a branch with own contacts returns own + RIF contacts (union). This works for sending, but 'Propios' does not mean exclusive. Confirm this is the intended behavior."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter382_branches_in_rif.py"],
+  "success_rate": {"backend": "86% (12/14; 2 missing validations)", "frontend": "100% (all requested flows pass)"},
+  "seed_data_creation": "Created temporary principals TEST_QA RAZON SOCIAL 382 (pytest) and TEST_QA UI 382 (J468311404, cli_357278067db3) with branches Tienda Norte QA and Tienda Sur QA. All were deleted (branches deleted via the UI branch-delete, principal via the API); verified none remain. No quotes saved.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login: fetch /api/auth/login in the page and set localStorage.session_token. Grid: client-search, client-actions-{id} > add-branch-{id} opens the Sucursales tab. Branch form testids: branch-form-name/cajas/address, branch-form-add-contact, branch-contact-*-0, branch-form-save. Wizard: create-quote-button > new-impl-pyme > select-quote-type 'VPOS (Cajas)' > scope-level-RIF > scope-rifs-search > scope-rifs-check-{pid} > scope-store-boxes-{id}, scope-total-boxes-value. Run pytest with -p no:xdist -o addopts=\"\" (module-level shared state)."
+}
