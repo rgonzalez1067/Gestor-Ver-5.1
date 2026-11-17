@@ -455,9 +455,9 @@ class DynamicQuotePDFGenerator:
             name = r.get("client_name") or ""
             if marca and name.startswith(f"{marca} · "):
                 name = name[len(marca) + 3:]
-            out.append({"marca": marca, "rif": format_rif(r.get("rif") or ""), "legal_name": name,
-                        "stores": [s.get("name") or "" for s in r.get("stores") or [] if s.get("name")]})
-        return out
+            out.append({"marca": marca, "rif": format_rif(r.get("rif") or ""), "legal_name": name.strip(),
+                        "stores": [s["name"].strip() for s in r.get("stores") or [] if (s.get("name") or "").strip()]})
+        return sorted(out, key=lambda x: (not x["marca"], x["marca"].lower()))
 
     def _cover_scope_block_needed(self):
         rifs = self._cover_scope_rifs()
@@ -489,15 +489,22 @@ class DynamicQuotePDFGenerator:
                 style.append(('BACKGROUND', (0, len(rows) - 1), (-1, len(rows) - 1), self.COLOR_AZUL))
                 last_brand = brand
             stores = ["Sede Principal" if n == "Principal" else n for n in r["stores"]]
-            if len(stores) > 4:
-                stores = stores[:4] + [f"+{len(stores) - 4} más"]
-            rows.append([Paragraph(f"&bull; {escape(r['rif'])} &nbsp;—&nbsp; {escape(r['legal_name'])}", rif_st),
-                         Paragraph(escape(" / ".join(stores)) or "—", st_st)])
+            txt, used = "", 0
+            for n in stores:
+                cand = f"{txt} / {n}" if txt else n
+                if len(cand) > 44 and txt:
+                    break
+                txt, used = cand[:44], used + 1
+            if used < len(stores):
+                txt += f" (+{len(stores) - used} más)"
+            legal = r["legal_name"] if len(r["legal_name"]) <= 38 else r["legal_name"][:37] + "…"
+            rows.append([Paragraph(f"&bull; {escape(r['rif'])} &nbsp;—&nbsp; {escape(legal)}", rif_st),
+                         Paragraph(escape(txt) or "—", st_st)])
             style.append(('LINEBELOW', (0, len(rows) - 1), (-1, len(rows) - 1), 0.3, colors.HexColor("#E2E8F0")))
         if extra > 0:
             rows.append([Paragraph(f"+ {extra} RIF adicional(es) — ver «Detalle de Tiendas y Sucursales»", st_st), ""])
             style.append(('SPAN', (0, len(rows) - 1), (-1, len(rows) - 1)))
-        tbl = Table(rows, colWidths=[usable_w * 0.55, usable_w * 0.45])
+        tbl = Table(rows, colWidths=[usable_w * 0.58, usable_w * 0.42])
         tbl.setStyle(TableStyle(style))
         return [Paragraph(f"ALCANCE DE LA COTIZACIÓN &nbsp;<font size='8' color='#64748b'>{len({r['marca'] for r in rifs})} marca(s) · {len(rifs)} RIF · {n_st} sucursal(es)</font>", head),
                 Spacer(1, 4), tbl]

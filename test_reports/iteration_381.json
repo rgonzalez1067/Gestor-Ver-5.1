@@ -1,0 +1,38 @@
+{
+  "summary": "Tested the hierarchical client display in the grid, the wizard and the PDF cover. Grid: the 'Varios Rif' badge and tooltip on COT-2026-11-110-PYME work (ADIDAS/ARDENE, 6 RIFs, Sede Principal). Labels 'Razón Social (Sucursal)' and '(N sucursales)' show with their tooltips (15+ checked), and 454 normal cells keep their link. Wizard VPOS: scope-store-label rows read 'RIF — Razón Social — Sucursal/Sede Principal'. Wizard Payment Gateway: quote-sucursal-block works, but the select-client SEARCH results do not show the branch suffix (bug). PDF: Sucursal Beneficiaria, Alcance block, 'Varios RIF (N)' and regenerate-pdf of COT-2026-11-110-PYME all pass with the card on page 1. In a heavy case (VPOS, 6 shown RIFs with 4+ long store names each) the quote-number card spills onto page 2.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "GET /api/clients/search", "issue": "The projection (routes/clients.py ~line 718, and the hide branch ~703) returns only client_id/legal_name/rif/fantasy_name/... with no is_branch, sucursal or parent_client_id. So when the user types >=2 chars in select-client (QuoteWizardDialog line 484 uses clientSearchResults), all 8 options for J505366220 show the same text 'J505366220 — INVERSIONES COLD 2024, CA.' with no '— Paramo Caricuao' etc. The user cannot tell principal and branches apart. Fix: add is_branch, sucursal, parent_client_id (and marca_name) to both projections.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "PDF cover (_build_modern_cover/_cover_scope_block)", "issue": "Overflow in a heavy case: VPOS (all cover_parties shown: cajas, integrador, aplicativo, pinpad, banco) with 6 shown RIFs and >=4 stores per RIF using long store names (~40 chars). The stores wrap to 2+ lines, and the NÚMERO DE COTIZACIÓN/fecha card plus the confidential seal move to page 2. The same overflow happens with 6 RIFs that have very long unbroken legal names. Realistic cases with 1-3 stores per RIF fit. Suggestion: cap the cell to one line (truncate the stores text / max 2 stores + '+N más'), or reduce max_rifs dynamically by estimated height."},
+      {"endpoint": "PDF cover _cover_scope_rifs", "issue": "RIFs are not grouped/sorted by marca before rendering. If multirif_distribution arrives interleaved (M0,M1,M0...), the 'Marca: X' header repeats. Sort by marca_name first. Grid tooltip groups correctly via byBrand."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "QuoteWizardDialog select-client (search mode)", "issue": "Branch suffix missing for search results (root cause is the backend /clients/search projection, see backend critical). The initial list (clients.slice(0,50)) is fine.", "selector": "[data-testid^='client-option-']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Grid / wizard / tooltip", "issues": ["Sucursal names with trailing spaces in the data ('Paramo Caricuao ') render as 'INVERSIONES COLD 2024, CA. (Paramo Caricuao )'. Trim s.name/sucursal in quoteEntityTree/quoteClientLabel and in the backend cliente_sucursal (already .strip() there)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter381_cover_scope.py", "/app/test_reports/pytest/iter381.xml"],
+  "action_items": [
+    "Add is_branch, sucursal, parent_client_id to the projections of GET /api/clients/search (routes/clients.py) so select-client search results show '— Sucursal'",
+    "Make the PDF cover scope block height-bounded (one-line stores cell or dynamic max_rifs) so the quote-number card always stays on page 1. Test: test_stress_many_rifs_long_names_fit_page1",
+    "Sort _cover_scope_rifs by marca to avoid duplicate brand headers",
+    "Trim sucursal names in the frontend labels"
+  ],
+  "critical_code_review_comments": [
+    "QuoteWizardDialog quote-sucursal-block finds the selected client with clients.find(...). It works because the full clients list is loaded, but it would break if clients were paginated.",
+    "The Varios Rif badge / scope label cells have no link to the client file (acceptable, but different from single cells)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter381_cover_scope.py"],
+  "success_rate": {"backend": "83% (5/6; the 1 failure is a heavy-case stress test)", "frontend": "80% (4/5 flows; search-mode label bug)"},
+  "seed_data_creation": "None. No quotes created. regenerate-pdf was run on quo_bad7112f40ba as requested (it rewrites /app/backend/uploads/COT-2026-11-110-PYME_Cotizacion.pdf and its attachment).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login: fetch /api/auth/login in page, then localStorage.session_token, go to /dashboard and then /quotes (wait up to 60s for quote-client-varios-rif-quo_bad7112f40ba). Test client RIF J505366220: principal cli_a88bb320f1a9, branch cli_dc77d71c6d98 'Paramo Caricuao'. Wizard: create-quote-button > new-impl-pyme > select-quote-type. VPOS scope: scope-level-RIF, scope-rifs-search, scope-rifs-check-*."
+}

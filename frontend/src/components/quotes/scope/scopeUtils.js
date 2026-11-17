@@ -96,9 +96,10 @@ export const quoteEntityTree = (quote, clients = []) => {
   }
   const c = byId(quote.client_id);
   if (!c) return [];
+  const t = (v) => (v || '').trim();
   const p = c.is_branch ? (byId(c.parent_client_id || c.parent_id) || c) : c;
-  const branchStores = (quote.branch_details || []).filter(b => b.store_name).map(b => ({ name: b.store_name, is_principal: false }));
-  const stores = branchStores.length > 1 ? branchStores : (c.is_branch ? [{ name: c.sucursal, is_principal: false }] : []);
+  const branchStores = (quote.branch_details || []).filter(b => t(b.store_name)).map(b => ({ name: t(b.store_name), is_principal: false }));
+  const stores = branchStores.length > 1 ? branchStores : (c.is_branch ? [{ name: t(c.sucursal), is_principal: false }] : []);
   return [{ rif: p.rif || c.rif, legal_name: p.legal_name || c.legal_name, marca_name: p.marca_name || '', stores }];
 };
 
@@ -107,7 +108,7 @@ export const quoteClientLabel = (tree) => {
   if (tree.length > 1) return { text: 'Varios Rif', kind: 'multi' };
   const r = tree[0];
   if (!r) return null;
-  const stores = r.stores || [];
+  const stores = (r.stores || []).map(s => ({ ...s, name: (s.name || '').trim() }));
   if (stores.length > 1) return { text: `${r.legal_name} (${stores.length} sucursales)`, kind: 'stores' };
   if (stores.length === 1 && !stores[0].is_principal && stores[0].name && stores[0].name !== 'Principal') {
     return { text: `${r.legal_name} (${stores[0].name})`, kind: 'branch' };
@@ -120,7 +121,7 @@ export const scopeSingleBranchName = (qd, client) => {
   const tree = isScopeType(qd.quote_type) ? (qd.scope_tree || []) : [];
   if (tree.length === 1 && (tree[0].stores || []).length === 1) {
     const s = tree[0].stores[0];
-    return s.is_principal ? '' : (s.name || '');
+    return s.is_principal ? '' : (s.name || '').trim();
   }
-  return !tree.length && client?.is_branch ? (client.sucursal || '') : '';
+  return !tree.length && client?.is_branch ? (client.sucursal || '').trim() : '';
 };

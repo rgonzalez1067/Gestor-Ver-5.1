@@ -483,7 +483,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                         </div>
                         {(clientSearchQuery.length >= 2 ? clientSearchResults : clients.slice(0, 50)).map((client) => (
                           <SelectItem key={client.client_id} value={client.client_id} data-testid={`client-option-${client.client_id}`}>
-                            {client.rif} — {client.legal_name || client.fantasy_name}{client.is_branch && client.sucursal ? ` — ${client.sucursal}` : ''}
+                            {client.rif} — {client.legal_name || client.fantasy_name}{client.is_branch && client.sucursal ? ` — ${client.sucursal.trim()}` : ''}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -514,7 +514,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                             <SelectContent>
                               {ordered.map(c => (
                                 <SelectItem key={c.client_id} value={c.client_id} data-testid={`quote-sucursal-option-${c.client_id}`}>
-                                  {c.rif} — {c.legal_name || c.fantasy_name} — {c.is_branch ? c.sucursal : `Sede Principal${c.sucursal && c.sucursal !== 'Principal' ? ` · ${c.sucursal}` : ''}`}
+                                  {c.rif} — {c.legal_name || c.fantasy_name} — {c.is_branch ? (c.sucursal || '').trim() : `Sede Principal${c.sucursal && c.sucursal !== 'Principal' ? ` · ${c.sucursal}` : ''}`}
                                 </SelectItem>
                               ))}
                             </SelectContent>

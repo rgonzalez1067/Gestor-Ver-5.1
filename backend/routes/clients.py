@@ -700,7 +700,7 @@ async def search_clients(q: str = "", include_placeholder: bool = False, authori
     await get_current_user(authorization)
     hide = {} if include_placeholder else {"is_placeholder": {"$ne": True}}
     if not q or len(q) < 2:
-        clients = await db.clients.find(hide, {"_id": 0, "client_id": 1, "fantasy_name": 1, "legal_name": 1, "rif": 1}).to_list(50)
+        clients = await db.clients.find(hide, {"_id": 0, "client_id": 1, "fantasy_name": 1, "legal_name": 1, "rif": 1, "is_branch": 1, "sucursal": 1, "parent_client_id": 1}).to_list(50)
         return clients
     import re
     # Limpiar caracteres especiales para búsqueda de RIF (J-12345678-9 → J12345679)
@@ -712,10 +712,12 @@ async def search_clients(q: str = "", include_placeholder: bool = False, authori
         "$or": [
             {"fantasy_name": {"$regex": q, "$options": "i"}},
             {"legal_name": {"$regex": q, "$options": "i"}},
-            {"rif": {"$regex": rif_pattern, "$options": "i"}}
+            {"rif": {"$regex": rif_pattern, "$options": "i"}},
+            {"sucursal": {"$regex": re.escape(q), "$options": "i"}},
         ]
     }
-    clients = await db.clients.find(query, {"_id": 0, "client_id": 1, "fantasy_name": 1, "legal_name": 1, "rif": 1, "contact_name": 1, "address": 1, "commercial_name": 1}).to_list(50)
+    clients = await db.clients.find(query, {"_id": 0, "client_id": 1, "fantasy_name": 1, "legal_name": 1, "rif": 1, "contact_name": 1, "address": 1, "commercial_name": 1,
+                                            "is_branch": 1, "sucursal": 1, "parent_client_id": 1}).to_list(50)
     return clients
 
 
