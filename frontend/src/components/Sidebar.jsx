@@ -35,8 +35,7 @@ import {
   ClipboardList,
   PackageCheck,
   Printer,
-  Server,
-  Store
+  Server
 } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
@@ -57,7 +56,7 @@ const menuItems = [
       { path: '/initial-contacts', icon: Phone, label: 'Contacto Inicial' },
       { path: '/grupos-economicos', icon: Building2, label: 'Grupo Económico' },
       { path: '/marcas', icon: Tag, label: 'Marca o Nombre Fantasía' },
-      { path: '/clients', icon: Store, label: 'Sucursales' },
+      { path: '/clients', icon: Landmark, label: 'Razón Social' },
     ]
   },
   {

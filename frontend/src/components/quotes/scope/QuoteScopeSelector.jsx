@@ -11,8 +11,10 @@ const LEVELS = [['GRUPO', 'Grupo Económico'], ['MARCA', 'Marca'], ['RIF', 'RIF'
 const fetchStores = async (rifId) => {
   const { data } = await api.get(`/clients/${rifId}/branches`);
   const p = data.principal || {};
-  return [{ client_id: p.client_id || rifId, name: p.sucursal || 'Principal', is_principal: true },
-    ...(data.branches || []).map(b => ({ client_id: b.client_id, name: b.sucursal || b.fantasy_name, is_principal: false }))];
+  const branches = data.branches || [];
+  // Cajas sugeridas desde la ficha: cada sucursal aporta las suyas; la sede principal solo si el RIF no tiene sucursales.
+  return [{ client_id: p.client_id || rifId, name: p.sucursal || 'Principal', is_principal: true, cajas: branches.length ? 0 : (parseInt(p.cantidad_cajas, 10) || 0) },
+    ...branches.map(b => ({ client_id: b.client_id, name: (b.sucursal || b.fantasy_name || '').trim(), is_principal: false, cajas: parseInt(b.cantidad_cajas, 10) || 0 }))];
 };
 
 // value: {nivel_cotizacion, grupo_economico_id, grupo_economico_name, scope_tree, cajas_desglose}
@@ -54,6 +56,7 @@ export const QuoteScopeSelector = ({ value, onChange, clients }) => {
       fetchStores(id).then(stores => {
         setStoresByRif(p => ({ ...p, [id]: stores }));
         setPicked(p => (p[id] ? p : { ...p, [id]: stores.map(s => s.client_id) }));
+        setBoxes(p => ({ ...Object.fromEntries(stores.filter(s => s.cajas > 0).map(s => [s.client_id, s.cajas])), ...p }));
       }).catch(() => {});
     });
   }, [rifIds]); // eslint-disable-line react-hooks/exhaustive-deps

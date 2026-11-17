@@ -41,7 +41,7 @@ MODULES = [
     {"id": "initial_contacts", "name": "Contacto Inicial", "group": "clientes_menu"},
     {"id": "grupos_economicos", "name": "Grupo Económico",  "group": "clientes_menu"},
     {"id": "marcas",            "name": "Marca o Nombre Fantasía", "group": "clientes_menu"},
-    {"id": "clientes",          "name": "Sucursales",        "group": "clientes_menu"},
+    {"id": "clientes",          "name": "Razón Social",      "group": "clientes_menu"},
     {"id": "cotizaciones",      "name": "Cotizaciones",      "group": "gestion_comercial"},
     {"id": "reportes_ventas",   "name": "Reportes de Ventas", "group": "gestion_comercial"},
     {"id": "reportes_patrocinador", "name": "Reportes por Patrocinador", "group": "gestion_comercial"},
@@ -81,7 +81,7 @@ SPECIAL_PERMISSIONS = [
     # Clientes / Sucursales — FN_SUCURSALES_MANTENIMIENTO_MASIVO
     {"id": "clientes:mantenimiento_masivo", "module": "clientes",
      "label": "Función Especial: Mantenimiento Masivo",
-     "description": "Habilita la selección múltiple y las Acciones Masivas en Sucursales (eliminar, grupo/marca, coordinador/implementador, segmento, ejecutivo, categoría, integrador/aplicativo, tipo de servicio)."},
+     "description": "Habilita la selección múltiple y las Acciones Masivas en Razón Social (eliminar, grupo/marca, coordinador/implementador, segmento, ejecutivo, categoría, integrador/aplicativo, tipo de servicio)."},
     # Marca o Nombre Fantasía — FN_MARCAS_MANTENIMIENTO_MASIVO
     {"id": "marcas:mantenimiento_masivo", "module": "marcas",
      "label": "Función Especial: Mantenimiento Masivo",

@@ -473,6 +473,8 @@ def _client_brief(c: dict) -> dict:
         "is_branch": bool(c.get("is_branch")),
         "parent_client_id": c.get("parent_client_id"),
         "contacts_count": len([x for x in (c.get("contacts") or []) if (x.get("email") or "").strip()]),
+        "cantidad_cajas": c.get("cantidad_cajas"),
+        "branch_address": c.get("branch_address"),
     }
 
 
@@ -1033,6 +1035,37 @@ async def get_client_inheritance(client_id: str, authorization: Optional[str] = 
     if not client:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
     return await client_inheritance(client)
+
+@router.put("/clients/{client_id}/branch-data")
+async def update_branch_data(client_id: str, body: dict, authorization: Optional[str] = Header(None)):
+    """Edición de una sucursal desde la ficha del RIF: nombre, dirección, cajas y contactos locales."""
+    await require_permission(authorization, "clientes", "edit")
+    branch = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "rif": 1, "is_branch": 1})
+    if not branch or not branch.get("is_branch"):
+        raise HTTPException(status_code=404, detail="Sucursal no encontrada")
+    sucursal = (body.get("sucursal") or "").strip()
+    if not sucursal or _is_principal_sucursal(sucursal):
+        raise HTTPException(status_code=400, detail="Debe indicar un nombre de sucursal distinto de 'Principal'.")
+    dup = await db.clients.find_one({"rif": branch["rif"], "sucursal": sucursal, "client_id": {"$ne": client_id}}, {"_id": 0, "client_id": 1})
+    if dup:
+        raise HTTPException(status_code=400, detail=f"Ya existe la sucursal '{sucursal}' para el RIF {branch['rif']}")
+    try:
+        cajas = int(body.get("cantidad_cajas") or 0)
+    except (TypeError, ValueError):
+        cajas = 0
+    if cajas < 1:
+        raise HTTPException(status_code=400, detail="La cantidad de cajas debe ser mayor o igual a 1")
+    contacts = []
+    for c in body.get("contacts") or []:
+        if not any((c.get(k) or "").strip() for k in ("full_name", "email", "phone")):
+            continue
+        contacts.append({**c, "contact_id": c.get("contact_id") or f"cnt_{uuid.uuid4().hex[:8]}"})
+    await db.clients.update_one({"client_id": client_id}, {"$set": {
+        "sucursal": sucursal, "branch_address": (body.get("branch_address") or "").strip() or None,
+        "cantidad_cajas": cajas, "contacts": contacts, "updated_at": datetime.now(timezone.utc).isoformat(),
+    }})
+    return await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+
 
 @router.patch("/clients/{client_id}")
 async def patch_client(client_id: str, body: dict, authorization: Optional[str] = Header(None)):
