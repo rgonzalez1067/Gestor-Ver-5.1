@@ -238,6 +238,7 @@ const Projects = () => {
   })();
   const isAdmin = currentUser?.role === 'admin';
   const canMasterEdit = isAdmin || hasSpecial('proyectos:edicion_maestra');
+  const canDeleteProject = isAdmin || hasSpecial('proyectos:eliminar');
   // Equipo comercial del usuario según su departamento (para el indicador $ de Cobro Recurrente)
   const userSalesTeam = (() => {
     const dept = (currentUser?.departamento || '').toLowerCase();
@@ -1470,7 +1471,7 @@ const Projects = () => {
                                 <Pencil size={14} />
                               </Button>
                             )}
-                            {isAdmin && (
+                            {canDeleteProject && (
                               <Button size="sm" variant="outline" title="Eliminar Proyecto"
                                 onClick={() => handleDeleteProject(project)}
                                 className="h-8 px-2 text-slate-300 hover:text-rose-600 hover:border-rose-300" data-testid={`delete-btn-${project.project_id}`}>

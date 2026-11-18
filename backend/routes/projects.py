@@ -3747,10 +3747,10 @@ async def _replace_base64_images(html: str, user_id: str) -> str:
 
 @router.delete("/projects/{project_id}")
 async def delete_project(project_id: str, authorization: Optional[str] = Header(None)):
-    """Eliminar un proyecto. Solo administradores."""
+    """Eliminar un proyecto. Administradores o Función Especial 'proyectos:eliminar'."""
     current_user = await get_current_user(authorization)
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Solo administradores pueden eliminar proyectos")
+    if current_user.get("role") != "admin" and "proyectos:eliminar" not in (await _effective_special_permissions(current_user)):
+        raise HTTPException(status_code=403, detail="Requiere la Función Especial Eliminar Proyectos")
     
     project = await db.projects.find_one({"project_id": project_id}, {"_id": 0, "project_id": 1})
     if not project:
