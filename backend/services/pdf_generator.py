@@ -311,10 +311,7 @@ class DynamicQuotePDFGenerator:
         )
         info_pairs = list(info_pairs)
         scope_rifs = self._cover_scope_rifs()
-        if len(scope_rifs) > 1 and not self.data.cover_parties and not self.data.is_multirif:
-            info_pairs = [("Cliente", f"Varios RIF ({len(scope_rifs)})") if p[0] == "Cliente" else p
-                          for p in info_pairs if p[0] != "RIF"]
-        elif self.data.cliente_sucursal and len(scope_rifs) <= 1:
+        if self.data.cliente_sucursal and len(scope_rifs) <= 1:
             info_pairs.append(("Sucursal Beneficiaria", self.data.cliente_sucursal))
         info_rows = []
         for pair in info_pairs:
@@ -459,6 +456,15 @@ class DynamicQuotePDFGenerator:
             out.append({"marca": marca, "rif": format_rif(r.get("rif") or ""), "legal_name": name.strip(),
                         "stores": [s["name"].strip() for s in r.get("stores") or [] if (s.get("name") or "").strip()]})
         return sorted(out, key=lambda x: (not x["marca"], x["marca"].lower()))
+
+    def _addressee(self):
+        """Destinatario (portada / Resumen Ejecutivo): Banco/Procesador patrocinante o el Cliente."""
+        cp = self.data.cover_parties or []
+        if cp:
+            if len(cp[0]) > 2:
+                return ("Patrocinante", " / ".join(f"{p[1]}" for p in cp if p[1]))
+            return ("Patrocinante", cp[0][1])
+        return ("Cliente", str(self.data.cliente_nombre or ""))
 
     def _carta_header(self):
         rifs = self._cover_scope_rifs()
@@ -717,8 +723,8 @@ class DynamicQuotePDFGenerator:
         row1_data = [[
             # Celda 1: Cliente (más ancha para nombres largos)
             Table(
-                [[Paragraph("<b>Cliente</b>", self.styles['CampoEtiqueta']),
-                  Paragraph(str(self.data.cliente_nombre), cliente_nombre_style)]],
+                [[Paragraph(f"<b>{self._addressee()[0]}</b>", self.styles['CampoEtiqueta']),
+                  Paragraph(escape(self._addressee()[1]), cliente_nombre_style)]],
                 colWidths=[90, 200]
             ),
             # Celda 2: Cantidad de Cajas (más compacta)
