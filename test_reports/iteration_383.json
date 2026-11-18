@@ -1,0 +1,35 @@
+{
+  "summary": "Iter383 - Project Chat (ACL / admin RO / unread / read receipts) + Projects grid (Chat first action, 2-line action grid, DualScrollX top scrollbar). Backend: 14/14 pytest passed. Frontend: all requested flows verified (badge, open->read->badge cleared, drawer header/participants/bubbles, Enter sends, admin RO mode without input, top/bottom scrollbar sync at 1280px). Test data cleaned (project_chat_messages & project_chat_reads back to 0 docs).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/projects/{id}/chat", "issue": "read_by is calculated BEFORE the caller's last_read_at is upserted. So the person reading sees other people's messages as 'Enviado' until the next 8s poll. Whether this is expected depends on your design; you could compute read_by after the upsert."},
+      {"endpoint": "GET /api/projects-chat/summary", "issue": "Users without the 'proyectos' module (e.g. kherrera) get a 403 from the module guard. That is correct, and the frontend ignores the error silently. The summary loads every project (703) and the full users map on each 30s poll for each user; consider indexing or filtering by participant fields for scale."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/projects at 1280px", "issues": ["The whole page overflows horizontally (document.scrollWidth=1600 vs 1280). The header button row (Plantillas/Reasignación Masiva/Reporte Carga/... nowrap, ~780px) and the filter row force main/max-w-7xl wider than the viewport. As a result the table container is 1278px wide, its right part (Acciones column) sits off-screen, and the user has to scroll the PAGE horizontally. This partially defeats the new top scrollbar (body scroll range only 44px). Suggest: flex-wrap on the header actions, plus min-w-0/overflow-hidden on main so DualScrollX handles the overflow. Likely pre-existing."]},
+      {"screen": "Chat drawer header", "issues": ["The project number wraps onto 2 lines and the client name is truncated with a leading '|'. Minor: consider placing the client on its own line."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter383_project_chat.py", "/app/test_reports/pytest/iter383.xml"],
+  "action_items": [
+    "(Design) Fix the page-level horizontal overflow on /projects at <=1280px so the DualScrollX top scrollbar becomes the effective horizontal scroller",
+    "(Optional) In GET chat, upsert the reader's last_read_at before computing read_by, or accept the 8s delay"
+  ],
+  "critical_code_review_comments": [
+    "DualScrollX: the 'syncing' boolean flag is skipped once per programmatic scroll. If the target scrollLeft is already equal or clamped, no scroll event fires and the flag stays true, so the next real user scroll is ignored once. This is hard to notice, but comparing scrollLeft values (if to.scrollLeft !== from.scrollLeft) is more robust.",
+    "Actions grid: 9 buttons in grid-cols-5 render as 2 lines (5+4) as requested.",
+    "ACL logic matches the spec. The fallback to all Gerente+Implementación users applies when there is no coordinator, or the coordinator has no supervisor, or that supervisor is inactive."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter383_project_chat.py"],
+  "success_rate": {"backend": "100% (14/14)", "frontend": "100% of requested flows; 1 design issue"},
+  "test_credentials": "rgonzalez/dcollazo MegaSoft2026* (admins, participants of prj_fdb3c4bd1dfc); jdolande & mmartin QaMegaSoft2026*x (non-admin: jdolande = Generador participant, mmartin = non-participant -> 403); kherrera Kherrera2026*Qa (no proyectos module -> 403 everywhere). No password resets needed.",
+  "seed_data_creation": "Temporary chat messages and reads on prj_fdb3c4bd1dfc, all deleted at the end (both collections were empty before and after). Projects not modified.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use the pytest file for regression. Note that kherrera has no 'proyectos' module, so use mmartin as the non-admin non-participant for prj_fdb3c4bd1dfc. rgonzalez has ~243 'ro' projects in the grid (e.g. PRY-2026-11-017-PRI)."
+}
