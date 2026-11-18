@@ -157,3 +157,41 @@ async def chat_summary(authorization: Optional[str] = Header(None)):
             if g["last"] > last_read:
                 unread[g["_id"]] = sum(1 for d in g["dates"] if d > last_read)
     return {"admin": user.get("role") == "admin", "rw": mine, "unread": unread}
+
+
+@router.get("/projects-chat/alerts")
+async def chat_alerts(authorization: Optional[str] = Header(None)):
+    """Alertas emergentes para el Implementador: mensajes de otros en sus proyectos, posteriores a su última
+    lectura y a su último 'Leer después' (alert_seen_at)."""
+    user = await get_current_user(authorization)
+    me = user.get("user_id")
+    projects = await db.projects.find({"assigned_to_user_id": me},
+                                      {"_id": 0, "project_id": 1, "project_number": 1, "client_name": 1}).to_list(None)
+    if not projects:
+        return []
+    pmap = {p["project_id"]: p for p in projects}
+    marks = {r["project_id"]: max(r.get("last_read_at", ""), r.get("alert_seen_at", "")) for r in await db.project_chat_reads.find(
+        {"user_id": me, "project_id": {"$in": list(pmap)}}, {"_id": 0}).to_list(None)}
+    out = []
+    async for g in db.project_chat_messages.aggregate([
+        {"$match": {"project_id": {"$in": list(pmap)}, "user_id": {"$ne": me}}},
+        {"$sort": {"created_at": 1}},
+        {"$group": {"_id": "$project_id", "dates": {"$push": "$created_at"}, "last": {"$last": "$$ROOT"}}},
+    ]):
+        mark = marks.get(g["_id"], "")
+        n = sum(1 for d in g["dates"] if d > mark)
+        if n:
+            last = g["last"]
+            out.append({**pmap[g["_id"]], "unread": n, "last_message": {
+                "message_id": last["message_id"], "user_name": last.get("user_name"), "roles": last.get("roles", []),
+                "text": (last.get("text") or "")[:280], "created_at": last["created_at"]}})
+    return sorted(out, key=lambda a: a["last_message"]["created_at"], reverse=True)
+
+
+@router.post("/projects-chat/alerts/{project_id}/dismiss")
+async def dismiss_chat_alert(project_id: str, authorization: Optional[str] = Header(None)):
+    """'Leer después': no vuelve a alertar los mensajes actuales (siguen pendientes en la grilla)."""
+    user = await get_current_user(authorization)
+    await db.project_chat_reads.update_one({"project_id": project_id, "user_id": user["user_id"]},
+                                           {"$set": {"alert_seen_at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
+    return {"ok": True}

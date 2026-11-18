@@ -27,7 +27,7 @@ import { OperationalBoard } from '../components/projects/OperationalBoard';
 import { ImplementerWorkloadHover } from '../components/projects/ImplementerWorkloadHover';
 import {
   FolderKanban, Search, UserCheck, Clock, CheckCircle2, Pause,
-  FileText, Filter, Paperclip, Eye, RefreshCw, X, UserPlus, AlertTriangle, Store, BarChart3, Ticket, Trash2, UserCog, Flag, Zap, Landmark, ChevronDown, CreditCard, ClipboardList, Pencil, Gauge, Calendar, CalendarClock, FileSpreadsheet, DollarSign, Snowflake, Archive
+  FileText, Filter, Paperclip, Eye, RefreshCw, X, UserPlus, AlertTriangle, Store, BarChart3, Ticket, Trash2, UserCog, Flag, Zap, Landmark, ChevronDown, CreditCard, ClipboardList, Pencil, Gauge, Calendar, CalendarClock, FileSpreadsheet, DollarSign, Snowflake, Archive, MessageSquare
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
@@ -479,6 +479,7 @@ const Projects = () => {
   const [deletingProject, setDeletingProject] = useState(null);
   const [chatSummary, setChatSummary] = useState({});
   const [chatProject, setChatProject] = useState(null);
+  const [unreadChatOnly, setUnreadChatOnly] = useState(false);
   const fetchChatSummary = useCallback(() => {
     if (document.visibilityState === 'hidden') return;
     api.get('/projects-chat/summary').then(r => setChatSummary(r.data || {})).catch(() => {});
@@ -495,7 +496,17 @@ const Projects = () => {
     if (!rw && !chatSummary.admin) return null;
     return { access: rw ? 'rw' : 'ro', unread: (chatSummary.unread || {})[pid] || 0 };
   };
-  const closeChat = useCallback(() => { setChatProject(null); fetchChatSummary(); }, [fetchChatSummary]);
+  const closeChat = useCallback(() => {
+    setChatProject(null);
+    fetchChatSummary();
+    if (window.location.search.includes('chat=')) navigate('/projects', { replace: true });
+  }, [fetchChatSummary, navigate]);
+  // Abrir chat directo desde la alerta global (/projects?chat=<id>)
+  const chatParam = new URLSearchParams(window.location.search).get('chat');
+  useEffect(() => {
+    if (!chatParam) return;
+    setChatProject(projects.find(p => p.project_id === chatParam) || { project_id: chatParam });
+  }, [projects, chatParam]);
   const [trashOpen, setTrashOpen] = useState(false);
   const handleDeleteProject = (project) => setDeletingProject(project);
 
@@ -585,7 +596,8 @@ const Projects = () => {
     const matchAvance = avanceFilter === 'all' ? true
       : avanceFilter === 'congelado' ? p.status === 'Congelado'
       : _avanceLevel(p) === avanceFilter;
-    return matchSearch && matchSponsor && matchType && matchIntegrator && matchDate && matchCobro && matchAvance;
+    const matchChat = !unreadChatOnly || ((chatSummary.unread || {})[p.project_id] || 0) > 0;
+    return matchSearch && matchSponsor && matchType && matchIntegrator && matchDate && matchCobro && matchAvance && matchChat;
   };
 
   const matchesStatus = (p) => statusFilter === 'all'
@@ -990,6 +1002,14 @@ const Projects = () => {
                 </SelectContent>
               </Select>
             </div>
+            {/* Filtro: proyectos con mensajes de chat sin leer */}
+            <Button variant="outline" onClick={() => setUnreadChatOnly(v => !v)} aria-pressed={unreadChatOnly} data-testid="filter-unread-chat"
+              className={unreadChatOnly ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'text-slate-600'}>
+              <MessageSquare size={15} className="mr-1.5" />Chat sin leer
+              <span className={`ml-1.5 text-[11px] rounded-full px-1.5 ${unreadChatOnly ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'}`} data-testid="filter-unread-chat-count">
+                {Object.keys(chatSummary.unread || {}).length}
+              </span>
+            </Button>
             {/* Filtro por Patrocinador (dropdown + búsqueda interna) */}
             <div className="flex items-center gap-2">
               <Landmark size={16} className="text-slate-400" />

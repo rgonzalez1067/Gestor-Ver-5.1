@@ -73,8 +73,8 @@ export const ProjectChatDrawer = ({ project, onClose, currentUserId }) => {
     <Sheet open={!!project} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col" data-testid="project-chat-drawer">
         <SheetHeader className="px-5 py-4 border-b bg-slate-900 text-white">
-          <SheetTitle className="text-white flex items-center gap-2 text-base"><MessageSquare size={17} /> Chat Operativo: {project?.project_number}
-            <span className="font-normal text-slate-300 truncate">| {project?.client_name}</span></SheetTitle>
+          <SheetTitle className="text-white flex items-center gap-2 text-base"><MessageSquare size={17} /> Chat Operativo: {project?.project_number || data?.project?.project_number}
+            <span className="font-normal text-slate-300 truncate">| {project?.client_name || data?.project?.client_name}</span></SheetTitle>
           <p className="text-xs text-slate-300 flex items-start gap-1.5 mt-1" data-testid="chat-participants">
             <Users size={13} className="shrink-0 mt-0.5" />
             {(data?.participants || []).map(p => `${p.name} (${p.roles.map(r => ROLE_SHORT[r] || r).join('/')})`).join(', ') || 'Cargando participantes…'}

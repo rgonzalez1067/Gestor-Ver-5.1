@@ -44,7 +44,7 @@ Regla: usuarios no-admin/no-Director solo ven registros del Histórico cuya `sed
 - Password: Test1234!
 - Role: user / Cargo: Implementador
 - Permisos: `condiciones_banco_mediopago='read'` (SOLO CONSULTA) → útil para validar gobernanza RBAC del nuevo módulo Condiciones Banco/Medio de Pago.
-- Nota: password re-reseteado (2026-07-14) con config.hash_password al validar el módulo Condiciones Banco/Medio de Pago.
+- Nota: password re-reseteado (2026-07-14 y 2026-11-18) con config.hash_password. user_id real: user_0aa6077a9fa9 (implementador de prj_e3cc3f3af922).
 
 ## Usuario Corporativo (antes "parachute") — AHORA role=user
 - Email: ragg1008@gmail.com
