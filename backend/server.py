@@ -67,6 +67,7 @@ from routes.brands import router as brands_router
 from routes.brands_report import router as brands_report_router
 from routes.branches_import import router as branches_import_router
 from routes.master_edits_report import router as master_edits_report_router
+from routes.project_chat import router as project_chat_router
 from routes.clients_mass import router as clients_mass_router
 from routes.audit_trails import router as audit_trails_router
 from services.audit_trail import AuditContextMiddleware, ensure_audit_indexes
@@ -417,6 +418,7 @@ api_router.include_router(clients_mass_router)
 api_router.include_router(brands_report_router)
 api_router.include_router(branches_import_router)
 api_router.include_router(master_edits_report_router)
+api_router.include_router(project_chat_router)
 api_router.include_router(brands_router)
 api_router.include_router(audit_trails_router)
 app.include_router(api_router)
@@ -458,6 +460,8 @@ async def create_indexes():
             await db.projects.create_index([("project_id", 1)], unique=True)
             await db.projects.create_index([("quote_id", 1)])
             await db.projects.create_index([("status", 1)])
+            await db.project_chat_messages.create_index([("project_id", 1), ("created_at", 1)])
+            await db.project_chat_reads.create_index([("project_id", 1), ("user_id", 1)], unique=True)
             # PERFORMANCE: sort principal del listado de Proyectos.
             await db.projects.create_index([("created_at", -1)])
             await db.uploaded_images.create_index([("image_id", 1)], unique=True)

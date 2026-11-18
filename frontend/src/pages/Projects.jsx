@@ -21,6 +21,8 @@ import { TemplatesAdminDialog } from '../components/projects/TemplatesAdminDialo
 import { MasterEditDialog } from '../components/projects/MasterEditDialog';
 import { MasterEditsReportButton } from '../components/projects/MasterEditsReportButton';
 import { DeleteProjectDialog, ProjectsTrashDialog } from '../components/projects/ProjectsTrash';
+import { ProjectChatButton, ProjectChatDrawer } from '../components/projects/ProjectChat';
+import { DualScrollX } from '../components/ui-custom/DualScrollX';
 import { OperationalBoard } from '../components/projects/OperationalBoard';
 import { ImplementerWorkloadHover } from '../components/projects/ImplementerWorkloadHover';
 import {
@@ -475,6 +477,17 @@ const Projects = () => {
   };
 
   const [deletingProject, setDeletingProject] = useState(null);
+  const [chatSummary, setChatSummary] = useState({});
+  const [chatProject, setChatProject] = useState(null);
+  const fetchChatSummary = useCallback(() => {
+    api.get('/projects-chat/summary').then(r => setChatSummary(r.data || {})).catch(() => {});
+  }, []);
+  useEffect(() => {
+    fetchChatSummary();
+    const t = setInterval(fetchChatSummary, 30000);
+    return () => clearInterval(t);
+  }, [fetchChatSummary]);
+  const closeChat = useCallback(() => { setChatProject(null); fetchChatSummary(); }, [fetchChatSummary]);
   const [trashOpen, setTrashOpen] = useState(false);
   const handleDeleteProject = (project) => setDeletingProject(project);
 
@@ -1143,7 +1156,7 @@ const Projects = () => {
               <p className="text-sm text-slate-400">Los proyectos se crean automáticamente al enviar una cotización a Implementación</p>
             </div>
           ) : (
-            <div className="bg-white rounded-lg border border-slate-200 overflow-x-auto">
+            <DualScrollX className="bg-white rounded-lg border border-slate-200">
               <table className="w-full min-w-[1100px]">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
@@ -1378,7 +1391,9 @@ const Projects = () => {
                             : <span className="text-slate-400 italic">—</span>}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center justify-center gap-1">
+                          <div className="grid grid-cols-5 gap-1 justify-items-center w-max mx-auto" data-testid={`actions-grid-${project.project_id}`}>
+                            {/* Chat del Proyecto — primera acción */}
+                            <ProjectChatButton project={project} info={chatSummary[project.project_id]} onOpen={setChatProject} />
                             {/* Cobro Recurrente ($) — toggle exclusivo Ventas del mismo equipo (o Admin) */}
                             {(() => {
                               const on = !!project.cobro_recurrente_status;
@@ -1542,7 +1557,7 @@ const Projects = () => {
                   })}
                 </tbody>
               </table>
-            </div>
+            </DualScrollX>
           )}
         </div>
 
@@ -1689,6 +1704,7 @@ const Projects = () => {
           handleDeleteTemplate={handleDeleteTemplate}
         />
 
+        <ProjectChatDrawer project={chatProject} onClose={closeChat} currentUserId={currentUser?.user_id} />
         <DeleteProjectDialog project={deletingProject} onClose={() => setDeletingProject(null)} onDeleted={fetchProjects} />
         <ProjectsTrashDialog open={trashOpen} onOpenChange={setTrashOpen} onRestored={fetchProjects} />
         {masterEditProject && (
