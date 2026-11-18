@@ -480,13 +480,21 @@ const Projects = () => {
   const [chatSummary, setChatSummary] = useState({});
   const [chatProject, setChatProject] = useState(null);
   const fetchChatSummary = useCallback(() => {
+    if (document.visibilityState === 'hidden') return;
     api.get('/projects-chat/summary').then(r => setChatSummary(r.data || {})).catch(() => {});
   }, []);
   useEffect(() => {
     fetchChatSummary();
     const t = setInterval(fetchChatSummary, 30000);
-    return () => clearInterval(t);
+    const onVis = () => document.visibilityState === 'visible' && fetchChatSummary();
+    document.addEventListener('visibilitychange', onVis);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVis); };
   }, [fetchChatSummary]);
+  const chatInfo = (pid) => {
+    const rw = (chatSummary.rw || []).includes(pid);
+    if (!rw && !chatSummary.admin) return null;
+    return { access: rw ? 'rw' : 'ro', unread: (chatSummary.unread || {})[pid] || 0 };
+  };
   const closeChat = useCallback(() => { setChatProject(null); fetchChatSummary(); }, [fetchChatSummary]);
   const [trashOpen, setTrashOpen] = useState(false);
   const handleDeleteProject = (project) => setDeletingProject(project);
@@ -1393,7 +1401,7 @@ const Projects = () => {
                         <td className="px-4 py-3">
                           <div className="grid grid-cols-5 gap-1 justify-items-center w-max mx-auto" data-testid={`actions-grid-${project.project_id}`}>
                             {/* Chat del Proyecto — primera acción */}
-                            <ProjectChatButton project={project} info={chatSummary[project.project_id]} onOpen={setChatProject} />
+                            <ProjectChatButton project={project} info={chatInfo(project.project_id)} onOpen={setChatProject} />
                             {/* Cobro Recurrente ($) — toggle exclusivo Ventas del mismo equipo (o Admin) */}
                             {(() => {
                               const on = !!project.cobro_recurrente_status;

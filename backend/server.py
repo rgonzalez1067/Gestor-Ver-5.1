@@ -462,6 +462,9 @@ async def create_indexes():
             await db.projects.create_index([("status", 1)])
             await db.project_chat_messages.create_index([("project_id", 1), ("created_at", 1)])
             await db.project_chat_reads.create_index([("project_id", 1), ("user_id", 1)], unique=True)
+            await db.project_chat_reads.create_index([("user_id", 1)])
+            await db.projects.create_index([("created_by_user_id", 1)])
+            await db.projects.create_index([("assigned_to_user_id", 1)])
             # PERFORMANCE: sort principal del listado de Proyectos.
             await db.projects.create_index([("created_at", -1)])
             await db.uploaded_images.create_index([("image_id", 1)], unique=True)

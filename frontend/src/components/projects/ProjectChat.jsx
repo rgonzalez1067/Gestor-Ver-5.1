@@ -55,7 +55,7 @@ export const ProjectChatDrawer = ({ project, onClose, currentUserId }) => {
     setData(null); setText('');
     if (!pid) return undefined;
     load();
-    const t = setInterval(load, 8000);
+    const t = setInterval(() => document.visibilityState === 'visible' && load(), 8000);
     return () => clearInterval(t);
   }, [pid, load]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [data?.messages?.length]);

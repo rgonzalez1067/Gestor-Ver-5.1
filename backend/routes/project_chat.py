@@ -23,11 +23,20 @@ def _uname(u: dict) -> str:
     return f"{u.get('first_name', '')} {u.get('last_name', '')}".strip() or u.get("name") or u.get("email", "")
 
 
+_UMAP_CACHE = {"at": 0.0, "map": None}
+
+
 async def _users_map() -> dict:
+    """Usuarios activos (cache en memoria 60s para no consultarlos en cada revisión)."""
+    import time
+    if _UMAP_CACHE["map"] is not None and time.monotonic() - _UMAP_CACHE["at"] < 60:
+        return _UMAP_CACHE["map"]
     users = await db.users.find({"is_active": {"$ne": False}},
                                 {"_id": 0, "user_id": 1, "first_name": 1, "last_name": 1, "name": 1, "email": 1,
                                  "supervisor_id": 1, "cargo": 1, "departamento": 1, "role": 1}).to_list(None)
-    return {u["user_id"]: u for u in users}
+    import time
+    _UMAP_CACHE.update(at=time.monotonic(), map={u["user_id"]: u for u in users})
+    return _UMAP_CACHE["map"]
 
 
 def _impl_managers(umap: dict) -> list:
@@ -113,30 +122,38 @@ async def post_chat(project_id: str, body: ChatMessageIn, authorization: Optiona
     return {**msg, "read_by": []}
 
 
+def _candidate_query(me: str, umap: dict, mgrs: list) -> dict:
+    """Consulta indexada de proyectos donde 'me' puede ser participante (sin recorrer todos)."""
+    subs = [uid for uid, u in umap.items() if u.get("supervisor_id") == me]
+    subs2 = [uid for uid, u in umap.items() if u.get("supervisor_id") in set(subs)]
+    ors = [{"created_by_user_id": {"$in": [me] + subs}}, {"assigned_to_user_id": {"$in": [me] + subs + subs2}}]
+    if me in mgrs:
+        # Fallback Gerente de Implementación: implementador sin coordinador, o coordinador sin supervisor.
+        full_chain = [uid for uid, u in umap.items()
+                      if u.get("supervisor_id") in umap and umap[u["supervisor_id"]].get("supervisor_id") in umap]
+        ors.append({"assigned_to_user_id": {"$nin": full_chain}})
+    return {"$or": ors}
+
+
 @router.get("/projects-chat/summary")
 async def chat_summary(authorization: Optional[str] = Header(None)):
-    """Por proyecto visible: acceso (rw/ro) y mensajes no leídos del usuario en sesión."""
+    """Revisión liviana: proyectos donde participo (consulta indexada) + no leídos. Admin ve el resto en solo lectura."""
     user = await get_current_user(authorization)
-    me, is_admin = user.get("user_id"), user.get("role") == "admin"
+    me = user.get("user_id")
     umap = await _users_map()
     mgrs = _impl_managers(umap)
-    projects = await db.projects.find({}, {"_id": 0, "project_id": 1, "created_by_user_id": 1, "assigned_to_user_id": 1}).to_list(None)
-    access = {}
-    for p in projects:
-        if me in participants(p, umap, mgrs):
-            access[p["project_id"]] = "rw"
-        elif is_admin:
-            access[p["project_id"]] = "ro"
-    mine = [pid for pid, a in access.items() if a == "rw"]
+    cands = await db.projects.find(_candidate_query(me, umap, mgrs),
+                                   {"_id": 0, "project_id": 1, "created_by_user_id": 1, "assigned_to_user_id": 1}).to_list(None)
+    mine = [p["project_id"] for p in cands if me in participants(p, umap, mgrs)]
     reads = {r["project_id"]: r.get("last_read_at", "") for r in await db.project_chat_reads.find(
-        {"user_id": me, "project_id": {"$in": mine}}, {"_id": 0}).to_list(None)}
+        {"user_id": me}, {"_id": 0, "project_id": 1, "last_read_at": 1}).to_list(None)}
     unread: dict = {}
-    async for m in db.project_chat_messages.find({"project_id": {"$in": mine}, "user_id": {"$ne": me}},
-                                                 {"_id": 0, "project_id": 1, "created_at": 1}):
-        if m["created_at"] > reads.get(m["project_id"], ""):
-            unread[m["project_id"]] = unread.get(m["project_id"], 0) + 1
-    counts = {}
-    async for c in db.project_chat_messages.aggregate([{"$match": {"project_id": {"$in": list(access)}}},
-                                                       {"$group": {"_id": "$project_id", "n": {"$sum": 1}}}]):
-        counts[c["_id"]] = c["n"]
-    return {pid: {"access": a, "unread": unread.get(pid, 0), "total": counts.get(pid, 0)} for pid, a in access.items()}
+    if mine:
+        async for g in db.project_chat_messages.aggregate([
+            {"$match": {"project_id": {"$in": mine}, "user_id": {"$ne": me}}},
+            {"$group": {"_id": "$project_id", "last": {"$max": "$created_at"}, "dates": {"$push": "$created_at"}}},
+        ]):
+            last_read = reads.get(g["_id"], "")
+            if g["last"] > last_read:
+                unread[g["_id"]] = sum(1 for d in g["dates"] if d > last_read)
+    return {"admin": user.get("role") == "admin", "rw": mine, "unread": unread}
