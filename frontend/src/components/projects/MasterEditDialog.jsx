@@ -169,6 +169,8 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
   const [clientsList, setClientsList] = useState([]);
   const [integratorsList, setIntegratorsList] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [justification, setJustification] = useState('');
+  const justOk = justification.trim().length >= 10;
   const [form, setForm] = useState(null);
   // Sub-modal relacional Procesador → Banco (homologado con el Cotizador).
   const [sponsorProcessorModal, setSponsorProcessorModal] = useState({ open: false, processor: null });
@@ -243,6 +245,7 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
     if (!open || !project) return;
     setForm(initForm(project));
     setConverting(false);
+    setJustification('');
     (async () => {
       try {
         const [b, h, cl, intg] = await Promise.all([
@@ -335,6 +338,10 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
   };
 
   const handleSave = async () => {
+    if (!justOk) {
+      toast.error('Indica la justificación del cambio (mínimo 10 caracteres)');
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -358,6 +365,7 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
         sponsoring_processor_name: form.sponsoring_processor_name || null,
         generador_user_id: form.generador_user_id || '__none__',
         hardware: form.hardware,
+        justification: justification.trim(),
       };
       if (isBranchProject) {
         payload.branches = form.branches.map(b => ({ ...b, box_count: parseInt(b.box_count) || 0 }));
@@ -617,11 +625,22 @@ export const MasterEditDialog = ({ open, onOpenChange, project, onSaved }) => {
             <AlertTriangle size={15} className="mt-0.5 shrink-0" />
             <span className="text-xs">Esta acción sobrescribe directamente los datos del proyecto y reconstruye sus relaciones. Verifica antes de guardar.</span>
           </div>
+
+          <section data-testid="master-justification-section">
+            <Label className="text-sm font-semibold text-slate-800">Justificación del cambio <span className="text-red-500">*</span></Label>
+            <textarea value={justification} onChange={(e) => setJustification(e.target.value)} rows={3} maxLength={1000}
+              placeholder="Explica el motivo de la edición (quedará registrado en la bitácora del proyecto)"
+              className={`mt-1 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 ${justification && !justOk ? 'border-red-300' : 'border-slate-300'}`}
+              data-testid="master-justification-input" />
+            <p className={`text-[11px] ${justOk ? 'text-slate-400' : 'text-red-500'}`} data-testid="master-justification-hint">
+              {justOk ? `${justification.trim().length}/1000` : 'Obligatoria · mínimo 10 caracteres'}
+            </p>
+          </section>
         </div>
 
         <div className="flex justify-end gap-3 pt-2 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="master-cancel-btn">Cancelar</Button>
-          <Button onClick={handleSave} disabled={saving} className="bg-slate-800 hover:bg-slate-900 text-white" data-testid="master-save-btn">
+          <Button onClick={handleSave} disabled={saving || !justOk} className="bg-slate-800 hover:bg-slate-900 text-white" data-testid="master-save-btn">
             {saving ? 'Guardando...' : 'Guardar Override'}
           </Button>
         </div>

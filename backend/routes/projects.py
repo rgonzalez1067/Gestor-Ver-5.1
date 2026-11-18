@@ -100,6 +100,7 @@ class MedioReplacement(BaseModel):
 
 
 class MasterOverridePayload(BaseModel):
+    justification: str = ""
     # Campos escalares (texto libre)
     project_number: Optional[str] = None
     client_id: Optional[str] = None
@@ -854,6 +855,10 @@ async def master_override_project(project_id: str, payload: MasterOverridePayloa
     current_user = await get_current_user(authorization)
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Acceso denegado: la Edición Maestra es exclusiva para Administradores.")
+    justification = (payload.justification or "").strip()
+    if len(justification) < 10:
+        raise HTTPException(status_code=400, detail="La justificación del cambio es obligatoria (mínimo 10 caracteres).")
+    justification = justification[:1000]
 
     project = await db.projects.find_one({"project_id": project_id}, {"_id": 0})
     if not project:
@@ -975,6 +980,7 @@ async def master_override_project(project_id: str, payload: MasterOverridePayloa
         summary_text = f"[Edición Maestra] {len(changes)} campo(s) modificado(s) por {user_name}: {diff_lines}"
     else:
         summary_text = f"[Edición Maestra] {user_name} guardó sin cambios efectivos."
+    summary_text += f" | Justificación: {justification}"
 
     note = {
         "note_id": f"pn_{uuid.uuid4().hex[:8]}",
@@ -992,6 +998,7 @@ async def master_override_project(project_id: str, payload: MasterOverridePayloa
         "created_at": now,
         "type": "master_override",
         "changes": changes,
+        "justification": justification,
     }
     await db.projects.update_one(
         {"project_id": project_id},
