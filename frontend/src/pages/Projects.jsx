@@ -19,6 +19,7 @@ import { CommitmentModal } from '../components/CommitmentModal';
 import { WorkloadReportFiltersModal } from '../components/WorkloadReportFiltersModal';
 import { TemplatesAdminDialog } from '../components/projects/TemplatesAdminDialog';
 import { MasterEditDialog } from '../components/projects/MasterEditDialog';
+import { MasterEditsReportButton } from '../components/projects/MasterEditsReportButton';
 import { OperationalBoard } from '../components/projects/OperationalBoard';
 import { ImplementerWorkloadHover } from '../components/projects/ImplementerWorkloadHover';
 import {
@@ -777,6 +778,7 @@ const Projects = () => {
                 <FileText size={14} className="mr-1.5" />
                 Reporte Carga (PDF)
               </Button>
+              {isAdmin && <MasterEditsReportButton />}
             </div>
           </div>
 

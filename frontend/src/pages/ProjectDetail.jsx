@@ -36,6 +36,7 @@ import { AssignmentTimelineButton } from '../components/projects/AssignmentTimel
 import { EmailPreviewDialog } from '../components/projects/EmailPreviewDialog';
 import { CommitmentModal } from '../components/CommitmentModal';
 import { ImplementerAlertsModal } from '../components/ImplementerAlertsModal';
+import { MasterEditBitacoraEntry } from '../components/projects/MasterEditBitacoraEntry';
 
 const ProjectDetail = () => {
   const { projectId } = useParams();
@@ -2093,7 +2094,7 @@ const ProjectDetail = () => {
                       <span className="font-mono font-medium">{entry.execution_date}</span>
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm text-slate-800">{entry.text}</p>
+                      {entry.type === 'master_override' ? <MasterEditBitacoraEntry entry={entry} /> : <p className="text-sm text-slate-800">{entry.text}</p>}
                       <p className="text-xs text-slate-400 mt-1">
                         <User size={10} className="inline mr-1" />{entry.created_by_name} · {formatDateTime(entry.created_at)}
                       </p>
