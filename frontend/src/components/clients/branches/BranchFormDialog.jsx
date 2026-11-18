@@ -6,27 +6,45 @@ import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Textarea } from '../../ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../ui/dialog';
-import { Plus, Trash2, Link2, Store } from 'lucide-react';
+import { Plus, Trash2, Link2, Store, Check, Circle } from 'lucide-react';
+import { CONTACT_PURPOSES } from '../../../utils/contactPurposes';
 
 const ROLES = ['Administrativo', 'Financiero', 'Técnico', 'Cuentas por Pagar', 'Operativo', 'Propietario', 'Director', 'Integrador'];
 const blank = () => ({ contact_id: '', full_name: '', role: 'Administrativo', phone: '', email: '', purposes: [] });
 
+const PurposeTags = ({ c, i, onChange }) => (
+  <div className="col-span-12 flex flex-wrap items-center gap-1.5" data-testid={`branch-contact-purposes-${i}`}>
+    <span className="text-[11px] font-semibold text-slate-500 mr-1">Procesos:</span>
+    {CONTACT_PURPOSES.map(p => {
+      const active = (c.purposes || []).includes(p.key);
+      return (
+        <button key={p.key} type="button" aria-pressed={active} data-testid={`branch-contact-purpose-${i}-${p.key}`}
+          onClick={() => onChange({ ...c, purposes: active ? c.purposes.filter(k => k !== p.key) : [...(c.purposes || []), p.key] })}
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400'}`}>
+          {active ? <Check size={11} /> : <Circle size={10} className="opacity-50" />}{p.label}
+        </button>
+      );
+    })}
+  </div>
+);
+
 const ContactRow = ({ c, i, onChange, onRemove }) => (
-  <div className="grid grid-cols-12 gap-2 items-center" data-testid={`branch-contact-row-${i}`}>
+  <div className="grid grid-cols-12 gap-2 items-center rounded-md border border-slate-200 p-2" data-testid={`branch-contact-row-${i}`}>
     <Input className="col-span-3 h-8 text-sm" placeholder="Nombre" value={c.full_name} onChange={(e) => onChange({ ...c, full_name: e.target.value })} data-testid={`branch-contact-name-${i}`} />
+    <Input className="col-span-3 h-8 text-sm" placeholder="Teléfono" value={c.phone} onChange={(e) => onChange({ ...c, phone: e.target.value })} data-testid={`branch-contact-phone-${i}`} />
+    <Input className="col-span-3 h-8 text-sm" placeholder="Email" type="email" value={c.email} onChange={(e) => onChange({ ...c, email: e.target.value })} data-testid={`branch-contact-email-${i}`} />
     <select className="col-span-2 h-8 text-sm border rounded-md px-1 bg-white" value={c.role || 'Administrativo'} onChange={(e) => onChange({ ...c, role: e.target.value })} data-testid={`branch-contact-role-${i}`}>
       {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
     </select>
-    <Input className="col-span-3 h-8 text-sm" placeholder="Teléfono" value={c.phone} onChange={(e) => onChange({ ...c, phone: e.target.value })} data-testid={`branch-contact-phone-${i}`} />
-    <Input className="col-span-3 h-8 text-sm" placeholder="Correo" type="email" value={c.email} onChange={(e) => onChange({ ...c, email: e.target.value })} data-testid={`branch-contact-email-${i}`} />
     <button type="button" onClick={onRemove} className="col-span-1 text-slate-400 hover:text-red-600 justify-self-center" data-testid={`branch-contact-remove-${i}`}><Trash2 size={14} /></button>
+    <PurposeTags c={c} i={i} onChange={onChange} />
   </div>
 );
 
 const InheritedContacts = ({ contacts }) => (
   <div className="rounded-md border border-dashed border-sky-300 bg-sky-50 p-2.5 text-xs text-sky-800" data-testid="branch-inherited-contacts">
     <p className="font-semibold flex items-center gap-1 mb-1"><Link2 size={12} /> Sin contactos propios — se usan los Heredados del RIF</p>
-    {contacts.length ? contacts.map((c, i) => <p key={i}>{c.full_name || '—'} · {c.role || ''} · {c.email || 'sin correo'}</p>)
+    {contacts.length ? contacts.map((c, i) => <p key={i}>{c.full_name || '—'} · {c.phone || 'sin teléfono'} · {c.email || 'sin correo'} · {c.role || ''}</p>)
       : <p>El RIF no tiene contactos; se heredan de la Marca / Grupo Económico.</p>}
   </div>
 );
@@ -38,7 +56,7 @@ export const BranchFormDialog = ({ open, onOpenChange, principal, branch, princi
   useEffect(() => {
     if (!open) return;
     setForm(branch
-      ? { sucursal: branch.sucursal || '', branch_address: branch.branch_address || '', cantidad_cajas: branch.cantidad_cajas ?? '', contacts: (branch.contacts || []).map(c => ({ ...blank(), ...c })) }
+      ? { sucursal: branch.sucursal || '', branch_address: branch.branch_address || '', cantidad_cajas: branch.cantidad_cajas ?? '', contacts: (branch.contacts || []).map(c => ({ ...blank(), ...c, purposes: Array.isArray(c.purposes) ? c.purposes : [] })) }
       : { sucursal: '', branch_address: '', cantidad_cajas: '', contacts: [] });
   }, [open, branch]);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));

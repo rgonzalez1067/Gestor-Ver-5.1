@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import api from '../../../utils/api';
+import { PURPOSE_LABELS } from '../../../utils/contactPurposes';
 import { Button } from '../../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../ui/dialog';
 import { FileSpreadsheet, Upload, Download, CheckCircle2, AlertCircle, RefreshCw, PlusCircle } from 'lucide-react';
@@ -40,7 +41,7 @@ const PreviewTable = ({ rows }) => (
             <td className="px-2 py-1.5 font-medium">{r.sucursal || '—'}</td>
             <td className="px-2 py-1.5 text-slate-600 max-w-[220px] truncate" title={r.branch_address}>{r.branch_address || '—'}</td>
             <td className="px-2 py-1.5 text-center">{r.cantidad_cajas ?? '—'}</td>
-            <td className="px-2 py-1.5 text-slate-600">{r.contact ? `${r.contact.full_name} · ${r.contact.email || r.contact.phone}` : <span className="text-sky-600">Heredado RIF</span>}</td>
+            <td className="px-2 py-1.5 text-slate-600">{r.contact ? <>{`${r.contact.full_name} · ${r.contact.phone || '—'} · ${r.contact.email || '—'} · ${r.contact.role}`}{(r.contact.purposes || []).length > 0 && <p className="text-[10px] text-indigo-600">{r.contact.purposes.map(k => PURPOSE_LABELS[k]).join(', ')}</p>}</> : <span className="text-sky-600">Heredado RIF</span>}</td>
             <td className="px-2 py-1.5"><ActionTag r={r} />{r.errors.length > 0 && <p className="text-[11px] text-red-600">{r.errors.join(' · ')}</p>}</td>
           </tr>
         ))}
