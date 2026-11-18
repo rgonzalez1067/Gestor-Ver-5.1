@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import api from '../../../utils/api';
 import { Button } from '../../ui/button';
-import { Plus, Pencil, Trash2, User, Link2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, User, Link2, FileSpreadsheet, Download } from 'lucide-react';
 import { BranchFormDialog } from './BranchFormDialog';
+import { ImportBranchesDialog, downloadBranchTemplate } from './ImportBranchesDialog';
 
 const ownContacts = (b) => (b.contacts || []).filter(c => (c.full_name || c.email || '').trim());
 
@@ -19,6 +20,7 @@ const ContactsBadge = ({ b }) => {
 // Pestaña "Sucursales" de la Ficha de Razón Social (RIF Principal).
 export const BranchesSection = ({ principal, branches, principalContacts, canEdit, onChanged }) => {
   const [dialog, setDialog] = useState({ open: false, branch: null });
+  const [importOpen, setImportOpen] = useState(false);
   const remove = async (b) => {
     if (!window.confirm(`¿Eliminar la sucursal "${b.sucursal}"?`)) return;
     try {
@@ -39,7 +41,13 @@ export const BranchesSection = ({ principal, branches, principalContacts, canEdi
           <p className="text-sm font-semibold text-slate-800">Sucursales / Tiendas registradas bajo este RIF</p>
           <p className="text-xs text-slate-500">{sorted.length} sucursal(es) · {totalCajas} cajas · todas comparten el RIF {principal.rif}</p>
         </div>
-        {canEdit && <Button type="button" size="sm" onClick={() => setDialog({ open: true, branch: null })} className="bg-amber-600 hover:bg-amber-700" data-testid="branches-add-btn"><Plus size={14} className="mr-1" />Agregar Sucursal</Button>}
+        {canEdit && (
+          <div className="flex items-center gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => downloadBranchTemplate(principal)} data-testid="branches-template-btn"><Download size={14} className="mr-1" />Plantilla</Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)} className="text-emerald-700 border-emerald-300" data-testid="branches-import-btn"><FileSpreadsheet size={14} className="mr-1" />Importar Excel</Button>
+            <Button type="button" size="sm" onClick={() => setDialog({ open: true, branch: null })} className="bg-amber-600 hover:bg-amber-700" data-testid="branches-add-btn"><Plus size={14} className="mr-1" />Agregar Sucursal</Button>
+          </div>
+        )}
       </div>
       <div className="border rounded-lg overflow-hidden">
         <table className="w-full text-sm">
@@ -68,6 +76,7 @@ export const BranchesSection = ({ principal, branches, principalContacts, canEdi
       </div>
       <BranchFormDialog open={dialog.open} onOpenChange={(o) => setDialog(d => ({ ...d, open: o }))} principal={principal}
         branch={dialog.branch} principalContacts={principalContacts} onSaved={onChanged} />
+      <ImportBranchesDialog open={importOpen} onOpenChange={setImportOpen} principal={principal} onDone={onChanged} />
     </div>
   );
 };

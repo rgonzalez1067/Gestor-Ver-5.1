@@ -65,6 +65,7 @@ from routes.bank_payment_conditions import router as bank_payment_conditions_rou
 from routes.economic_groups import router as economic_groups_router
 from routes.brands import router as brands_router
 from routes.brands_report import router as brands_report_router
+from routes.branches_import import router as branches_import_router
 from routes.clients_mass import router as clients_mass_router
 from routes.audit_trails import router as audit_trails_router
 from services.audit_trail import AuditContextMiddleware, ensure_audit_indexes
@@ -413,6 +414,7 @@ api_router.include_router(bank_payment_conditions_router)
 api_router.include_router(economic_groups_router)
 api_router.include_router(clients_mass_router)
 api_router.include_router(brands_report_router)
+api_router.include_router(branches_import_router)
 api_router.include_router(brands_router)
 api_router.include_router(audit_trails_router)
 app.include_router(api_router)
