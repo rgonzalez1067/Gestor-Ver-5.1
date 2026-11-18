@@ -20,6 +20,7 @@ from services.project_template_vars import resolve_project_template_vars
 from services.object_storage import init_storage, put_object, get_object
 from services.pdf_storage import save_pdf_dual
 
+from routes.auth import _effective_special_permissions
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -832,8 +833,8 @@ def _master_diff(old_project, update, is_multistore):
 async def master_branches_context(project_id: str, authorization: Optional[str] = Header(None)):
     """Topes contratados, sucursales certificadas y RIFs elegibles para la Edición Maestra."""
     current_user = await get_current_user(authorization)
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Acceso denegado: la Edición Maestra es exclusiva para Administradores.")
+    if current_user.get("role") != "admin" and "proyectos:edicion_maestra" not in (await _effective_special_permissions(current_user)):
+        raise HTTPException(status_code=403, detail="Acceso denegado: requiere la Función Especial Edición Maestra.")
     project = await db.projects.find_one({"project_id": project_id}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
@@ -853,8 +854,8 @@ async def master_override_project(project_id: str, payload: MasterOverridePayloa
     estructuras relacionales (banks[], services[], implementation_matrix y, en
     multitienda, las matrices por tienda). EXCLUSIVO para rol Administrador."""
     current_user = await get_current_user(authorization)
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Acceso denegado: la Edición Maestra es exclusiva para Administradores.")
+    if current_user.get("role") != "admin" and "proyectos:edicion_maestra" not in (await _effective_special_permissions(current_user)):
+        raise HTTPException(status_code=403, detail="Acceso denegado: requiere la Función Especial Edición Maestra.")
     justification = (payload.justification or "").strip()
     if len(justification) < 10:
         raise HTTPException(status_code=400, detail="La justificación del cambio es obligatoria (mínimo 10 caracteres).")

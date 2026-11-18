@@ -90,6 +90,9 @@ SPECIAL_PERMISSIONS = [
     {"id": "proyectos:create", "module": "proyectos",
      "label": "Crear Proyecto de Integración",
      "description": "Permite crear nuevos proyectos aunque tenga nivel Consulta."},
+    {"id": "proyectos:edicion_maestra", "module": "proyectos",
+     "label": "Función Especial: Edición Maestra",
+     "description": "Habilita la Edición Maestra de Proyectos (sobrescribe datos con justificación obligatoria) y el Reporte de Ediciones Maestras."},
     # Cotizaciones (segmentación funcional)
     {"id": "cotizaciones:impl_pyme", "module": "cotizaciones",
      "label": "Generar Implementaciones Pyme",

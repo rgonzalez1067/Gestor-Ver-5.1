@@ -237,6 +237,7 @@ const Projects = () => {
     return role === 'admin' || cargo === 'coordinador' || cargo === 'gerente';
   })();
   const isAdmin = currentUser?.role === 'admin';
+  const canMasterEdit = isAdmin || hasSpecial('proyectos:edicion_maestra');
   // Equipo comercial del usuario según su departamento (para el indicador $ de Cobro Recurrente)
   const userSalesTeam = (() => {
     const dept = (currentUser?.departamento || '').toLowerCase();
@@ -778,7 +779,7 @@ const Projects = () => {
                 <FileText size={14} className="mr-1.5" />
                 Reporte Carga (PDF)
               </Button>
-              {isAdmin && <MasterEditsReportButton />}
+              {canMasterEdit && <MasterEditsReportButton />}
             </div>
           </div>
 
@@ -1462,8 +1463,8 @@ const Projects = () => {
                                 </Button>
                               );
                             })()}
-                            {isAdmin && (
-                              <Button size="sm" variant="outline" title="Edición Maestra (Admin)"
+                            {canMasterEdit && (
+                              <Button size="sm" variant="outline" title="Edición Maestra"
                                 onClick={() => { setMasterEditProject(project); setMasterEditOpen(true); }}
                                 className="h-8 px-2 text-slate-500 hover:text-slate-800 hover:border-slate-400" data-testid={`master-edit-btn-${project.project_id}`}>
                                 <Pencil size={14} />

@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 
 from config import db, get_current_user
 
+from routes.auth import _effective_special_permissions
 router = APIRouter()
 
 
@@ -18,8 +19,8 @@ def _fmt(v):
 @router.get("/project-master-edits/export-xlsx")
 async def export_master_edits(date_from: str = "", date_to: str = "", authorization: Optional[str] = Header(None)):
     user = await get_current_user(authorization)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Reporte exclusivo para Administradores.")
+    if user.get("role") != "admin" and "proyectos:edicion_maestra" not in (await _effective_special_permissions(user)):
+        raise HTTPException(status_code=403, detail="Requiere la Función Especial Edición Maestra.")
     rows = []
     cursor = db.projects.find({"bitacora.type": "master_override"},
                               {"_id": 0, "project_number": 1, "ticket_number": 1, "client_name": 1, "client_rif": 1, "bitacora": 1})
