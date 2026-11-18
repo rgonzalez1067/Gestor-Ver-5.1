@@ -116,6 +116,18 @@ OTHER_ACTIONS = [
         ],
     },
     {
+        "id": "project_master_edit",
+        "label": "Edición Maestra de Proyecto",
+        "description": "Se dispara (en background) cada vez que se guarda una Edición Maestra de un Proyecto, después de registrar la justificación obligatoria en la bitácora. {Justificacion_Edicion} trae el motivo y {Cambios_Edicion_Maestra} la tabla HTML de campos cambiados (anterior → nuevo).",
+        "variables": _PROJECT_STATUS_VARS + ["Justificacion_Edicion", "Cambios_Edicion_Maestra", "Cantidad_Cambios"],
+    },
+    {
+        "id": "project_deleted",
+        "label": "Eliminación de Proyecto",
+        "description": "Se dispara (en background) cuando un usuario autorizado elimina un Proyecto y éste pasa a la Papelera de Proyectos. {Motivo_Eliminacion} trae el motivo obligatorio indicado al eliminar.",
+        "variables": _PROJECT_STATUS_VARS + ["Motivo_Eliminacion"],
+    },
+    {
         "id": "project_status_congelado",
         "label": "Notificación de Proyecto Congelado (Entrada y Recurrente)",
         "description": "Se dispara (en background) cuando un Proyecto pasa a estatus 'Congelado' tras confirmar el modal de justificación (Entrada), y también de forma RECURRENTE según la 'Frecuencia de Notificación de Congelados (Días)' configurada en Tiempos/SLA, informando los días acumulados en congelamiento. El motivo viaja en {Motivo_Congelamiento}/{Comentario_Estado} y los días en {Dias_Congelado}.",

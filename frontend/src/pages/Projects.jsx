@@ -20,11 +20,12 @@ import { WorkloadReportFiltersModal } from '../components/WorkloadReportFiltersM
 import { TemplatesAdminDialog } from '../components/projects/TemplatesAdminDialog';
 import { MasterEditDialog } from '../components/projects/MasterEditDialog';
 import { MasterEditsReportButton } from '../components/projects/MasterEditsReportButton';
+import { DeleteProjectDialog, ProjectsTrashDialog } from '../components/projects/ProjectsTrash';
 import { OperationalBoard } from '../components/projects/OperationalBoard';
 import { ImplementerWorkloadHover } from '../components/projects/ImplementerWorkloadHover';
 import {
   FolderKanban, Search, UserCheck, Clock, CheckCircle2, Pause,
-  FileText, Filter, Paperclip, Eye, RefreshCw, X, UserPlus, AlertTriangle, Store, BarChart3, Ticket, Trash2, UserCog, Flag, Zap, Landmark, ChevronDown, CreditCard, ClipboardList, Pencil, Gauge, Calendar, CalendarClock, FileSpreadsheet, DollarSign, Snowflake
+  FileText, Filter, Paperclip, Eye, RefreshCw, X, UserPlus, AlertTriangle, Store, BarChart3, Ticket, Trash2, UserCog, Flag, Zap, Landmark, ChevronDown, CreditCard, ClipboardList, Pencil, Gauge, Calendar, CalendarClock, FileSpreadsheet, DollarSign, Snowflake, Archive
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
@@ -473,16 +474,9 @@ const Projects = () => {
     finally { setStatusLoading(false); }
   };
 
-  const handleDeleteProject = async (project) => {
-    if (!confirm(`¿Eliminar proyecto ${project.project_number} (${project.client_name})? Esta acción no se puede deshacer.`)) return;
-    try {
-      await api.delete(`/projects/${project.project_id}`);
-      toast.success('Proyecto eliminado');
-      fetchProjects();
-    } catch (err) {
-      toast.error(err.response?.data?.detail || 'Error al eliminar');
-    }
-  };
+  const [deletingProject, setDeletingProject] = useState(null);
+  const [trashOpen, setTrashOpen] = useState(false);
+  const handleDeleteProject = (project) => setDeletingProject(project);
 
   // Acceso rápido a la Ficha Técnica desde la grilla: descarga el PDF con la
   // sesión activa y lo abre en una pestaña nueva (no se puede abrir por URL
@@ -781,6 +775,11 @@ const Projects = () => {
                 Reporte Carga (PDF)
               </Button>
               {canMasterEdit && <MasterEditsReportButton />}
+              {isAdmin && (
+                <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)} className="border-slate-400 text-slate-700" data-testid="projects-trash-btn">
+                  <Archive size={14} className="mr-1.5" />Papelera
+                </Button>
+              )}
             </div>
           </div>
 
@@ -1690,6 +1689,8 @@ const Projects = () => {
           handleDeleteTemplate={handleDeleteTemplate}
         />
 
+        <DeleteProjectDialog project={deletingProject} onClose={() => setDeletingProject(null)} onDeleted={fetchProjects} />
+        <ProjectsTrashDialog open={trashOpen} onOpenChange={setTrashOpen} onRestored={fetchProjects} />
         {masterEditProject && (
           <MasterEditDialog
             open={masterEditOpen}

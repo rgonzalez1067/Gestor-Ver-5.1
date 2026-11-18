@@ -1018,6 +1018,12 @@ async def master_override_project(project_id: str, payload: MasterOverridePayloa
     if new_status_mo in _PROJECT_STATUS_ACTION_MAP and new_status_mo != project.get("status"):
         import asyncio
         asyncio.create_task(_dispatch_project_status_action(project_id, new_status_mo, None, current_user))
+    import asyncio as _aio
+    _aio.create_task(_dispatch_project_admin_action("project_master_edit", refreshed, current_user, {
+        "Justificacion_Edicion": justification,
+        "Cantidad_Cambios": str(len(changes)),
+        "Cambios_Edicion_Maestra": _changes_html(changes),
+    }))
 
     return {"message": "Proyecto actualizado (Edición Maestra)", "project_id": project_id, "changes_count": len(changes), "rollup_progress": rollup}
 
@@ -3745,20 +3751,113 @@ async def _replace_base64_images(html: str, user_id: str) -> str:
     return html
 
 
+def _changes_html(changes: list) -> str:
+    if not changes:
+        return "<p>Sin cambios efectivos.</p>"
+    import html as _h
+    rows = "".join(
+        f"<tr><td style='padding:4px 8px;border:1px solid #e2e8f0'><b>{_h.escape(str(c.get('label') or c.get('field') or ''))}</b></td>"
+        f"<td style='padding:4px 8px;border:1px solid #e2e8f0;color:#b91c1c'>{_h.escape(str(c.get('old') if c.get('old') not in (None, '') else '—'))}</td>"
+        f"<td style='padding:4px 8px;border:1px solid #e2e8f0;color:#047857'>{_h.escape(str(c.get('new') if c.get('new') not in (None, '') else '—'))}</td></tr>"
+        for c in changes)
+    return ("<table style='border-collapse:collapse;font-size:13px'><tr style='background:#f1f5f9'>"
+            "<th style='padding:4px 8px;border:1px solid #e2e8f0'>Campo</th><th style='padding:4px 8px;border:1px solid #e2e8f0'>Anterior</th>"
+            f"<th style='padding:4px 8px;border:1px solid #e2e8f0'>Nuevo</th></tr>{rows}</table>")
+
+
+async def _dispatch_project_admin_action(action_id: str, project: dict, current_user: dict, extra_vars: dict):
+    """Background: Otras Acciones 'Edición Maestra' / 'Eliminación de Proyecto'. Sin config → no envía."""
+    try:
+        from services.other_actions_engine import dispatch_other_action
+        tvars = await resolve_project_template_vars(project, actor_user=current_user)
+        tvars.update(extra_vars)
+        tvars["usuario_ejecutor"] = (f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip()
+                                     or current_user.get("email", ""))
+        tvars["fecha_sistema"] = datetime.now(timezone.utc).strftime("%d/%m/%Y")
+        label = "Edición Maestra" if action_id == "project_master_edit" else "Proyecto Eliminado"
+        await dispatch_other_action(action_id=action_id, template_vars=tvars, current_user=current_user,
+                                    fallback_subject=f"{label} — Proyecto {project.get('project_number', '')}",
+                                    executive_user_id=project.get("created_by_user_id"), project=project)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[project-admin-action] dispatch '{action_id}' failed: {e}")
+
+
 @router.delete("/projects/{project_id}")
-async def delete_project(project_id: str, authorization: Optional[str] = Header(None)):
+async def delete_project(project_id: str, reason: str = "", authorization: Optional[str] = Header(None)):
     """Eliminar un proyecto. Administradores o Función Especial 'proyectos:eliminar'."""
     current_user = await get_current_user(authorization)
     if current_user.get("role") != "admin" and "proyectos:eliminar" not in (await _effective_special_permissions(current_user)):
         raise HTTPException(status_code=403, detail="Requiere la Función Especial Eliminar Proyectos")
     
-    project = await db.projects.find_one({"project_id": project_id}, {"_id": 0, "project_id": 1})
+    reason = (reason or "").strip()
+    if len(reason) < 10:
+        raise HTTPException(status_code=400, detail="El motivo de eliminación es obligatorio (mínimo 10 caracteres).")
+    project = await db.projects.find_one({"project_id": project_id}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
-    
+    user_name = f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip() or current_user.get("email", "")
+    await db.projects_trash.insert_one({
+        "project_id": project_id, "project": project, "reason": reason[:1000],
+        "deleted_at": datetime.now(timezone.utc).isoformat(), "deleted_by": current_user.get("user_id", ""), "deleted_by_name": user_name,
+    })
     await db.projects.delete_one({"project_id": project_id})
-    logging.info(f"Proyecto {project_id} eliminado por {current_user.get('email')}")
-    return {"message": "Proyecto eliminado exitosamente"}
+    logging.info(f"Proyecto {project_id} enviado a papelera por {current_user.get('email')}")
+    import asyncio as _aio
+    _aio.create_task(_dispatch_project_admin_action("project_deleted", project, current_user, {"Motivo_Eliminacion": reason[:1000]}))
+    return {"message": "Proyecto enviado a la papelera"}
+
+
+def _require_admin(user: dict):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="La papelera de proyectos es exclusiva para Administradores.")
+
+
+@router.get("/projects-trash")
+async def list_projects_trash(authorization: Optional[str] = Header(None)):
+    _require_admin(await get_current_user(authorization))
+    items = await db.projects_trash.find({}, {"_id": 0}).sort("deleted_at", -1).to_list(None)
+    return [{"project_id": t["project_id"], "reason": t.get("reason"), "deleted_at": t.get("deleted_at"), "deleted_by_name": t.get("deleted_by_name"),
+             "project_number": t["project"].get("project_number"), "ticket_number": t["project"].get("ticket_number"),
+             "client_name": t["project"].get("client_name"), "project_type": t["project"].get("project_type"),
+             "status": t["project"].get("status")} for t in items]
+
+
+@router.post("/projects-trash/{project_id}/restore")
+async def restore_project(project_id: str, authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    _require_admin(user)
+    t = await db.projects_trash.find_one({"project_id": project_id}, {"_id": 0})
+    if not t:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado en la papelera")
+    if await db.projects.find_one({"project_id": project_id}, {"_id": 0, "project_id": 1}):
+        raise HTTPException(status_code=409, detail="Ya existe un proyecto activo con ese identificador")
+    proj = t["project"]
+    user_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip() or user.get("email", "")
+    now = datetime.now(timezone.utc).isoformat()
+    proj.setdefault("bitacora", []).append({
+        "entry_id": f"bit_{uuid.uuid4().hex[:8]}", "type": "restored_from_trash",
+        "text": f"[Papelera] Proyecto restaurado por {user_name}. Había sido eliminado por {t.get('deleted_by_name')} — Motivo: {t.get('reason')}",
+        "execution_date": now[:10], "created_by": user.get("user_id", ""), "created_by_name": user_name, "created_at": now,
+    })
+    await db.projects.insert_one(proj)
+    await db.projects_trash.delete_one({"project_id": project_id})
+    return {"message": "Proyecto restaurado", "project_number": proj.get("project_number")}
+
+
+@router.delete("/projects-trash/{project_id}")
+async def purge_project(project_id: str, authorization: Optional[str] = Header(None)):
+    _require_admin(await get_current_user(authorization))
+    r = await db.projects_trash.delete_one({"project_id": project_id})
+    if not r.deleted_count:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado en la papelera")
+    return {"message": "Proyecto eliminado definitivamente"}
+
+
+@router.delete("/projects-trash")
+async def empty_projects_trash(authorization: Optional[str] = Header(None)):
+    _require_admin(await get_current_user(authorization))
+    r = await db.projects_trash.delete_many({})
+    return {"message": "Papelera vaciada", "deleted": r.deleted_count}
 
 
 # =====================================================================
