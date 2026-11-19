@@ -6,7 +6,7 @@ import { Building2, Landmark, Wrench } from 'lucide-react';
 export const MOTIVOS_AVANCE = [
   { key: 'CLIENTE', label: 'Cliente', icon: Building2, cls: 'bg-red-500', on: 'bg-red-500 text-white border-red-600 shadow-sm', off: 'hover:bg-red-50 hover:text-red-600 hover:border-red-200', hint: 'Demoras, recaudos, adecuaciones o disponibilidad del comercio' },
   { key: 'BANCO', label: 'Banco', icon: Landmark, cls: 'bg-blue-500', on: 'bg-blue-600 text-white border-blue-700 shadow-sm', off: 'hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200', hint: 'Aprobaciones, afiliaciones, credenciales o parámetros de la entidad financiera' },
-  { key: 'IMPLE', label: 'Imple', icon: Wrench, cls: 'bg-green-500', on: 'bg-green-600 text-white border-green-700 shadow-sm', off: 'hover:bg-green-50 hover:text-green-600 hover:border-green-200', hint: 'Gestión técnica, configuración, agenda o ejecución de Implementación Mega Soft' },
+  { key: 'IMPLE', label: 'Imple', icon: Wrench, cls: 'bg-yellow-400', on: 'bg-yellow-400 text-black border-yellow-500 shadow-sm', off: 'hover:bg-yellow-50 hover:text-yellow-800 hover:border-yellow-300', hint: 'Gestión técnica, configuración, agenda o ejecución de Implementación Mega Soft' },
 ];
 export const motivoOf = (p) => (p?.motivo_avance || '').toUpperCase() || null;
 
