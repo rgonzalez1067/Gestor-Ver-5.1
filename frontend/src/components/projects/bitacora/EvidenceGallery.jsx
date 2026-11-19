@@ -45,7 +45,7 @@ const Lightbox = ({ open, onClose }) => {
           </span>
         </DialogTitle>
         <div className="max-h-[78vh] overflow-auto rounded bg-slate-900/90">
-          {open && <img src={open.url} alt={open.ev.filename} style={{ width: `${zoom * 100}%`, maxWidth: 'none' }} className="mx-auto block" data-testid="lightbox-image" />}
+          {open && <img src={open.url} alt={open.ev.filename} style={zoom === 1 ? { maxWidth: '100%' } : { width: `${zoom * 100}%`, maxWidth: 'none' }} className="mx-auto block" data-testid="lightbox-image" />}
         </div>
       </DialogContent>
     </Dialog>

@@ -1,0 +1,37 @@
+{
+  "summary": "Tested Bitácora visual evidence + 'Al día' SLA normalization end to end (backend pytest 13/13; UI flows via Playwright). Every requested feature passed: form test ids present, Al día checkbox gating, preview/remove via input, Ctrl+V paste, drag&drop, .exe/>5MB toasts, max-5 toast, save with Al día -> badge + thumbnail, lightbox zoom/download, KPI fire test (En Gestión Crítico 310->309, Al día 5->6 after normalizing prj_560eaf4af410), plain-note regression and old 'Ver Correo' entries still render.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/projects/{id}/bitacora/evidence", "issue": "Orphan evidence: uploads that are never linked to an entry (failed bitacora POST, partial multi-upload failure, user abandons) remain in object storage + bitacora_evidence with entry_id=None forever. No cleanup/TTL and no DELETE endpoint."},
+      {"endpoint": "GET /api/projects/{id}/bitacora/evidence/{eid}", "issue": "Only checks authentication; no project-visibility check (any user with proyectos module read can fetch any project's evidence if they know the id). Low risk since ids are random."},
+      {"endpoint": "POST /api/projects/{id}/bitacora*", "issue": "Pre-existing RBAC: users with special_permission 'proyectos:create' but module level 'none' (e.g. kherrera) pass the middleware for ANY POST under /projects — they can upload evidence and add plain bitácora notes (verified: kherrera upload -> 200) even though GET /projects returns 403. Al día is correctly blocked (403 from handler)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ProjectDetail Bitácora", "issues": ["Fecha de Ejecución uses native <input type=date> (browser picker) instead of shadcn Calendar (pre-existing)", "Some legacy entries without created_by_name render an empty author ('· 28/08/2026') e.g. [ACTUALIZACIÓN MASIVA DE ESTATUS] (pre-existing)"]},
+      {"screen": "Lightbox", "issues": ["Zoom '100%' = container width, not natural image size; small screenshots are upscaled/blurry at 100%. Consider 'fit' vs real-size."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_bitacora_evidence_al_dia.py", "/app/test_reports/pytest/pytest_iter384.xml"],
+  "action_items": [
+    "Optional: cleanup orphan bitacora_evidence (entry_id=None older than X h) or upload evidence in the same request as the entry",
+    "Optional: enforce project visibility in get_bitacora_evidence",
+    "Optional: review middleware override where 'proyectos:create' allows all POSTs under /projects"
+  ],
+  "critical_code_review_comments": [
+    "handleAddBitacora uploads files one by one before the entry. If upload N fails, uploads 1..N-1 are orphaned and a retry uploads them again (duplicates in storage).",
+    "addEvidenceFiles: when current+incoming > 5 it truncates silently to the remaining slots with a toast. OK, but the toast doesn't say how many were accepted.",
+    "sla_reset_at persists across later stage changes; correct because stage_entered_at is newer, but if a project goes back to En Gestión with an older unblocked_at the stale reset could still apply (edge case)."
+  ],
+  "updated_files": ["/app/backend/tests/test_bitacora_evidence_al_dia.py"],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "Created TEST_ bitácora entries + TEST_ evidence on prj_10e879128c18 (reused), prj_560eaf4af410 (now set Al día via UI for the KPI test), prj_94ec9c873d2b (jrojas's assigned project, set Al día by pytest implementer test) and one orphan evidence uploaded by kherrera on prj_560eaf4af410. Al día on prj_560eaf4af410 and prj_94ec9c873d2b changed real SLA state (sla_reset_at) because the KPI/implementer tests required it.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login via fetch /api/auth/login, then set localStorage session_token+user. KPI counts: on /projects pick project-avance-filter option critico/al_dia and read stat-value-en-gestión. Projects already set Al día: prj_10e879128c18, prj_560eaf4af410, prj_94ec9c873d2b. Do not reuse them for KPI tests. The pytest implementer test sets Al día on jrojas's first assigned project each run.",
+  "test_credentials": "rgonzalez@megasoft.com.ve / MegaSoft2026* (admin), jrojas@megasoft.com.ve / Test1234! (implementer user_0aa6077a9fa9), kherrera@megasoft.com.ve / Kherrera2026*Qa"
+}

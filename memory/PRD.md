@@ -4804,3 +4804,8 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 ## Nov 2026 — Motivo del Avance en grilla principal
 - Columna "Motivo del Avance" entre TIPO y SEDE en /projects con 3 botones de color (Cliente rojo, Banco azul, Imple verde). Pulsar el activo lo deja "Sin motivo" (motivo_avance=null).
 - Editable solo por el implementador asignado y admins (backend 403 al resto); sincronizado con la ficha del proyecto. Registro en Bitácora. Tooltips KPI muestran "Sin motivo" si aplica.
+
+## Nov 2026 — Evidencia visual en Bitácora + normalización "Al día"
+- Bitácora de proyecto: hasta 5 imágenes (JPG/PNG/WEBP, ≤5MB) por entrada vía selector, drag&drop o Ctrl+V; previsualización; miniaturas + Lightbox (zoom/descarga). Storage: {APP}/proyectos/{pid}/bitacora/{ts}_{evd}.{ext}; colección `bitacora_evidence`; servido con auth (blob).
+- Checkbox "Actualizar a AL DÍA": requiere imagen; solo implementador asignado/admin; guarda `sla_reset_at` que reinicia el conteo SLA (sla_reference_date). Entrada guarda `evidence[]` y `set_al_dia`.
+- Pendiente (menor): limpieza de evidencias huérfanas; chequeo de visibilidad por proyecto al servir evidencia; RBAC previo permite POST a usuarios con solo 'proyectos:create'.
