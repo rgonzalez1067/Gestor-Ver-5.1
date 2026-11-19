@@ -29,6 +29,7 @@ import { CommercialCategories } from './pages/CommercialCategories';
 import { NotificationConfig } from './pages/NotificationConfig';
 import ActionNotificationsConfig from './pages/ActionNotificationsConfig';
 import OtherActionsConfig from './pages/OtherActionsConfig';
+import ProjectDefaultCcConfig from './pages/ProjectDefaultCcConfig';
 import ProjectSlaConfig from './pages/ProjectSlaConfig';
 import ConnectedUsers from './pages/ConnectedUsers';
 import BackupCenter from './pages/BackupCenter';
@@ -269,6 +270,11 @@ function AppRouter() {
       <Route path="/settings/email-footer" element={
         <ProtectedRoute>
           <EmailFooterConfig />
+        </ProtectedRoute>
+      } />
+      <Route path="/settings/project-default-cc" element={
+        <ProtectedRoute>
+          <ProjectDefaultCcConfig />
         </ProtectedRoute>
       } />
       <Route path="/settings/email-senders" element={

@@ -704,3 +704,34 @@ async def remove_preferred_recipient(email: str, authorization: Optional[str] = 
     await get_current_user(authorization)
     await db.preferred_recipients.delete_one({"email": (email or "").strip().lower()})
     return {"success": True, "email": email}
+
+
+# ==================== CC POR DEFECTO EN NOTIFICACIONES DE PROYECTOS ====================
+PROJECT_DEFAULT_CC_KEY = "project_default_cc"
+PROJECT_DEFAULT_CC_INITIAL = ["impl_merchant@megasoft.com.ve"]
+
+
+class ProjectDefaultCcIn(BaseModel):
+    emails: List[EmailStr] = []
+
+
+@router.get("/config/project-default-cc")
+async def get_project_default_cc(authorization: Optional[str] = Header(None)):
+    await get_current_user(authorization)
+    doc = await db.app_settings.find_one({"key": PROJECT_DEFAULT_CC_KEY}, {"_id": 0})
+    if not doc:
+        return {"emails": PROJECT_DEFAULT_CC_INITIAL, "updated_at": None, "updated_by": None}
+    return {"emails": doc.get("emails", []), "updated_at": doc.get("updated_at"), "updated_by": doc.get("updated_by")}
+
+
+@router.put("/config/project-default-cc")
+async def put_project_default_cc(body: ProjectDefaultCcIn, authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo un administrador puede cambiar este valor")
+    emails = list(dict.fromkeys(str(e).lower() for e in body.emails))
+    now = datetime.now(timezone.utc).isoformat()
+    by = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
+    await db.app_settings.update_one({"key": PROJECT_DEFAULT_CC_KEY},
+                                     {"$set": {"emails": emails, "updated_at": now, "updated_by": by}}, upsert=True)
+    return {"emails": emails, "updated_at": now, "updated_by": by}

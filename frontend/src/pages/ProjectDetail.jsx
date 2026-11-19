@@ -598,7 +598,7 @@ const ProjectDetail = () => {
   const openNotifDialog = async (type, bankName, prefKey) => {
     const _prefKey = prefKey || type;
     setNotifTarget({ type, bankName, prefKey: _prefKey });
-    setAdditionalRecipientsList([]);
+    resetCcToDefault();
     setCcNewEmail('');
     setToNewEmail('');
     setMainRecipients([]);
@@ -679,6 +679,9 @@ const ProjectDetail = () => {
 
   const NOTIFICATION_PREFIXES = ['Primer Envío', 'Primer Recordatorio', 'Segundo Recordatorio', 'Tercer Recordatorio'];
   const [additionalRecipientsList, setAdditionalRecipientsList] = useState([]);
+  const defaultCcRef = useRef([]);
+  useEffect(() => { api.get('/config/project-default-cc').then(r => { defaultCcRef.current = r.data.emails || []; }).catch(() => {}); }, []);
+  const resetCcToDefault = () => setAdditionalRecipientsList([...defaultCcRef.current]);
   const [ccNewEmail, setCcNewEmail] = useState('');
   const [toNewEmail, setToNewEmail] = useState('');
   // Grupos de destinatarios CC reutilizables
@@ -759,7 +762,7 @@ const ProjectDetail = () => {
 
       const res = await api.post(`/projects/${projectId}/send-notification`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       toast.success(res.data.message);
-      setAdditionalRecipientsList([]);
+      resetCcToDefault();
       setCcNewEmail('');
       setToNewEmail('');
       setMainRecipients([]);
@@ -781,7 +784,7 @@ const ProjectDetail = () => {
     setEmailFiles([]);
     setAttachMatrix(false);
     // Reset estado CC (compartido con el modal de Notificaciones)
-    setAdditionalRecipientsList([]);
+    resetCcToDefault();
     setCcNewEmail('');
     setShowSaveGroup(false);
     setCcGroupName('');
@@ -1054,7 +1057,7 @@ const ProjectDetail = () => {
         toast.success(res.data.message);
         setPreviewOpen(false);
         setNotifDialogOpen(false);
-        setAdditionalRecipientsList([]);
+        resetCcToDefault();
         setCcNewEmail('');
         setToNewEmail('');
         setNotifFiles([]);
