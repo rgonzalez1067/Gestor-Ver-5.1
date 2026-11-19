@@ -18,25 +18,26 @@ const useEvidenceUrl = (projectId, ev) => {
   return url;
 };
 
-const Thumb = ({ projectId, ev, onOpen }) => {
+export const Thumb = ({ projectId, ev, onOpen, big }) => {
+  const size = big ? 'h-32 w-full' : 'h-14 w-20';
   const url = useEvidenceUrl(projectId, ev);
   if (ev.content_type === 'application/pdf') return (
     <button type="button" onClick={() => url && window.open(url, '_blank')} title={ev.filename}
-      className="flex h-14 w-20 flex-col items-center justify-center gap-0.5 rounded-md border border-red-200 bg-red-50 px-1 text-red-600 transition-transform hover:scale-105 hover:shadow"
-      data-testid={`bitacora-evidence-thumb-${ev.evidence_id}`}>
+      className={`flex ${size} flex-col items-center justify-center gap-0.5 rounded-md border border-red-200 bg-red-50 px-1 text-red-600 transition-transform hover:scale-105 hover:shadow`}
+      data-testid={`${big ? 'gallery' : 'bitacora-evidence'}-thumb-${ev.evidence_id}`}>
       {url ? <><FileText size={18} /><span className="w-full truncate text-center text-[9px]">{ev.filename}</span></> : <Loader2 size={14} className="animate-spin" />}
     </button>
   );
   return (
     <button type="button" onClick={() => url && onOpen({ url, ev })} title={ev.filename}
-      className="h-14 w-20 overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition-transform hover:scale-105 hover:shadow"
-      data-testid={`bitacora-evidence-thumb-${ev.evidence_id}`}>
+      className={`${size} overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition-transform hover:scale-105 hover:shadow`}
+      data-testid={`${big ? 'gallery' : 'bitacora-evidence'}-thumb-${ev.evidence_id}`}>
       {url ? <img src={url} alt={ev.filename} className="h-full w-full object-cover" /> : <Loader2 size={14} className="mx-auto animate-spin text-slate-400" />}
     </button>
   );
 };
 
-const Lightbox = ({ open, onClose }) => {
+export const Lightbox = ({ open, onClose }) => {
   const [zoom, setZoom] = useState(1);
   useEffect(() => { setZoom(1); }, [open]);
   return (

@@ -41,6 +41,7 @@ import { MasterEditBitacoraEntry } from '../components/projects/MasterEditBitaco
 import { MotivoAvanceSelector } from '../components/projects/MotivoAvance';
 import { EvidencePicker, addEvidenceFiles } from '../components/projects/bitacora/EvidencePicker';
 import { EntryEvidence } from '../components/projects/bitacora/EvidenceGallery';
+import { ProjectGallery } from '../components/projects/bitacora/ProjectGallery';
 
 const ProjectDetail = () => {
   const { projectId } = useParams();
@@ -54,6 +55,7 @@ const ProjectDetail = () => {
   const [bitacoraSubmitting, setBitacoraSubmitting] = useState(false);
   const [bitacoraFiles, setBitacoraFiles] = useState([]);
   const [bitacoraAlDia, setBitacoraAlDia] = useState(false);
+  const [bitacoraTab, setBitacoraTab] = useState('list');
   const [progressReportOpen, setProgressReportOpen] = useState(false);
   const [selectedStoreId, setSelectedStoreId] = useState(null);
 
@@ -2117,6 +2119,20 @@ const ProjectDetail = () => {
                 </Button>
               </div>
             </div>
+            {(() => {
+              const nFiles = (project.bitacora || []).reduce((n, e) => n + (e.evidence?.length || 0), 0);
+              return (
+                <div className="mb-3 flex gap-1 border-b border-slate-200" data-testid="bitacora-tabs">
+                  {[['list', 'Bitácora', (project.bitacora || []).length], ['gallery', 'Galería del Proyecto', nFiles]].map(([k, label, n]) => (
+                    <button key={k} type="button" onClick={() => setBitacoraTab(k)} data-testid={`bitacora-tab-${k}`}
+                      className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${bitacoraTab === k ? 'border-brand-green-600 text-brand-green-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+                      {label} <span className="ml-1 rounded-full bg-slate-100 px-1.5 text-xs text-slate-500">{n}</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+            {bitacoraTab === 'gallery' ? <ProjectGallery projectId={projectId} bitacora={project.bitacora} /> : (
             <div className="space-y-2" data-testid="bitacora-list">
               {(project.bitacora || []).length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-6">Sin entradas en la bitácora</p>
@@ -2145,6 +2161,7 @@ const ProjectDetail = () => {
                 ))
               )}
             </div>
+            )}
           </div>
         </div>
 
