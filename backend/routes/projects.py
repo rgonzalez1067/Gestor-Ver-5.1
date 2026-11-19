@@ -59,6 +59,8 @@ class PhaseUpdate(BaseModel):
 class BitacoraEntry(BaseModel):
     text: str
     execution_date: str
+    evidence_ids: List[str] = []
+    set_al_dia: bool = False
 
 
 class PriorityUpdate(BaseModel):
@@ -2752,15 +2754,89 @@ async def remove_implementation_serial(project_id: str, serial: str, authorizati
 
 # ==================== BITÁCORA ====================
 
+EVIDENCE_EXTS = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
+EVIDENCE_MAX_BYTES = 5 * 1024 * 1024
+EVIDENCE_MAX_PER_ENTRY = 5
+
+
+@router.post("/projects/{project_id}/bitacora/evidence")
+async def upload_bitacora_evidence(project_id: str, file: UploadFile = File(...), authorization: Optional[str] = Header(None)):
+    """Sube una imagen de evidencia (captura de correo) para una entrada de bitácora."""
+    current_user = await get_current_user(authorization)
+    if not await db.projects.find_one({"project_id": project_id}, {"_id": 0, "project_id": 1}):
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else ""
+    if ext not in EVIDENCE_EXTS or (file.content_type or "") not in EVIDENCE_EXTS.values():
+        raise HTTPException(status_code=400, detail="Formato no permitido. Formatos admitidos: JPG, PNG, WEBP (máx. 5 MB)")
+    data = await file.read()
+    if len(data) > EVIDENCE_MAX_BYTES:
+        raise HTTPException(status_code=400, detail="La imagen supera el tamaño máximo de 5 MB")
+    try:
+        from io import BytesIO
+        from PIL import Image as PILImage
+        PILImage.open(BytesIO(data)).verify()
+    except Exception:
+        raise HTTPException(status_code=400, detail="El archivo no es una imagen válida")
+    data, ext, content_type = _compress_image(data, ext)
+    evidence_id = f"evd_{uuid.uuid4().hex[:12]}"
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    storage_path = f"{os.environ.get('APP_NAME', 'meganexus')}/proyectos/{project_id}/bitacora/{ts}_{evidence_id}.{ext}"
+    try:
+        result = put_object(storage_path, data, content_type)
+    except Exception as e:
+        logger.error(f"Evidence upload failed: {e}")
+        raise HTTPException(status_code=500, detail="Error al subir la imagen al almacenamiento")
+    doc = {
+        "evidence_id": evidence_id, "project_id": project_id, "entry_id": None,
+        "storage_path": result.get("path", storage_path), "filename": file.filename,
+        "content_type": content_type, "size": len(data),
+        "uploaded_by": current_user.get("user_id", ""), "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.bitacora_evidence.insert_one(doc)
+    return {"evidence_id": evidence_id, "filename": file.filename, "size": len(data)}
+
+
+@router.get("/projects/{project_id}/bitacora/evidence/{evidence_id}")
+async def get_bitacora_evidence(project_id: str, evidence_id: str, authorization: Optional[str] = Header(None)):
+    await get_current_user(authorization)
+    rec = await db.bitacora_evidence.find_one({"evidence_id": evidence_id, "project_id": project_id}, {"_id": 0})
+    if not rec:
+        raise HTTPException(status_code=404, detail="Evidencia no encontrada")
+    try:
+        data, ct = get_object(rec["storage_path"])
+    except Exception as e:
+        logger.error(f"Evidence download failed: {e}")
+        raise HTTPException(status_code=500, detail="Error al obtener la imagen")
+    return Response(content=data, media_type=rec.get("content_type", ct),
+                    headers={"Content-Disposition": f'inline; filename="{rec.get("filename") or evidence_id}"'})
+
+
 @router.post("/projects/{project_id}/bitacora")
 async def add_bitacora_entry(project_id: str, entry: BitacoraEntry, authorization: Optional[str] = Header(None)):
-    """Agregar entrada a la bitácora del proyecto"""
+    """Agregar entrada a la bitácora del proyecto (con evidencia visual opcional y normalización 'Al día')."""
     current_user = await get_current_user(authorization)
 
-    project = await db.projects.find_one({"project_id": project_id}, {"_id": 0})
+    project = await db.projects.find_one({"project_id": project_id}, {"_id": 0, "assigned_to_user_id": 1})
     if not project:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
+    ids = list(dict.fromkeys(entry.evidence_ids or []))
+    if len(ids) > EVIDENCE_MAX_PER_ENTRY:
+        raise HTTPException(status_code=400, detail=f"Máximo {EVIDENCE_MAX_PER_ENTRY} imágenes por entrada")
+    evidence = []
+    if ids:
+        evidence = await db.bitacora_evidence.find(
+            {"evidence_id": {"$in": ids}, "project_id": project_id, "entry_id": None},
+            {"_id": 0, "evidence_id": 1, "filename": 1, "content_type": 1, "size": 1}).to_list(EVIDENCE_MAX_PER_ENTRY)
+        if len(evidence) != len(ids):
+            raise HTTPException(status_code=400, detail="Alguna imagen adjunta no es válida o ya fue utilizada")
+    if entry.set_al_dia:
+        if current_user.get("role") != "admin" and current_user.get("user_id") != project.get("assigned_to_user_id"):
+            raise HTTPException(status_code=403, detail="Solo el implementador asignado o un administrador puede poner el proyecto Al día")
+        if not evidence:
+            raise HTTPException(status_code=400, detail="Para poner el proyecto Al día debe adjuntar al menos una imagen de respaldo")
+
+    now = datetime.now(timezone.utc).isoformat()
     user_name = f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip()
     bitacora_entry = {
         "entry_id": f"bit_{uuid.uuid4().hex[:8]}",
@@ -2768,14 +2844,16 @@ async def add_bitacora_entry(project_id: str, entry: BitacoraEntry, authorizatio
         "execution_date": entry.execution_date,
         "created_by": current_user.get("user_id", ""),
         "created_by_name": user_name,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": now,
+        "evidence": evidence,
+        "set_al_dia": bool(entry.set_al_dia),
     }
-
-    await db.projects.update_one(
-        {"project_id": project_id},
-        {"$push": {"bitacora": bitacora_entry},
-         "$set": {"last_followup_at": bitacora_entry["created_at"], "last_followup_by": user_name, "updated_at": bitacora_entry["created_at"]}}
-    )
+    if ids:
+        await db.bitacora_evidence.update_many({"evidence_id": {"$in": ids}}, {"$set": {"entry_id": bitacora_entry["entry_id"]}})
+    sets = {"last_followup_at": now, "last_followup_by": user_name, "updated_at": now}
+    if entry.set_al_dia:
+        sets.update({"sla_reset_at": now, "sla_reset_by": user_name})
+    await db.projects.update_one({"project_id": project_id}, {"$push": {"bitacora": bitacora_entry}, "$set": sets})
 
     return bitacora_entry
 

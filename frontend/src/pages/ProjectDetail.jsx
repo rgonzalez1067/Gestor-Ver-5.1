@@ -18,7 +18,8 @@ import {
   ArrowLeft, CreditCard, Building2, CheckCircle2, Circle, Clock,
   FileText, Send, Calendar, User, Store, Bell, BellRing, Lock, BarChart3, Mail,
   Plus, X, Paperclip, Image, Ticket, ChevronDown, Eye, Megaphone, ClipboardList,
-  Hash, Trash2, AlertCircle, Shield, Edit3, Copy, ImagePlus, Server, Network, Edit2, Layers, FileBarChart, Flag, Landmark, FileDown, TrendingUp, Star, Download
+  Hash, Trash2, AlertCircle, Shield, Edit3, Copy, ImagePlus, Server, Network, Edit2, Layers, FileBarChart, Flag, Landmark, FileDown, TrendingUp, Star, Download,
+  Loader2,
 } from 'lucide-react';
 
 import { SingleBankSection } from '../components/projects/SingleBankSection';
@@ -38,6 +39,8 @@ import { CommitmentModal } from '../components/CommitmentModal';
 import { ImplementerAlertsModal } from '../components/ImplementerAlertsModal';
 import { MasterEditBitacoraEntry } from '../components/projects/MasterEditBitacoraEntry';
 import { MotivoAvanceSelector } from '../components/projects/MotivoAvance';
+import { EvidencePicker, addEvidenceFiles } from '../components/projects/bitacora/EvidencePicker';
+import { EntryEvidence } from '../components/projects/bitacora/EvidenceGallery';
 
 const ProjectDetail = () => {
   const { projectId } = useParams();
@@ -49,6 +52,8 @@ const ProjectDetail = () => {
   const [bitacoraText, setBitacoraText] = useState('');
   const [bitacoraDate, setBitacoraDate] = useState(new Date().toISOString().split('T')[0]);
   const [bitacoraSubmitting, setBitacoraSubmitting] = useState(false);
+  const [bitacoraFiles, setBitacoraFiles] = useState([]);
+  const [bitacoraAlDia, setBitacoraAlDia] = useState(false);
   const [progressReportOpen, setProgressReportOpen] = useState(false);
   const [selectedStoreId, setSelectedStoreId] = useState(null);
 
@@ -1077,11 +1082,18 @@ const ProjectDetail = () => {
   const handleAddBitacora = async () => {
     setBitacoraSubmitting(true);
     try {
-      await api.post(`/projects/${projectId}/bitacora`, { text: bitacoraText, execution_date: bitacoraDate });
-      toast.success('Entrada registrada');
-      setBitacoraText('');
+      const evidence_ids = [];
+      for (const f of bitacoraFiles) {
+        const fd = new FormData(); fd.append('file', f);
+        const r = await api.post(`/projects/${projectId}/bitacora/evidence`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        evidence_ids.push(r.data.evidence_id);
+      }
+      const setAlDia = bitacoraAlDia && evidence_ids.length > 0;
+      await api.post(`/projects/${projectId}/bitacora`, { text: bitacoraText, execution_date: bitacoraDate, evidence_ids, set_al_dia: setAlDia });
+      toast.success(setAlDia ? 'Gestión registrada · Proyecto actualizado a Al día' : 'Entrada registrada');
+      setBitacoraText(''); setBitacoraFiles([]); setBitacoraAlDia(false);
       fetchProject();
-    } catch { toast.error('Error al registrar entrada'); }
+    } catch (err) { toast.error(err.response?.data?.detail || 'Error al registrar entrada'); }
     finally { setBitacoraSubmitting(false); }
   };
 
@@ -2068,22 +2080,41 @@ const ProjectDetail = () => {
           {/* ============ BITÁCORA ============ */}
           <div className="mb-6">
             <h2 className="text-lg font-bold text-slate-900 mb-3">Bitácora de Seguimiento</h2>
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4 space-y-3" data-testid="bitacora-form"
+              onPaste={(e) => {
+                const imgs = [...(e.clipboardData?.items || [])].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
+                if (imgs.length) { e.preventDefault(); addEvidenceFiles(imgs, bitacoraFiles, setBitacoraFiles); }
+              }}>
               <div className="grid grid-cols-12 gap-3 items-end">
                 <div className="col-span-2">
                   <label className="text-xs font-medium text-slate-600">Fecha de Ejecución</label>
                   <Input type="date" value={bitacoraDate} onChange={e => setBitacoraDate(e.target.value)} data-testid="bitacora-date" className="h-9" />
                 </div>
-                <div className="col-span-8">
-                  <label className="text-xs font-medium text-slate-600">Observación</label>
-                  <Input value={bitacoraText} onChange={e => setBitacoraText(e.target.value)} placeholder="Registrar observación o avance..." data-testid="bitacora-text" className="h-9" />
+                <div className="col-span-10">
+                  <label className="text-xs font-medium text-slate-600">Observación / Detalle de la Gestión</label>
+                  <Input value={bitacoraText} onChange={e => setBitacoraText(e.target.value)} placeholder="Registrar observación o avance... (puede pegar capturas con Ctrl+V)" data-testid="bitacora-text" className="h-9" />
                 </div>
-                <div className="col-span-2">
-                  <Button onClick={handleAddBitacora} disabled={!bitacoraText.trim() || bitacoraSubmitting}
-                    className="w-full h-9 bg-brand-green-600 hover:bg-brand-green-700 text-white text-sm" data-testid="bitacora-submit">
-                    <Send size={14} className="mr-1" />Registrar
-                  </Button>
-                </div>
+              </div>
+              <EvidencePicker files={bitacoraFiles} setFiles={(f) => { setBitacoraFiles(f); if (!f.length) setBitacoraAlDia(false); }} disabled={bitacoraSubmitting} />
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-3">
+                {(() => {
+                  const canAlDia = currentUser.role === 'admin' || currentUser.user_id === project.assigned_to_user_id;
+                  const enabled = canAlDia && bitacoraFiles.length > 0;
+                  return (
+                    <label className={`flex items-center gap-2 text-sm ${enabled ? 'text-slate-800 cursor-pointer' : 'text-slate-400 cursor-not-allowed'}`}
+                      title={!canAlDia ? 'Solo el implementador asignado o un administrador' : !bitacoraFiles.length ? 'Adjunte al menos una imagen de respaldo para habilitar' : ''}>
+                      <Checkbox checked={bitacoraAlDia} disabled={!enabled} onCheckedChange={(v) => setBitacoraAlDia(!!v)} data-testid="bitacora-al-dia-checkbox" />
+                      Actualizar estado de avance del proyecto a:
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700"><span className="h-2 w-2 rounded-full bg-emerald-500" />AL DÍA</span>
+                      {!canAlDia && <span className="text-[11px]">(solo implementador asignado / admin)</span>}
+                      {canAlDia && !bitacoraFiles.length && <span className="text-[11px]">(requiere imagen adjunta)</span>}
+                    </label>
+                  );
+                })()}
+                <Button onClick={handleAddBitacora} disabled={!bitacoraText.trim() || bitacoraSubmitting}
+                  className="h-9 bg-brand-green-600 hover:bg-brand-green-700 text-white text-sm" data-testid="bitacora-submit">
+                  {bitacoraSubmitting ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Send size={14} className="mr-1" />}Guardar Gestión
+                </Button>
               </div>
             </div>
             <div className="space-y-2" data-testid="bitacora-list">
@@ -2098,6 +2129,7 @@ const ProjectDetail = () => {
                     </div>
                     <div className="flex-1">
                       {entry.type === 'master_override' ? <MasterEditBitacoraEntry entry={entry} /> : <p className="text-sm text-slate-800">{entry.text}</p>}
+                      <EntryEvidence projectId={projectId} entry={entry} />
                       <p className="text-xs text-slate-400 mt-1">
                         <User size={10} className="inline mr-1" />{entry.created_by_name} · {formatDateTime(entry.created_at)}
                       </p>

@@ -142,7 +142,11 @@ def sla_reference_date(project: dict) -> Optional[datetime]:
     if project.get("status") == "En Gestión":
         qualified = _parse_dt(project.get("last_qualified_activity_at"))
         if qualified and (entered is None or qualified > entered):
-            return qualified
+            entered = qualified
+    # Normalización "Al día" con evidencia en bitácora: reinicia el conteo.
+    reset = _parse_dt(project.get("sla_reset_at"))
+    if reset and (entered is None or reset > entered):
+        return reset
     return entered
 
 
