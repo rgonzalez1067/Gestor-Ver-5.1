@@ -482,6 +482,7 @@ async def _create_project_from_quote(
     if _add_comp:
         project["additional_components"] = _add_comp
 
+    project.setdefault("motivo_avance", "IMPLE")
     await db.projects.insert_one(project)
     project.pop("_id", None)
     logger.info(f"Proyecto {project_number} creado desde cotización {quote_id}")

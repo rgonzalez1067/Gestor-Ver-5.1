@@ -23,6 +23,7 @@ import { MasterEditsReportButton } from '../components/projects/MasterEditsRepor
 import { DeleteProjectDialog, ProjectsTrashDialog } from '../components/projects/ProjectsTrash';
 import { ProjectChatButton, ProjectChatDrawer } from '../components/projects/ProjectChat';
 import { DualScrollX } from '../components/ui-custom/DualScrollX';
+import { MotivoBreakdown } from '../components/projects/MotivoAvance';
 import { OperationalBoard } from '../components/projects/OperationalBoard';
 import { ImplementerWorkloadHover } from '../components/projects/ImplementerWorkloadHover';
 import {
@@ -846,20 +847,23 @@ const Projects = () => {
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="bg-slate-900/95 text-white border border-slate-700 shadow-xl px-3 py-2 rounded-lg" data-testid={`kpi-tooltip-${key}`}>
-                    <p className="text-[11px] font-semibold mb-1.5 text-slate-100 uppercase tracking-wide">Resumen de Avance</p>
-                    <div className="space-y-1 text-xs min-w-[160px]">
+                    <p className="text-[11px] font-semibold mb-1.5 text-slate-100 uppercase tracking-wide">Resumen de Avance · Responsabilidad</p>
+                    <div className="space-y-1 text-xs min-w-[220px]">
                       <div className="flex items-center justify-between gap-4">
                         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0" />Al día</span>
                         <span className="font-bold tabular-nums" data-testid={`kpi-tt-aldia-${key}`}>{bd.al_dia}</span>
                       </div>
+                      <MotivoBreakdown projects={(s.subset || []).filter(p => _avanceLevel(p) === 'al_dia')} testId={`kpi-tt-motivo-aldia-${key}`} />
                       <div className="flex items-center justify-between gap-4">
                         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" />Retraso Medio</span>
                         <span className="font-bold tabular-nums" data-testid={`kpi-tt-medio-${key}`}>{bd.medio}</span>
                       </div>
+                      <MotivoBreakdown projects={(s.subset || []).filter(p => _avanceLevel(p) === 'medio')} testId={`kpi-tt-motivo-medio-${key}`} />
                       <div className="flex items-center justify-between gap-4">
                         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />Retraso Crítico</span>
                         <span className="font-bold tabular-nums" data-testid={`kpi-tt-critico-${key}`}>{bd.critico}</span>
                       </div>
+                      <MotivoBreakdown projects={(s.subset || []).filter(p => _avanceLevel(p) === 'critico')} testId={`kpi-tt-motivo-critico-${key}`} />
                       <div className="flex items-center justify-between gap-4 border-t border-slate-700 mt-1 pt-1 text-slate-300">
                         <span>Total</span>
                         <span className="font-bold tabular-nums" data-testid={`kpi-tt-total-${key}`}>{bd.al_dia + bd.medio + bd.critico}</span>
@@ -1188,15 +1192,15 @@ const Projects = () => {
               <table className="w-full min-w-[1100px]">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Cliente / Ticket</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Tipo</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Sede</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Estado</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Envío a Imple / Último Contacto</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Implementador</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Generador</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Patrocinador</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-600 uppercase">Acciones</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Cliente / Ticket</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Tipo</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Sede</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Estado</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Envío a Imple / Último Contacto</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Implementador</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Generador</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Patrocinador</th>
+                    <th className="px-1.5 py-3 text-center text-xs font-medium text-slate-600 uppercase">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1260,7 +1264,7 @@ const Projects = () => {
                       <tr className={`hover:bg-slate-50 transition-colors ${project.direct_project ? 'bg-amber-50/70 hover:bg-amber-100/70' : ''}`}
                         data-testid={`project-row-${project.project_id}`}
                         data-direct-project={project.direct_project ? 'true' : 'false'}>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3">
                           {/* Marca roja de Compromiso (implementer_alerts activos) */}
                           {(() => {
                             const activeAlerts = activeAlertsOf(project);
@@ -1362,7 +1366,7 @@ const Projects = () => {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3">
                           <button
                             type="button"
                             onClick={() => setTypeFilter(prev => prev === normalizeProjectType(project.quote_type) ? 'all' : normalizeProjectType(project.quote_type))}
@@ -1373,8 +1377,8 @@ const Projects = () => {
                             <ProjectTypeBadge quoteType={project.quote_type} variant={project.link_pago_variant} />
                           </button>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{project.client_sede || '—'}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3 text-sm text-slate-600">{project.client_sede || '—'}</td>
+                        <td className="px-3 py-3">
                           {/* Badge de estado: color de fondo SINCRONIZADO con la
                               barra de avance/SLA (slaColor) y texto blanco
                               forzado para máximo contraste. Feb 2026. */}
@@ -1382,7 +1386,7 @@ const Projects = () => {
                             <StIcon size={12} className="text-white" />{project.status}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600" data-testid={`project-sent-impl-${project.project_id}`}>
+                        <td className="px-3 py-3 text-sm text-slate-600" data-testid={`project-sent-impl-${project.project_id}`}>
                           <p className="text-slate-700" data-testid={`project-sent-impl-date-${project.project_id}`}>
                             {project.sent_to_implementation_at
                               ? new Date(project.sent_to_implementation_at).toLocaleDateString('es-VE')
@@ -1394,7 +1398,7 @@ const Projects = () => {
                               : '--/--/----'}
                           </p>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
+                        <td className="px-3 py-3 text-sm text-slate-600">
                           {project.assigned_to_name ? (
                             <ImplementerWorkloadHover
                               userId={project.assigned_to_user_id}
@@ -1405,12 +1409,12 @@ const Projects = () => {
                             />
                           ) : <span className="text-slate-400 italic">Sin asignar</span>}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600" data-testid={`project-generator-${project.project_id}`}>
+                        <td className="px-3 py-3 text-sm text-slate-600" data-testid={`project-generator-${project.project_id}`}>
                           {project.created_by_name && project.created_by_name !== '—'
                             ? <span>{project.created_by_name}</span>
                             : <span className="text-slate-400 italic">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-sm" data-testid={`project-sponsor-${project.project_id}`}>
+                        <td className="px-3 py-3 text-sm" data-testid={`project-sponsor-${project.project_id}`}>
                           {getPatrocinadorLabel(project)
                             ? <span className="inline-flex items-center gap-1 text-slate-700">
                                 <Landmark size={13} className="text-indigo-500 shrink-0" />
@@ -1418,9 +1422,20 @@ const Projects = () => {
                               </span>
                             : <span className="text-slate-400 italic">—</span>}
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="grid grid-cols-5 gap-1 justify-items-center w-max mx-auto" data-testid={`actions-grid-${project.project_id}`}>
-                            {/* Chat del Proyecto — primera acción */}
+                        <td className="px-1.5 py-2">
+                          <div className="grid grid-cols-6 gap-0.5 justify-items-center w-max mx-auto [&_button]:h-7 [&_button]:w-7 [&_button]:px-0" data-testid={`actions-grid-${project.project_id}`}>
+                            {/* Ver Detalle — Iter39: deshabilitado si no hay implementador asignado. */}
+                            <Button
+                              size="sm" variant="outline"
+                              title={hasAssignee ? 'Detalle del Proyecto' : 'Detalle no disponible: el proyecto debe tener un implementador asignado'}
+                              onClick={() => hasAssignee && navigate(`/projects/${project.project_id}`)}
+                              disabled={!hasAssignee}
+                              className={`h-8 px-2 ${hasAssignee ? 'text-emerald-600' : 'text-slate-300 cursor-not-allowed opacity-60'}`}
+                              data-testid={`detail-btn-${project.project_id}`}
+                              data-detail-enabled={hasAssignee ? 'true' : 'false'}>
+                              <Eye size={14} />
+                            </Button>
+                            {/* Chat del Proyecto */}
                             <ProjectChatButton project={project} info={chatInfo(project.project_id)} onOpen={setChatProject} />
                             {/* Cobro Recurrente ($) — toggle exclusivo Ventas del mismo equipo (o Admin) */}
                             {(() => {
@@ -1461,17 +1476,6 @@ const Projects = () => {
                               data-testid={`assign-btn-${project.project_id}`}>
                               {hasAssignee ? <UserPlus size={14} /> : <UserCheck size={14} />}
                             </Button>}
-                            {/* Ver Detalle — Iter39: deshabilitado si no hay implementador asignado. */}
-                            <Button
-                              size="sm" variant="outline"
-                              title={hasAssignee ? 'Detalle del Proyecto' : 'Detalle no disponible: el proyecto debe tener un implementador asignado'}
-                              onClick={() => hasAssignee && navigate(`/projects/${project.project_id}`)}
-                              disabled={!hasAssignee}
-                              className={`h-8 px-2 ${hasAssignee ? 'text-emerald-600' : 'text-slate-300 cursor-not-allowed opacity-60'}`}
-                              data-testid={`detail-btn-${project.project_id}`}
-                              data-detail-enabled={hasAssignee ? 'true' : 'false'}>
-                              <Eye size={14} />
-                            </Button>
                             {/* Acceso rápido a Ficha Técnica — abre el PDF en pestaña nueva */}
                             <Button
                               size="sm" variant="outline"

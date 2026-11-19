@@ -37,6 +37,7 @@ import { EmailPreviewDialog } from '../components/projects/EmailPreviewDialog';
 import { CommitmentModal } from '../components/CommitmentModal';
 import { ImplementerAlertsModal } from '../components/ImplementerAlertsModal';
 import { MasterEditBitacoraEntry } from '../components/projects/MasterEditBitacoraEntry';
+import { MotivoAvanceSelector } from '../components/projects/MotivoAvance';
 
 const ProjectDetail = () => {
   const { projectId } = useParams();
@@ -1388,6 +1389,8 @@ const ProjectDetail = () => {
                     </p>
                   </div>
                 )}
+                <MotivoAvanceSelector key={project.motivo_avance || 'IMPLE'} project={project} onChanged={fetchProject}
+                  canEdit={currentUser.role === 'admin' || _deptoLc.startsWith('implement') || currentUser.user_id === project.assigned_to_user_id} />
                 <div>
                   <p className="text-xs text-slate-500">Ticket</p>
                   {project.ticket_number ? (

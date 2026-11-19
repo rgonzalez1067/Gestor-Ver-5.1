@@ -126,6 +126,11 @@ async def _on_startup():
     except Exception as e:
         logging.warning(f"[startup] migrate_bank_product_status failed: {e}")
     try:
+        await db.projects.update_many({"motivo_avance": {"$in": [None, ""]}}, {"$set": {"motivo_avance": "IMPLE"}})
+        await db.projects.update_many({"motivo_avance": {"$exists": False}}, {"$set": {"motivo_avance": "IMPLE"}})
+    except Exception as e:
+        logging.warning(f"[startup] motivo_avance default failed: {e}")
+    try:
         from services.item_name_sync import sync_item_names
         await sync_item_names()
     except Exception as e:
