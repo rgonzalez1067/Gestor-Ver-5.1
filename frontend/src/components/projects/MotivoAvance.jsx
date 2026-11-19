@@ -4,52 +4,66 @@ import api from '../../utils/api';
 import { Building2, Landmark, Wrench } from 'lucide-react';
 
 export const MOTIVOS_AVANCE = [
-  { key: 'CLIENTE', label: 'Cliente', icon: Building2, cls: 'bg-orange-500', hint: 'Demoras, recaudos, adecuaciones o disponibilidad del comercio' },
-  { key: 'BANCO', label: 'Banco', icon: Landmark, cls: 'bg-sky-500', hint: 'Aprobaciones, afiliaciones, credenciales o parámetros de la entidad financiera' },
-  { key: 'IMPLE', label: 'Imple', icon: Wrench, cls: 'bg-violet-500', hint: 'Gestión técnica, configuración, agenda o ejecución de Implementación Mega Soft' },
+  { key: 'CLIENTE', label: 'Cliente', icon: Building2, cls: 'bg-red-500', on: 'bg-red-500 text-white border-red-600 shadow-sm', off: 'hover:bg-red-50 hover:text-red-600 hover:border-red-200', hint: 'Demoras, recaudos, adecuaciones o disponibilidad del comercio' },
+  { key: 'BANCO', label: 'Banco', icon: Landmark, cls: 'bg-blue-500', on: 'bg-blue-600 text-white border-blue-700 shadow-sm', off: 'hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200', hint: 'Aprobaciones, afiliaciones, credenciales o parámetros de la entidad financiera' },
+  { key: 'IMPLE', label: 'Imple', icon: Wrench, cls: 'bg-green-500', on: 'bg-green-600 text-white border-green-700 shadow-sm', off: 'hover:bg-green-50 hover:text-green-600 hover:border-green-200', hint: 'Gestión técnica, configuración, agenda o ejecución de Implementación Mega Soft' },
 ];
-export const motivoOf = (p) => (p?.motivo_avance || 'IMPLE').toUpperCase();
+export const motivoOf = (p) => (p?.motivo_avance || '').toUpperCase() || null;
 
-// Selector "Motivo del Avance" (Cliente / Banco / Imple) en la ficha del proyecto.
-export const MotivoAvanceSelector = ({ project, canEdit, onChanged }) => {
+// Botones de color Cliente / Banco / Imple; pulsar el activo lo deja sin motivo.
+const MotivoButtons = ({ project, canEdit, onChanged, compact, testPrefix }) => {
   const [value, setValue] = useState(motivoOf(project));
   const [busy, setBusy] = useState(false);
   const pick = async (key) => {
-    if (!canEdit || busy || key === value) return;
+    if (!canEdit || busy) return;
+    const next = key === value ? null : key;
     setBusy(true);
     try {
-      await api.put(`/projects/${project.project_id}/motivo-avance`, { motivo: key });
-      setValue(key);
-      toast.success('Motivo del Avance actualizado y registrado en la Bitácora');
-      onChanged?.();
+      await api.put(`/projects/${project.project_id}/motivo-avance`, { motivo: next });
+      setValue(next);
+      toast.success(next ? 'Motivo del Avance actualizado' : 'Motivo del Avance retirado');
+      onChanged?.(next);
     } catch (e) { toast.error(e.response?.data?.detail || 'No se pudo actualizar el motivo'); }
     finally { setBusy(false); }
   };
   return (
-    <div data-testid="motivo-avance-section">
-      <p className="text-xs text-slate-500 mb-1">Motivo del Avance</p>
-      <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5" role="radiogroup">
-        {MOTIVOS_AVANCE.map(({ key, label, icon: Icon, hint }) => (
-          <button key={key} type="button" role="radio" aria-checked={value === key} title={hint} disabled={!canEdit || busy}
-            onClick={() => pick(key)} data-testid={`motivo-avance-${key}`}
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${value === key ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-500'} ${canEdit ? 'hover:text-slate-800' : 'cursor-default'}`}>
-            <Icon size={12} />{label}
-          </button>
-        ))}
-      </div>
-      {!canEdit && <p className="text-[10px] text-slate-400 mt-0.5">Solo el equipo de Implementación o un administrador puede cambiarlo.</p>}
+    <div className="inline-flex gap-1" role="radiogroup" data-testid={`${testPrefix}-group`}>
+      {MOTIVOS_AVANCE.map(({ key, label, icon: Icon, hint, on, off }) => (
+        <button key={key} type="button" role="radio" aria-checked={value === key} disabled={busy}
+          title={canEdit ? hint : `${hint} (solo lectura)`}
+          onClick={() => pick(key)} data-testid={`${testPrefix}-${key}`} data-active={value === key ? 'true' : 'false'}
+          className={`inline-flex items-center gap-1 rounded-md border font-medium transition-[background-color,color,transform] duration-150 ${compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'} ${value === key ? on : `bg-white text-slate-500 border-slate-200 ${canEdit ? off : ''}`} ${canEdit ? 'active:scale-95' : 'cursor-default opacity-90'}`}>
+          <Icon size={compact ? 10 : 12} />{label}
+        </button>
+      ))}
     </div>
   );
 };
+
+export const MotivoAvanceGridButtons = ({ project, canEdit, onChanged }) => (
+  <MotivoButtons key={project.motivo_avance || 'NONE'} project={project} canEdit={canEdit} onChanged={onChanged} compact
+    testPrefix={`grid-motivo-${project.project_id}`} />
+);
+
+// Selector "Motivo del Avance" en la ficha del proyecto.
+export const MotivoAvanceSelector = ({ project, canEdit, onChanged }) => (
+  <div data-testid="motivo-avance-section">
+    <p className="text-xs text-slate-500 mb-1">Motivo del Avance</p>
+    <MotivoButtons project={project} canEdit={canEdit} onChanged={onChanged} testPrefix="motivo-avance" />
+    {!canEdit && <p className="text-[10px] text-slate-400 mt-0.5">Solo el implementador del proyecto o un administrador puede cambiarlo.</p>}
+  </div>
+);
 
 // Desglose de responsabilidad para una categoría de avance (usado en tooltips de KPIs).
 export const MotivoBreakdown = ({ projects, testId }) => {
   const total = projects.length;
   if (!total) return null;
+  const rows = [...MOTIVOS_AVANCE, { key: 'NONE', label: 'Sin motivo', cls: 'bg-slate-400' }];
   return (
     <div className="pl-4 mt-0.5 space-y-0.5" data-testid={testId}>
-      {MOTIVOS_AVANCE.map(m => {
-        const n = projects.filter(p => motivoOf(p) === m.key).length;
+      {rows.map(m => {
+        const n = projects.filter(p => (motivoOf(p) || 'NONE') === m.key).length;
+        if (m.key === 'NONE' && !n) return null;
         return (
           <div key={m.key} className="flex items-center justify-between gap-3 text-[11px] text-slate-300">
             <span className="flex items-center gap-1"><span className={`w-1.5 h-1.5 rounded-full ${m.cls}`} />{m.label}</span>

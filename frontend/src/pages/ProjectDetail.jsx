@@ -1389,8 +1389,8 @@ const ProjectDetail = () => {
                     </p>
                   </div>
                 )}
-                <MotivoAvanceSelector key={project.motivo_avance || 'IMPLE'} project={project} onChanged={fetchProject}
-                  canEdit={currentUser.role === 'admin' || _deptoLc.startsWith('implement') || currentUser.user_id === project.assigned_to_user_id} />
+                <MotivoAvanceSelector key={project.motivo_avance || 'NONE'} project={project} onChanged={fetchProject}
+                  canEdit={currentUser.role === 'admin' || currentUser.user_id === project.assigned_to_user_id} />
                 <div>
                   <p className="text-xs text-slate-500">Ticket</p>
                   {project.ticket_number ? (

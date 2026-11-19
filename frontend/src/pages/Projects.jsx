@@ -23,7 +23,7 @@ import { MasterEditsReportButton } from '../components/projects/MasterEditsRepor
 import { DeleteProjectDialog, ProjectsTrashDialog } from '../components/projects/ProjectsTrash';
 import { ProjectChatButton, ProjectChatDrawer } from '../components/projects/ProjectChat';
 import { DualScrollX } from '../components/ui-custom/DualScrollX';
-import { MotivoBreakdown } from '../components/projects/MotivoAvance';
+import { MotivoBreakdown, MotivoAvanceGridButtons } from '../components/projects/MotivoAvance';
 import { OperationalBoard } from '../components/projects/OperationalBoard';
 import { ImplementerWorkloadHover } from '../components/projects/ImplementerWorkloadHover';
 import {
@@ -1194,6 +1194,7 @@ const Projects = () => {
                   <tr>
                     <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Cliente / Ticket</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Tipo</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase whitespace-nowrap">Motivo del Avance</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Sede</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Estado</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Envío a Imple / Último Contacto</th>
@@ -1377,6 +1378,10 @@ const Projects = () => {
                             <ProjectTypeBadge quoteType={project.quote_type} variant={project.link_pago_variant} />
                           </button>
                         </td>
+                        <td className="px-3 py-3">
+                          <MotivoAvanceGridButtons project={project} canEdit={isAdmin || currentUser?.user_id === project.assigned_to_user_id}
+                            onChanged={(m) => setProjects((prev) => prev.map((p) => p.project_id === project.project_id ? { ...p, motivo_avance: m } : p))} />
+                        </td>
                         <td className="px-3 py-3 text-sm text-slate-600">{project.client_sede || '—'}</td>
                         <td className="px-3 py-3">
                           {/* Badge de estado: color de fondo SINCRONIZADO con la
@@ -1529,7 +1534,7 @@ const Projects = () => {
                       </tr>
                       {/* Fila SLA Semáforo */}
                       <tr className="border-b border-slate-200" data-testid={`sla-row-${project.project_id}`}>
-                        <td colSpan={8} className="px-4 py-1.5">
+                        <td colSpan={9} className="px-4 py-1.5">
                           {/* Aviso de cuenta regresiva de entrada en producción
                               (solo cuando faltan <= 5 días hábiles). Fondo ámbar,
                               nunca rojo (reservado a alertas de compromisos). */}

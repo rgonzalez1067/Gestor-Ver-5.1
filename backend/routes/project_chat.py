@@ -201,29 +201,28 @@ MOTIVOS = {"CLIENTE": "Cliente", "BANCO": "Banco", "IMPLE": "Imple"}
 
 
 class MotivoAvanceIn(BaseModel):
-    motivo: str
+    motivo: Optional[str] = None
 
 
 @router.put("/projects/{project_id}/motivo-avance")
 async def set_motivo_avance(project_id: str, body: MotivoAvanceIn, authorization: Optional[str] = Header(None)):
     """Motivo del Avance (responsable: Cliente / Banco / Imple). Solo equipo de Implementación y administradores."""
     user = await get_current_user(authorization)
-    motivo = (body.motivo or "").upper()
-    if motivo not in MOTIVOS:
+    motivo = (body.motivo or "").upper() or None
+    if motivo and motivo not in MOTIVOS:
         raise HTTPException(status_code=400, detail="Motivo inválido: use Cliente, Banco o Imple")
     project = await db.projects.find_one({"project_id": project_id}, {"_id": 0, "motivo_avance": 1, "assigned_to_user_id": 1})
     if not project:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
-    is_impl_team = (user.get("departamento") or "").lower().startswith("implement") or user.get("user_id") == project.get("assigned_to_user_id")
-    if user.get("role") != "admin" and not is_impl_team:
-        raise HTTPException(status_code=403, detail="Solo el equipo de Implementación o un administrador puede cambiar el Motivo del Avance")
-    old = (project.get("motivo_avance") or "IMPLE").upper()
+    if user.get("role") != "admin" and user.get("user_id") != project.get("assigned_to_user_id"):
+        raise HTTPException(status_code=403, detail="Solo el implementador del proyecto o un administrador puede cambiar el Motivo del Avance")
+    old = (project.get("motivo_avance") or "").upper() or None
     if old == motivo:
         return {"motivo_avance": motivo, "changed": False}
     now = datetime.now(timezone.utc).isoformat()
     name = _uname(user)
     entry = {"entry_id": f"bit_{uuid.uuid4().hex[:8]}", "type": "motivo_avance",
-             "text": f"[Motivo del Avance] {name} cambió el responsable: {MOTIVOS.get(old, old)} → {MOTIVOS[motivo]}",
+             "text": f"[Motivo del Avance] {name} cambió el responsable: {MOTIVOS.get(old, 'Sin motivo')} → {MOTIVOS.get(motivo, 'Sin motivo')}",
              "old": old, "new": motivo, "execution_date": now[:10], "created_by": user.get("user_id", ""),
              "created_by_name": name, "created_at": now}
     await db.projects.update_one({"project_id": project_id},
