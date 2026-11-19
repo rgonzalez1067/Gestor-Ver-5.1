@@ -4811,3 +4811,4 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Pendiente (menor): limpieza de evidencias huérfanas; chequeo de visibilidad por proyecto al servir evidencia; RBAC previo permite POST a usuarios con solo 'proyectos:create'.
 - Nov 2026: Evidencia acepta también PDF (máx. 10 MB, validación %PDF, sin compresión); PDF sirve como respaldo para 'Al día'. Miniatura PDF abre el archivo en pestaña nueva. Límite 5 archivos/entrada.
 - Nov 2026: Pestañas 'Bitácora' / 'Galería del Proyecto' en la ficha (ProjectGallery.jsx): cuadrícula de todas las imágenes y PDF de la bitácora con filtro Todo/Imágenes/PDF, fecha, autor, observación e insignia Al día; imágenes abren Lightbox, PDF en pestaña nueva.
+- Nov 2026: Global (components/ui/dialog.jsx): DialogContent bloquea el cierre por clic fuera cuando contiene campos de datos (input/textarea/select/combobox/contenteditable). Visores/avisos sin campos sí cierran fuera. Esc sigue cerrando.
