@@ -2754,8 +2754,9 @@ async def remove_implementation_serial(project_id: str, serial: str, authorizati
 
 # ==================== BITÁCORA ====================
 
-EVIDENCE_EXTS = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
+EVIDENCE_EXTS = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp", "pdf": "application/pdf"}
 EVIDENCE_MAX_BYTES = 5 * 1024 * 1024
+EVIDENCE_PDF_MAX_BYTES = 10 * 1024 * 1024
 EVIDENCE_MAX_PER_ENTRY = 5
 
 
@@ -2767,17 +2768,24 @@ async def upload_bitacora_evidence(project_id: str, file: UploadFile = File(...)
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
     ext = (file.filename or "").rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else ""
     if ext not in EVIDENCE_EXTS or (file.content_type or "") not in EVIDENCE_EXTS.values():
-        raise HTTPException(status_code=400, detail="Formato no permitido. Formatos admitidos: JPG, PNG, WEBP (máx. 5 MB)")
+        raise HTTPException(status_code=400, detail="Formato no permitido. Admitidos: JPG, PNG, WEBP (máx. 5 MB) y PDF (máx. 10 MB)")
     data = await file.read()
-    if len(data) > EVIDENCE_MAX_BYTES:
-        raise HTTPException(status_code=400, detail="La imagen supera el tamaño máximo de 5 MB")
-    try:
-        from io import BytesIO
-        from PIL import Image as PILImage
-        PILImage.open(BytesIO(data)).verify()
-    except Exception:
-        raise HTTPException(status_code=400, detail="El archivo no es una imagen válida")
-    data, ext, content_type = _compress_image(data, ext)
+    if ext == "pdf":
+        if len(data) > EVIDENCE_PDF_MAX_BYTES:
+            raise HTTPException(status_code=400, detail="El PDF supera el tamaño máximo de 10 MB")
+        if not data.startswith(b"%PDF"):
+            raise HTTPException(status_code=400, detail="El archivo no es un PDF válido")
+        content_type = "application/pdf"
+    else:
+        if len(data) > EVIDENCE_MAX_BYTES:
+            raise HTTPException(status_code=400, detail="La imagen supera el tamaño máximo de 5 MB")
+        try:
+            from io import BytesIO
+            from PIL import Image as PILImage
+            PILImage.open(BytesIO(data)).verify()
+        except Exception:
+            raise HTTPException(status_code=400, detail="El archivo no es una imagen válida")
+        data, ext, content_type = _compress_image(data, ext)
     evidence_id = f"evd_{uuid.uuid4().hex[:12]}"
     ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     storage_path = f"{os.environ.get('APP_NAME', 'meganexus')}/proyectos/{project_id}/bitacora/{ts}_{evidence_id}.{ext}"
@@ -2834,7 +2842,7 @@ async def add_bitacora_entry(project_id: str, entry: BitacoraEntry, authorizatio
         if current_user.get("role") != "admin" and current_user.get("user_id") != project.get("assigned_to_user_id"):
             raise HTTPException(status_code=403, detail="Solo el implementador asignado o un administrador puede poner el proyecto Al día")
         if not evidence:
-            raise HTTPException(status_code=400, detail="Para poner el proyecto Al día debe adjuntar al menos una imagen de respaldo")
+            raise HTTPException(status_code=400, detail="Para poner el proyecto Al día debe adjuntar al menos una imagen o PDF de respaldo")
 
     now = datetime.now(timezone.utc).isoformat()
     user_name = f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip()

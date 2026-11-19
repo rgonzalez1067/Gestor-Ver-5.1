@@ -2102,12 +2102,12 @@ const ProjectDetail = () => {
                   const enabled = canAlDia && bitacoraFiles.length > 0;
                   return (
                     <label className={`flex items-center gap-2 text-sm ${enabled ? 'text-slate-800 cursor-pointer' : 'text-slate-400 cursor-not-allowed'}`}
-                      title={!canAlDia ? 'Solo el implementador asignado o un administrador' : !bitacoraFiles.length ? 'Adjunte al menos una imagen de respaldo para habilitar' : ''}>
+                      title={!canAlDia ? 'Solo el implementador asignado o un administrador' : !bitacoraFiles.length ? 'Adjunte al menos una imagen o PDF de respaldo para habilitar' : ''}>
                       <Checkbox checked={bitacoraAlDia} disabled={!enabled} onCheckedChange={(v) => setBitacoraAlDia(!!v)} data-testid="bitacora-al-dia-checkbox" />
                       Actualizar estado de avance del proyecto a:
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700"><span className="h-2 w-2 rounded-full bg-emerald-500" />AL DÍA</span>
                       {!canAlDia && <span className="text-[11px]">(solo implementador asignado / admin)</span>}
-                      {canAlDia && !bitacoraFiles.length && <span className="text-[11px]">(requiere imagen adjunta)</span>}
+                      {canAlDia && !bitacoraFiles.length && <span className="text-[11px]">(requiere imagen o PDF adjunto)</span>}
                     </label>
                   );
                 })()}
