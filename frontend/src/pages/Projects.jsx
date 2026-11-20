@@ -1015,7 +1015,7 @@ const Projects = () => {
                   <tr>
                     <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Cliente / Ticket</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Tipo</th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase whitespace-nowrap">Motivo del Avance</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase whitespace-nowrap">Responsable del Avance</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Sede</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Estado</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Envío a Imple / Último Contacto</th>

@@ -21,9 +21,9 @@ const MotivoButtons = ({ project, canEdit, onChanged, compact, testPrefix }) => 
     try {
       await api.put(`/projects/${project.project_id}/motivo-avance`, { motivo: next });
       setValue(next);
-      toast.success(next ? 'Motivo del Avance actualizado' : 'Motivo del Avance retirado');
+      toast.success(next ? 'Responsable del Avance actualizado' : 'Responsable del Avance retirado');
       onChanged?.(next);
-    } catch (e) { toast.error(e.response?.data?.detail || 'No se pudo actualizar el motivo'); }
+    } catch (e) { toast.error(e.response?.data?.detail || 'No se pudo actualizar el responsable'); }
     finally { setBusy(false); }
   };
   return (
@@ -48,7 +48,7 @@ export const MotivoAvanceGridButtons = ({ project, canEdit, onChanged }) => (
 // Selector "Motivo del Avance" en la ficha del proyecto.
 export const MotivoAvanceSelector = ({ project, canEdit, onChanged }) => (
   <div data-testid="motivo-avance-section">
-    <p className="text-xs text-slate-500 mb-1">Motivo del Avance</p>
+    <p className="text-xs text-slate-500 mb-1">Responsable del Avance</p>
     <MotivoButtons project={project} canEdit={canEdit} onChanged={onChanged} testPrefix="motivo-avance" />
     {!canEdit && <p className="text-[10px] text-slate-400 mt-0.5">Solo el implementador del proyecto o un administrador puede cambiarlo.</p>}
   </div>
@@ -58,7 +58,7 @@ export const MotivoAvanceSelector = ({ project, canEdit, onChanged }) => (
 export const MotivoBreakdown = ({ projects, testId }) => {
   const total = projects.length;
   if (!total) return null;
-  const rows = [...MOTIVOS_AVANCE, { key: 'NONE', label: 'Sin motivo', cls: 'bg-slate-400' }];
+  const rows = [...MOTIVOS_AVANCE, { key: 'NONE', label: 'Sin responsable', cls: 'bg-slate-400' }];
   return (
     <div className="pl-4 mt-0.5 space-y-0.5" data-testid={testId}>
       {rows.map(m => {
@@ -77,11 +77,11 @@ export const MotivoBreakdown = ({ projects, testId }) => {
 
 // Barra de filtro rápido por Motivo del Avance (con contadores); clic de nuevo quita el filtro.
 export const MotivoFilterBar = ({ projects, value, onChange }) => {
-  const rows = [...MOTIVOS_AVANCE, { key: 'NONE', label: 'Sin motivo', icon: CircleSlash, on: 'bg-slate-600 text-white border-slate-700 shadow-sm', off: 'hover:bg-slate-100 hover:border-slate-300' }];
+  const rows = [...MOTIVOS_AVANCE, { key: 'NONE', label: 'Sin responsable', icon: CircleSlash, on: 'bg-slate-600 text-white border-slate-700 shadow-sm', off: 'hover:bg-slate-100 hover:border-slate-300' }];
   const count = (k) => projects.filter(p => (motivoOf(p) || 'NONE') === k).length;
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2" data-testid="motivo-filter-bar">
-      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Motivo del Avance:</span>
+      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Responsable del Avance:</span>
       {rows.map(({ key, label, icon: Icon, on, off }) => (
         <button key={key} type="button" onClick={() => onChange(value === key ? 'all' : key)}
           data-testid={`motivo-filter-${key}`} data-active={value === key ? 'true' : 'false'}

@@ -215,14 +215,14 @@ async def set_motivo_avance(project_id: str, body: MotivoAvanceIn, authorization
     if not project:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
     if user.get("role") != "admin" and user.get("user_id") != project.get("assigned_to_user_id"):
-        raise HTTPException(status_code=403, detail="Solo el implementador del proyecto o un administrador puede cambiar el Motivo del Avance")
+        raise HTTPException(status_code=403, detail="Solo el implementador del proyecto o un administrador puede cambiar el Responsable del Avance")
     old = (project.get("motivo_avance") or "").upper() or None
     if old == motivo:
         return {"motivo_avance": motivo, "changed": False}
     now = datetime.now(timezone.utc).isoformat()
     name = _uname(user)
     entry = {"entry_id": f"bit_{uuid.uuid4().hex[:8]}", "type": "motivo_avance",
-             "text": f"[Motivo del Avance] {name} cambió el responsable: {MOTIVOS.get(old, 'Sin motivo')} → {MOTIVOS.get(motivo, 'Sin motivo')}",
+             "text": f"[Responsable del Avance] {name} cambió el responsable: {MOTIVOS.get(old, 'Sin responsable')} → {MOTIVOS.get(motivo, 'Sin responsable')}",
              "old": old, "new": motivo, "execution_date": now[:10], "created_by": user.get("user_id", ""),
              "created_by_name": name, "created_at": now}
     await db.projects.update_one({"project_id": project_id},
