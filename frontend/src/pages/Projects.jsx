@@ -23,7 +23,7 @@ import { MasterEditsReportButton } from '../components/projects/MasterEditsRepor
 import { DeleteProjectDialog, ProjectsTrashDialog } from '../components/projects/ProjectsTrash';
 import { ProjectChatButton, ProjectChatDrawer } from '../components/projects/ProjectChat';
 import { DualScrollX } from '../components/ui-custom/DualScrollX';
-import { MotivoBreakdown, MotivoAvanceGridButtons } from '../components/projects/MotivoAvance';
+import { MotivoBreakdown, MotivoAvanceGridButtons, MotivoFilterBar, motivoOf } from '../components/projects/MotivoAvance';
 import { OperationalBoard } from '../components/projects/OperationalBoard';
 import { ImplementerWorkloadHover } from '../components/projects/ImplementerWorkloadHover';
 import {
@@ -266,6 +266,7 @@ const Projects = () => {
   const [sponsorSearch, setSponsorSearch] = useState('');
   const [integratorFilter, setIntegratorFilter] = useState('all');
   const [cobroFilter, setCobroFilter] = useState('all'); // 'all' | 'cobrado' | 'pendiente'
+  const [motivoFilter, setMotivoFilter] = useState('all');
   const [avanceFilter, setAvanceFilter] = useState('all'); // 'all' | 'al_dia' | 'medio' | 'critico'
   const [integratorPickerOpen, setIntegratorPickerOpen] = useState(false);
   const [integratorSearch, setIntegratorSearch] = useState('');
@@ -553,7 +554,7 @@ const Projects = () => {
     return 'al_dia';
   };
 
-  const matchesNonStatus = (p) => {
+  const matchesNonStatus = (p, skipMotivo = false) => {
     const sponsorLabel = getPatrocinadorLabel(p);
     // Filtro "Cliente": busca por Nº proyecto/ticket, Nombre de Fantasía, RIF,
     // Nombre Jurídico (Razón Social) y Grupo Económico (insensible a acentos).
@@ -598,7 +599,8 @@ const Projects = () => {
       : avanceFilter === 'congelado' ? p.status === 'Congelado'
       : _avanceLevel(p) === avanceFilter;
     const matchChat = !unreadChatOnly || ((chatSummary.unread || {})[p.project_id] || 0) > 0;
-    return matchSearch && matchSponsor && matchType && matchIntegrator && matchDate && matchCobro && matchAvance && matchChat;
+    const matchMotivo = skipMotivo || motivoFilter === 'all' || (motivoOf(p) || 'NONE') === motivoFilter;
+    return matchSearch && matchSponsor && matchType && matchIntegrator && matchDate && matchCobro && matchAvance && matchChat && matchMotivo;
   };
 
   const matchesStatus = (p) => statusFilter === 'all'
@@ -648,8 +650,9 @@ const Projects = () => {
 
 
   // Base: todos los filtros menos el estado. Final: + filtro de estado (lo que se muestra).
-  const baseFiltered = projects.filter(matchesNonStatus);
+  const baseFiltered = projects.filter(p => matchesNonStatus(p));
   const filtered = baseFiltered.filter(matchesStatus);
+  const motivoPool = motivoFilter === 'all' ? filtered : projects.filter(p => matchesNonStatus(p, true) && matchesStatus(p));
 
   // KPIs dinámicos (Regla de Oro): "Total" refleja el set filtrado completo (incluye
   // estado); las tarjetas de estado cuentan su estado dentro de los demás filtros.
@@ -730,10 +733,10 @@ const Projects = () => {
   );
 
   const hasActiveFilters = searchTerm || statusFilter !== 'active' || typeFilter !== 'all'
-    || sponsorFilter !== 'all' || integratorFilter !== 'all' || cobroFilter !== 'all' || avanceFilter !== 'all' || dateFrom || dateTo;
+    || sponsorFilter !== 'all' || integratorFilter !== 'all' || cobroFilter !== 'all' || avanceFilter !== 'all' || motivoFilter !== 'all' || dateFrom || dateTo;
   const resetFilters = () => {
     setSearchTerm(''); setStatusFilter('active'); setTypeFilter('all');
-    setSponsorFilter('all'); setIntegratorFilter('all'); setCobroFilter('all'); setAvanceFilter('all'); setDateFrom(''); setDateTo('');
+    setSponsorFilter('all'); setIntegratorFilter('all'); setCobroFilter('all'); setAvanceFilter('all'); setMotivoFilter('all'); setDateFrom(''); setDateTo('');
   };
 
   if (loading) {
@@ -1179,6 +1182,8 @@ const Projects = () => {
               </Button>
             )}
           </div>
+
+          <MotivoFilterBar projects={motivoPool} value={motivoFilter} onChange={setMotivoFilter} />
 
           {/* Projects Table */}
           {filtered.length === 0 ? (

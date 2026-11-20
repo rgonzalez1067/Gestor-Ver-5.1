@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import api from '../../utils/api';
-import { Building2, Landmark, Wrench } from 'lucide-react';
+import { Building2, Landmark, Wrench, CircleSlash } from 'lucide-react';
 
 export const MOTIVOS_AVANCE = [
   { key: 'CLIENTE', label: 'Cliente', icon: Building2, cls: 'bg-red-500', on: 'bg-red-500 text-white border-red-600 shadow-sm', off: 'hover:bg-red-50 hover:text-red-600 hover:border-red-200', hint: 'Demoras, recaudos, adecuaciones o disponibilidad del comercio' },
@@ -71,6 +71,28 @@ export const MotivoBreakdown = ({ projects, testId }) => {
           </div>
         );
       })}
+    </div>
+  );
+};
+
+// Barra de filtro rápido por Motivo del Avance (con contadores); clic de nuevo quita el filtro.
+export const MotivoFilterBar = ({ projects, value, onChange }) => {
+  const rows = [...MOTIVOS_AVANCE, { key: 'NONE', label: 'Sin motivo', icon: CircleSlash, on: 'bg-slate-600 text-white border-slate-700 shadow-sm', off: 'hover:bg-slate-100 hover:border-slate-300' }];
+  const count = (k) => projects.filter(p => (motivoOf(p) || 'NONE') === k).length;
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2" data-testid="motivo-filter-bar">
+      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Motivo del Avance:</span>
+      {rows.map(({ key, label, icon: Icon, on, off }) => (
+        <button key={key} type="button" onClick={() => onChange(value === key ? 'all' : key)}
+          data-testid={`motivo-filter-${key}`} data-active={value === key ? 'true' : 'false'}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-[background-color,color,transform] duration-150 active:scale-95 ${value === key ? on : `bg-white text-slate-600 border-slate-200 ${off}`}`}>
+          <Icon size={12} />{label}
+          <span className={`rounded-full px-1.5 tabular-nums ${value === key ? 'bg-black/15' : 'bg-slate-100'}`} data-testid={`motivo-filter-count-${key}`}>{count(key)}</span>
+        </button>
+      ))}
+      {value !== 'all' && (
+        <button type="button" onClick={() => onChange('all')} className="text-xs text-slate-500 underline hover:text-slate-800" data-testid="motivo-filter-clear">Quitar filtro</button>
+      )}
     </div>
   );
 };
