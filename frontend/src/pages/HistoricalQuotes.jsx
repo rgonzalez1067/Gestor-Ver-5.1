@@ -250,7 +250,7 @@ export const HistoricalQuotes = () => {
                   </td></tr>
                 ) : filtered.map(r => (
                   <tr key={r.history_id} className="border-b border-slate-100 hover:bg-slate-50 text-sm" data-testid={`qh-row-${r.history_id}`}>
-                    <td className="px-4 py-3 font-mono text-xs font-semibold text-blue-600">{r.quote_number}</td>
+                    <td className="px-4 py-3 font-mono text-xs font-semibold text-blue-600">{r.quote_number}{r.admin_closure && <span className="ml-2 rounded border border-amber-300 bg-amber-100 px-1.5 py-0.5 font-sans text-[10px] font-bold text-amber-800" title={`${r.admin_closure.reason} — ${r.admin_closure.closed_by_name}`} data-testid={`hist-admin-close-badge-${r.history_id}`}>CIERRE ADMINISTRATIVO</span>}</td>
                     <td className="px-4 py-3"><ProjectTypeBadge quoteType={r.quote_type} size="xs" /></td>
                     <td className="px-4 py-3">
                       {(() => {

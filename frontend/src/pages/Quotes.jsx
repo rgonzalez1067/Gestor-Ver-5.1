@@ -23,6 +23,7 @@ import { JustificationModal } from '../components/JustificationModal';
 import { QuoteFilters } from '../components/quotes/QuoteFilters';
 import { ModifyQuoteChoiceDialog } from '../components/ModifyQuoteChoiceDialog';
 import { QuotesTable } from '../components/quotes/QuotesTable';
+import { RepairAdminCloseDialog } from '../components/quotes/RepairAdminCloseDialog';
 import { NewQuoteButtons } from '../components/quotes/NewQuoteButtons';
 import { QuotesKpiCards } from '../components/quotes/QuotesKpiCards';
 import { IrregularQuotesBanner } from '../components/quotes/IrregularQuotesBanner';
@@ -303,6 +304,7 @@ export const Quotes = () => {
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   // Estado para RepairDeliveryDialog
   const [repairDeliveryDialogOpen, setRepairDeliveryDialogOpen] = useState(false);
+  const [adminCloseQuoteId, setAdminCloseQuoteId] = useState(null);
   // Estado para RepairCompleteModal
   const [repairCompleteModalOpen, setRepairCompleteModalOpen] = useState(false);
   const [repairCompleteQuoteId, setRepairCompleteQuoteId] = useState(null);
@@ -4576,6 +4578,7 @@ export const Quotes = () => {
             onInvoice={openInvoiceModal}
             onCollect={(id) => handleCollect(id)}
             onDeliver={(id) => checkIrregularAndProceed(id, 'deliver', handleDeliverQuote)}
+            onAdminClose={setAdminCloseQuoteId}
             onSendToImplementation={(id) => checkIrregularAndProceed(id, 'send-to-implementation', handleSendToImplementation)}
             onRepairComplete={(id) => {
               openEmailModal('repair-complete', id);
@@ -4640,6 +4643,7 @@ export const Quotes = () => {
           }} />
 
           {/* Modales secundarios (componente extraído) */}
+          <RepairAdminCloseDialog quoteId={adminCloseQuoteId} onClose={() => setAdminCloseQuoteId(null)} onDone={fetchData} />
           <QuoteModals ctx={{
             pdfPreviewOpen, setPdfPreviewOpen, pdfPreviewUrl, setPdfPreviewUrl, pdfPreviewLoading,
             equipmentWizardOpen, setEquipmentWizardOpen, equipmentWizardMode, setEquipmentWizardMode, equipmentWizardSegment,

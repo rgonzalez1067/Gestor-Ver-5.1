@@ -1,4 +1,4 @@
-import { FileText, Search, X, FolderOpen, MoreHorizontal, RefreshCw, Mail, CheckCircle, Receipt, Banknote, Truck, Send, Trash2, Eye, Wrench, Settings, Package, Landmark, Sparkles, UserCheck } from 'lucide-react';
+import { FileText, Search, X, FolderOpen, MoreHorizontal, RefreshCw, Mail, CheckCircle, Receipt, Banknote, Truck, Send, Trash2, Eye, Wrench, Settings, Package, Landmark, Sparkles, UserCheck, ShieldAlert } from 'lucide-react';
 import { QuoteClientScopeTooltip } from './QuoteClientScopeTooltip';
 import { quoteEntityTree, quoteClientLabel } from './scope/scopeUtils';
 import { formatDateTime, formatDate, formatTime } from '../../utils/dateFormat';
@@ -70,7 +70,7 @@ export const QuotesTable = ({
   actionLoading, canEdit,
   highlightedQuoteNumber,
   onOpenAnexos, onEditQuote, onSendToClient,
-  onApprove, onInvoice, onCollect, onDeliver, onSendToImplementation, onRepairComplete, onConfigure, onDelete,
+  onApprove, onInvoice, onCollect, onDeliver, onAdminClose, onSendToImplementation, onRepairComplete, onConfigure, onDelete,
   onOpenBitacoraFlujo, onOpenFtConfig, onPreassignSerials,
   onAssignClient = () => {}, onSendPreliminary = () => {},
   actionOverrides = {}, customActions = [], currentUserId = '', currentUserEmail = '', currentUserCargo = '', currentUserRole = '', onCustomAction,
@@ -681,6 +681,11 @@ export const QuotesTable = ({
                             <Truck size={16} className="mr-2 text-teal-500" /> Marcar como Entregada
                             {quote.delivered_at && <span className="ml-auto text-xs text-teal-500">&#10003;</span>}
                             {!quote.delivered_at && quote.quote_status === 'Pagada' && <span className="ml-auto text-xs text-teal-500">&#x25CF;</span>}
+                          </DropdownMenuItem>
+                        )}
+                        {isRepair && onAdminClose && (currentUserRole || '').toLowerCase() === 'admin' && ['Pagada', 'Pagado'].includes(quote.quote_status) && !quote.entrega_completa && (
+                          <DropdownMenuItem onSelect={() => onAdminClose(quote.quote_id)} className="cursor-pointer text-amber-700" data-testid={`admin-close-btn-${quote.quote_id}`}>
+                            <ShieldAlert size={16} className="mr-2 text-amber-600" /> Cierre Administrativo
                           </DropdownMenuItem>
                         )}
                         {canEditNonConfig && (isEquipment || isRepair || isFastTrack) && renderAnchoredCustomActions(quote, 'deliver', customByAnchor)}

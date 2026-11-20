@@ -151,6 +151,7 @@ async def archive_quote_to_history(quote_id: str, trigger: str, user: Optional[d
         "quote_category": quote.get("quote_category"),
         "quote_type": quote.get("quote_type"),
         "quote_status_final": quote.get("quote_status"),
+        "admin_closure": quote.get("admin_closure"),
         "client_id": quote.get("client_id"),
         "client_name": quote.get("client_name"),
         "subtotal_usd": quote.get("subtotal_usd"),
