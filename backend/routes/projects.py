@@ -1863,6 +1863,12 @@ async def _send_sequential_notification(project_id: str, target: str, bank_name:
     # se adjuntan al correo saliente.
     saved_files = []
     email_attachments = None
+    download_links = []
+    if extra_attachments:
+        from routes.download_links import split_link_only_attachments
+        extra_attachments, links_html, download_links = await split_link_only_attachments(project_id, extra_attachments, user_name)
+        if links_html:
+            html = f"{html}{links_html}"
     if extra_attachments:
         email_attachments = []
         upload_dir = f"/app/backend/uploads/notif_emails/{project_id}"
@@ -1893,6 +1899,7 @@ async def _send_sequential_notification(project_id: str, target: str, bank_name:
 
     # Registrar en historial
     entry = {
+        "download_links": download_links,
         "level": prefix_label,
         "send_number": send_count + 1,
         "sent_at": now,
@@ -2969,7 +2976,12 @@ async def send_adhoc_email(
     email_attachments = []  # {filename, content} para adjuntar al correo
     upload_dir = f"/app/backend/uploads/adhoc_emails/{project_id}"
     os.makedirs(upload_dir, exist_ok=True)
+    from routes.download_links import is_link_only, split_link_only_attachments
+    link_only = []
     for f in files:
+        if f.filename and is_link_only(f.filename):
+            link_only.append({"filename": f.filename, "content": await f.read()})
+            continue
         if f.filename:
             safe_name = f"{uuid.uuid4().hex[:8]}_{f.filename}"
             file_path = os.path.join(upload_dir, safe_name)
@@ -3006,6 +3018,10 @@ async def send_adhoc_email(
 
     # Process base64 images → upload to storage
     html = await _replace_base64_images(html, current_user.get("user_id", "system"))
+    download_links = []
+    if link_only:
+        _, links_html, download_links = await split_link_only_attachments(project_id, link_only, user_name)
+        html = f"{html}{links_html}"
 
     email_result = await send_email(
         to=to_list,
@@ -3038,6 +3054,7 @@ async def send_adhoc_email(
             "message": _html_to_plaintext(html),
             "html_content": html,
             "attachments": saved_files,
+            "download_links": download_links,
             "has_matrix": bool(matrix_html.strip()),
             "sent_at": now,
         }

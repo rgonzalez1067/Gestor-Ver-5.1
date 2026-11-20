@@ -776,8 +776,9 @@ const ProjectDetail = () => {
 
   const handleNotifFileSelect = (e) => {
     const picked = Array.from(e.target.files || []);
-    const tooBig = picked.filter(f => /\.eml$/i.test(f.name) && f.size > 15 * 1024 * 1024);
-    if (tooBig.length) toast.error(`Correo .eml supera 15 MB: ${tooBig.map(f => f.name).join(', ')}`);
+    const tooBig = picked.filter(f => (/\.eml$/i.test(f.name) && f.size > 15 * 1024 * 1024) || (/\.exe$/i.test(f.name) && f.size > 50 * 1024 * 1024));
+    if (tooBig.length) toast.error(`Supera el tamaño máximo (.eml 15 MB · .exe 50 MB): ${tooBig.map(f => f.name).join(', ')}`);
+    if (picked.some(f => /\.exe$/i.test(f.name))) toast.info('Los archivos .exe se enviarán como enlace de descarga (válido por 30 días)');
     setNotifFiles(prev => [...prev, ...picked.filter(f => !tooBig.includes(f))]);
     e.target.value = '';
   };
@@ -847,8 +848,9 @@ const ProjectDetail = () => {
 
   const handleFileSelect = (e) => {
     const picked = Array.from(e.target.files || []);
-    const tooBig = picked.filter(f => /\.eml$/i.test(f.name) && f.size > 15 * 1024 * 1024);
-    if (tooBig.length) toast.error(`Correo .eml supera 15 MB: ${tooBig.map(f => f.name).join(', ')}`);
+    const tooBig = picked.filter(f => (/\.eml$/i.test(f.name) && f.size > 15 * 1024 * 1024) || (/\.exe$/i.test(f.name) && f.size > 50 * 1024 * 1024));
+    if (tooBig.length) toast.error(`Supera el tamaño máximo (.eml 15 MB · .exe 50 MB): ${tooBig.map(f => f.name).join(', ')}`);
+    if (picked.some(f => /\.exe$/i.test(f.name))) toast.info('Los archivos .exe se enviarán como enlace de descarga (válido por 30 días)');
     setEmailFiles(prev => [...prev, ...picked.filter(f => !tooBig.includes(f))]);
     e.target.value = '';
   };
@@ -2597,7 +2599,7 @@ const ProjectDetail = () => {
                       <div className="bg-white rounded-lg p-3 border border-slate-200 mb-3" data-testid="notif-attachments-panel">
                         <p className="text-[10px] font-semibold text-slate-400 uppercase mb-1.5">Adjuntos y Matriz de Distribución</p>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <input ref={notifFileInputRef} type="file" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.txt,.eml" className="hidden" onChange={handleNotifFileSelect} />
+                          <input ref={notifFileInputRef} type="file" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.eml,.exe" className="hidden" onChange={handleNotifFileSelect} />
                           <Button variant="outline" size="sm" onClick={() => notifFileInputRef.current?.click()} className="text-xs gap-1.5" data-testid="notif-attach-files-btn"><Paperclip size={14} />Cargar Archivos</Button>
                           <Button variant="outline" size="sm" onClick={() => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/jpeg,image/png'; i.multiple = true; i.onchange = (ev) => setNotifFiles(prev => [...prev, ...Array.from(ev.target.files || [])]); i.click(); }}
                             className="text-xs gap-1.5" data-testid="notif-attach-images-btn"><Image size={14} />Cargar Imágenes</Button>
@@ -2894,7 +2896,7 @@ const ProjectDetail = () => {
                 <div className="bg-white rounded-lg p-3 border border-slate-200 mb-3">
                   <p className="text-[10px] font-semibold text-slate-400 uppercase mb-1.5">Adjuntos y Matriz de Distribución</p>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <input ref={fileInputRef} type="file" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.txt,.eml" className="hidden" onChange={handleFileSelect} />
+                    <input ref={fileInputRef} type="file" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.eml,.exe" className="hidden" onChange={handleFileSelect} />
                     <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="text-xs gap-1.5" data-testid="attach-files-btn"><Paperclip size={14} />Cargar Archivos</Button>
                     <Button variant="outline" size="sm" onClick={() => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/jpeg,image/png'; i.multiple = true; i.onchange = (ev) => setEmailFiles(prev => [...prev, ...Array.from(ev.target.files || [])]); i.click(); }}
                       className="text-xs gap-1.5" data-testid="attach-images-btn"><Image size={14} />Cargar Imágenes</Button>
