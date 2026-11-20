@@ -774,7 +774,13 @@ const ProjectDetail = () => {
     } finally { setNotifSending(null); }
   };
 
-  const handleNotifFileSelect = (e) => { setNotifFiles(prev => [...prev, ...Array.from(e.target.files || [])]); };
+  const handleNotifFileSelect = (e) => {
+    const picked = Array.from(e.target.files || []);
+    const tooBig = picked.filter(f => /\.eml$/i.test(f.name) && f.size > 15 * 1024 * 1024);
+    if (tooBig.length) toast.error(`Correo .eml supera 15 MB: ${tooBig.map(f => f.name).join(', ')}`);
+    setNotifFiles(prev => [...prev, ...picked.filter(f => !tooBig.includes(f))]);
+    e.target.value = '';
+  };
   const removeNotifFile = (idx) => setNotifFiles(prev => prev.filter((_, i) => i !== idx));
 
   // ==================== OTRAS NOTIFICACIONES (AD-HOC) ====================
@@ -839,7 +845,13 @@ const ProjectDetail = () => {
     }
   };
 
-  const handleFileSelect = (e) => { setEmailFiles(prev => [...prev, ...Array.from(e.target.files || [])]); };
+  const handleFileSelect = (e) => {
+    const picked = Array.from(e.target.files || []);
+    const tooBig = picked.filter(f => /\.eml$/i.test(f.name) && f.size > 15 * 1024 * 1024);
+    if (tooBig.length) toast.error(`Correo .eml supera 15 MB: ${tooBig.map(f => f.name).join(', ')}`);
+    setEmailFiles(prev => [...prev, ...picked.filter(f => !tooBig.includes(f))]);
+    e.target.value = '';
+  };
   const removeFile = (idx) => setEmailFiles(prev => prev.filter((_, i) => i !== idx));
 
   const generateMatrixHTML = () => {
@@ -2107,12 +2119,12 @@ const ProjectDetail = () => {
                   const enabled = canAlDia && bitacoraFiles.length > 0;
                   return (
                     <label className={`flex items-center gap-2 text-sm ${enabled ? 'text-slate-800 cursor-pointer' : 'text-slate-400 cursor-not-allowed'}`}
-                      title={!canAlDia ? 'Solo el implementador asignado o un administrador' : !bitacoraFiles.length ? 'Adjunte al menos una imagen o PDF de respaldo para habilitar' : ''}>
+                      title={!canAlDia ? 'Solo el implementador asignado o un administrador' : !bitacoraFiles.length ? 'Adjunte al menos una imagen, PDF o correo .eml de respaldo para habilitar' : ''}>
                       <Checkbox checked={bitacoraAlDia} disabled={!enabled} onCheckedChange={(v) => setBitacoraAlDia(!!v)} data-testid="bitacora-al-dia-checkbox" />
                       Actualizar estado de avance del proyecto a:
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700"><span className="h-2 w-2 rounded-full bg-emerald-500" />AL DÍA</span>
                       {!canAlDia && <span className="text-[11px]">(solo implementador asignado / admin)</span>}
-                      {canAlDia && !bitacoraFiles.length && <span className="text-[11px]">(requiere imagen o PDF adjunto)</span>}
+                      {canAlDia && !bitacoraFiles.length && <span className="text-[11px]">(requiere imagen, PDF o correo adjunto)</span>}
                     </label>
                   );
                 })()}
@@ -2585,7 +2597,7 @@ const ProjectDetail = () => {
                       <div className="bg-white rounded-lg p-3 border border-slate-200 mb-3" data-testid="notif-attachments-panel">
                         <p className="text-[10px] font-semibold text-slate-400 uppercase mb-1.5">Adjuntos y Matriz de Distribución</p>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <input ref={notifFileInputRef} type="file" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.txt" className="hidden" onChange={handleNotifFileSelect} />
+                          <input ref={notifFileInputRef} type="file" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.txt,.eml" className="hidden" onChange={handleNotifFileSelect} />
                           <Button variant="outline" size="sm" onClick={() => notifFileInputRef.current?.click()} className="text-xs gap-1.5" data-testid="notif-attach-files-btn"><Paperclip size={14} />Cargar Archivos</Button>
                           <Button variant="outline" size="sm" onClick={() => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/jpeg,image/png'; i.multiple = true; i.onchange = (ev) => setNotifFiles(prev => [...prev, ...Array.from(ev.target.files || [])]); i.click(); }}
                             className="text-xs gap-1.5" data-testid="notif-attach-images-btn"><Image size={14} />Cargar Imágenes</Button>
@@ -2882,7 +2894,7 @@ const ProjectDetail = () => {
                 <div className="bg-white rounded-lg p-3 border border-slate-200 mb-3">
                   <p className="text-[10px] font-semibold text-slate-400 uppercase mb-1.5">Adjuntos y Matriz de Distribución</p>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <input ref={fileInputRef} type="file" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.txt" className="hidden" onChange={handleFileSelect} />
+                    <input ref={fileInputRef} type="file" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.txt,.eml" className="hidden" onChange={handleFileSelect} />
                     <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="text-xs gap-1.5" data-testid="attach-files-btn"><Paperclip size={14} />Cargar Archivos</Button>
                     <Button variant="outline" size="sm" onClick={() => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/jpeg,image/png'; i.multiple = true; i.onchange = (ev) => setEmailFiles(prev => [...prev, ...Array.from(ev.target.files || [])]); i.click(); }}
                       className="text-xs gap-1.5" data-testid="attach-images-btn"><Image size={14} />Cargar Imágenes</Button>

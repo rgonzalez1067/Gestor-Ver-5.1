@@ -6,8 +6,9 @@ const FILTERS = [
   { key: 'all', label: 'Todo' },
   { key: 'image', label: 'Imágenes' },
   { key: 'pdf', label: 'PDF' },
+  { key: 'email', label: 'Correos' },
 ];
-const isPdf = (ev) => ev.content_type === 'application/pdf';
+const kindOf = (ev) => (ev.content_type === 'application/pdf' ? 'pdf' : ev.content_type === 'message/rfc822' ? 'email' : 'image');
 
 // Galería: todas las imágenes y PDF adjuntos en la Bitácora del proyecto.
 export const ProjectGallery = ({ projectId, bitacora }) => {
@@ -15,8 +16,8 @@ export const ProjectGallery = ({ projectId, bitacora }) => {
   const [open, setOpen] = useState(null);
   const items = useMemo(() => [...(bitacora || [])].reverse().flatMap(entry =>
     (entry.evidence || []).map(ev => ({ ev, entry }))), [bitacora]);
-  const counts = { all: items.length, image: items.filter(i => !isPdf(i.ev)).length, pdf: items.filter(i => isPdf(i.ev)).length };
-  const shown = items.filter(i => filter === 'all' || (filter === 'pdf') === isPdf(i.ev));
+  const counts = Object.fromEntries(FILTERS.map(f => [f.key, f.key === 'all' ? items.length : items.filter(i => kindOf(i.ev) === f.key).length]));
+  const shown = items.filter(i => filter === 'all' || kindOf(i.ev) === filter);
 
   return (
     <div data-testid="project-gallery">

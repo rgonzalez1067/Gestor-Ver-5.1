@@ -2754,9 +2754,10 @@ async def remove_implementation_serial(project_id: str, serial: str, authorizati
 
 # ==================== BITÁCORA ====================
 
-EVIDENCE_EXTS = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp", "pdf": "application/pdf"}
+EVIDENCE_EXTS = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp", "pdf": "application/pdf", "eml": "message/rfc822"}
 EVIDENCE_MAX_BYTES = 5 * 1024 * 1024
 EVIDENCE_PDF_MAX_BYTES = 10 * 1024 * 1024
+EVIDENCE_EML_MAX_BYTES = 15 * 1024 * 1024
 EVIDENCE_MAX_PER_ENTRY = 5
 
 
@@ -2767,10 +2768,17 @@ async def upload_bitacora_evidence(project_id: str, file: UploadFile = File(...)
     if not await db.projects.find_one({"project_id": project_id}, {"_id": 0, "project_id": 1}):
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
     ext = (file.filename or "").rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else ""
-    if ext not in EVIDENCE_EXTS or (file.content_type or "") not in EVIDENCE_EXTS.values():
-        raise HTTPException(status_code=400, detail="Formato no permitido. Admitidos: JPG, PNG, WEBP (máx. 5 MB) y PDF (máx. 10 MB)")
+    if ext not in EVIDENCE_EXTS or (ext != "eml" and (file.content_type or "") not in EVIDENCE_EXTS.values()):
+        raise HTTPException(status_code=400, detail="Formato no permitido. Admitidos: JPG, PNG, WEBP (máx. 5 MB), PDF (máx. 10 MB) y correos .eml (máx. 15 MB)")
     data = await file.read()
-    if ext == "pdf":
+    if ext == "eml":
+        from services.eml_parser import load_eml
+        if len(data) > EVIDENCE_EML_MAX_BYTES:
+            raise HTTPException(status_code=400, detail="El correo .eml supera el tamaño máximo de 15 MB")
+        if load_eml(data) is None:
+            raise HTTPException(status_code=400, detail="El archivo no es un correo .eml válido")
+        content_type = "message/rfc822"
+    elif ext == "pdf":
         if len(data) > EVIDENCE_PDF_MAX_BYTES:
             raise HTTPException(status_code=400, detail="El PDF supera el tamaño máximo de 10 MB")
         if not data.startswith(b"%PDF"):
@@ -2816,7 +2824,45 @@ async def get_bitacora_evidence(project_id: str, evidence_id: str, authorization
         logger.error(f"Evidence download failed: {e}")
         raise HTTPException(status_code=500, detail="Error al obtener la imagen")
     return Response(content=data, media_type=rec.get("content_type", ct),
-                    headers={"Content-Disposition": f'inline; filename="{rec.get("filename") or evidence_id}"'})
+                    headers={"Content-Disposition": "inline; filename*=UTF-8''" + __import__("urllib.parse").parse.quote(rec.get("filename") or evidence_id)})
+
+
+async def _load_evidence_bytes(project_id: str, evidence_id: str):
+    rec = await db.bitacora_evidence.find_one({"evidence_id": evidence_id, "project_id": project_id}, {"_id": 0})
+    if not rec:
+        raise HTTPException(status_code=404, detail="Evidencia no encontrada")
+    try:
+        data, _ = get_object(rec["storage_path"])
+    except Exception as e:
+        logger.error(f"Evidence download failed: {e}")
+        raise HTTPException(status_code=500, detail="Error al obtener el archivo")
+    return rec, data
+
+
+@router.get("/projects/{project_id}/bitacora/evidence/{evidence_id}/email")
+async def view_bitacora_email(project_id: str, evidence_id: str, authorization: Optional[str] = Header(None)):
+    """Devuelve el contenido legible de un correo .eml adjunto (encabezados, cuerpo y adjuntos)."""
+    from services.eml_parser import eml_summary
+    await get_current_user(authorization)
+    rec, data = await _load_evidence_bytes(project_id, evidence_id)
+    summary = eml_summary(data) if rec.get("content_type") == "message/rfc822" else None
+    if summary is None:
+        raise HTTPException(status_code=400, detail="La evidencia no es un correo .eml válido")
+    return summary
+
+
+@router.get("/projects/{project_id}/bitacora/evidence/{evidence_id}/email/attachments/{index}")
+async def download_bitacora_email_attachment(project_id: str, evidence_id: str, index: int, authorization: Optional[str] = Header(None)):
+    from services.eml_parser import eml_attachment
+    await get_current_user(authorization)
+    _, data = await _load_evidence_bytes(project_id, evidence_id)
+    found = eml_attachment(data, index)
+    if not found:
+        raise HTTPException(status_code=404, detail="Adjunto no encontrado en el correo")
+    filename, ctype, payload = found
+    from urllib.parse import quote as _q
+    return Response(content=payload, media_type=ctype if ctype != "application/octet-stream" or not filename.lower().endswith(".pdf") else "application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename*=UTF-8''{_q(filename)}"})
 
 
 @router.post("/projects/{project_id}/bitacora")
@@ -2842,7 +2888,7 @@ async def add_bitacora_entry(project_id: str, entry: BitacoraEntry, authorizatio
         if current_user.get("role") != "admin" and current_user.get("user_id") != project.get("assigned_to_user_id"):
             raise HTTPException(status_code=403, detail="Solo el implementador asignado o un administrador puede poner el proyecto Al día")
         if not evidence:
-            raise HTTPException(status_code=400, detail="Para poner el proyecto Al día debe adjuntar al menos una imagen o PDF de respaldo")
+            raise HTTPException(status_code=400, detail="Para poner el proyecto Al día debe adjuntar al menos una imagen, PDF o correo .eml de respaldo")
 
     now = datetime.now(timezone.utc).isoformat()
     user_name = f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip()

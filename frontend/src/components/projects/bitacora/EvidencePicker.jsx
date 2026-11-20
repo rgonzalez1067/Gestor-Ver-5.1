@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { ImagePlus, X, FileText } from 'lucide-react';
+import { ImagePlus, X, FileText, Mail } from 'lucide-react';
 
-export const EVIDENCE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
+export const EVIDENCE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf', 'message/rfc822'];
 export const EVIDENCE_MAX_FILES = 5;
-const maxMb = (type) => (type === 'application/pdf' ? 10 : 5);
-const RULES = 'Imágenes JPG, PNG, WEBP (máx. 5 MB) · PDF (máx. 10 MB) · Hasta 5 archivos';
+const EML = 'message/rfc822';
+const maxMb = (type) => (type === EML ? 15 : type === 'application/pdf' ? 10 : 5);
+// Los navegadores suelen no reconocer el tipo de los .eml: se normaliza por extensión.
+const normalize = (f) => (/\.eml$/i.test(f.name || '') && f.type !== EML ? new File([f], f.name, { type: EML }) : f);
+const RULES = 'Imágenes JPG, PNG, WEBP (máx. 5 MB) · PDF (máx. 10 MB) · Correos .eml (máx. 15 MB) · Hasta 5 archivos';
 
 // Valida y agrega archivos (selector, arrastrar o Ctrl+V) respetando límites.
 export const addEvidenceFiles = (incoming, current, setFiles) => {
   const ok = [];
-  for (const f of incoming) {
+  for (const raw of incoming) {
+    const f = normalize(raw);
     if (!EVIDENCE_TYPES.includes(f.type)) { toast.error(`"${f.name || 'archivo'}" no permitido. ${RULES}`); continue; }
     if (f.size > maxMb(f.type) * 1024 * 1024) { toast.error(`"${f.name || 'archivo'}" supera ${maxMb(f.type)} MB. ${RULES}`); continue; }
     ok.push(f.name ? f : new File([f], `captura_${Date.now()}.png`, { type: f.type }));
@@ -29,25 +33,29 @@ export const EvidencePicker = ({ files, setFiles, disabled }) => {
 
   return (
     <div data-testid="bitacora-evidence-picker">
-      <label className="text-xs font-medium text-slate-600">Evidencia (Captura de Correo, Imagen o PDF de Soporte)</label>
+      <label className="text-xs font-medium text-slate-600">Evidencia (Captura, PDF o Correo .eml de Soporte)</label>
       <div tabIndex={0} onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={onDrop}
         className={`mt-1 flex flex-wrap items-center gap-3 rounded-lg border-2 border-dashed px-3 py-2.5 text-xs outline-none transition-colors focus:border-brand-green-500 ${drag ? 'border-brand-green-500 bg-brand-green-50' : 'border-slate-300 bg-white'}`}
         data-testid="bitacora-evidence-dropzone">
         <button type="button" disabled={disabled || files.length >= EVIDENCE_MAX_FILES} onClick={() => inputRef.current?.click()}
           className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
           data-testid="bitacora-evidence-select-btn">
-          <ImagePlus size={14} />Seleccionar imagen o PDF
+          <ImagePlus size={14} />Seleccionar imagen, PDF o correo
         </button>
         <span className="text-slate-500">o arrastre y suelte aquí · pegue con <kbd className="rounded border bg-slate-100 px-1 font-mono">Ctrl+V</kbd></span>
         <span className="w-full text-[11px] text-slate-400">{RULES}</span>
-        <input ref={inputRef} type="file" accept="image/png, image/jpeg, image/webp, application/pdf" multiple hidden
+        <input ref={inputRef} type="file" accept="image/png, image/jpeg, image/webp, application/pdf, .eml, message/rfc822" multiple hidden
           onChange={(e) => { addEvidenceFiles([...e.target.files], files, setFiles); e.target.value = ''; }} data-testid="bitacora-evidence-input" />
       </div>
       {files.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2" data-testid="bitacora-evidence-previews">
           {files.map((f, i) => (
             <div key={previews[i]} className="relative h-16 w-24 overflow-hidden rounded-md border border-slate-200 bg-slate-100" data-testid={`bitacora-evidence-preview-${i}`}>
-              {f.type === 'application/pdf' ? (
+              {f.type === EML ? (
+                <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 bg-indigo-50 px-1 text-indigo-600">
+                  <Mail size={18} /><span className="w-full truncate text-center text-[9px]">{f.name}</span>
+                </div>
+              ) : f.type === 'application/pdf' ? (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 bg-red-50 px-1 text-red-600">
                   <FileText size={18} /><span className="w-full truncate text-center text-[9px]">{f.name}</span>
                 </div>

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import api from '../../../utils/api';
 import { Dialog, DialogContent, DialogTitle } from '../../ui/dialog';
-import { Download, ZoomIn, ZoomOut, Zap, Loader2, FileText } from 'lucide-react';
+import { Download, ZoomIn, ZoomOut, Zap, Loader2, FileText, Mail } from 'lucide-react';
+import { EmailViewer } from './EmailViewer';
 
 const cache = new Map();
 const useEvidenceUrl = (projectId, ev) => {
@@ -20,6 +21,25 @@ const useEvidenceUrl = (projectId, ev) => {
 
 export const Thumb = ({ projectId, ev, onOpen, big }) => {
   const size = big ? 'h-32 w-full' : 'h-14 w-20';
+  if (ev.content_type === 'message/rfc822') return <EmailThumb projectId={projectId} ev={ev} size={size} big={big} />;
+  return <FileThumb projectId={projectId} ev={ev} onOpen={onOpen} big={big} size={size} />;
+};
+
+const EmailThumb = ({ projectId, ev, size, big }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} title={ev.filename}
+        className={`flex ${size} flex-col items-center justify-center gap-0.5 rounded-md border border-indigo-200 bg-indigo-50 px-1 text-indigo-600 transition-transform hover:scale-105 hover:shadow`}
+        data-testid={`${big ? 'gallery' : 'bitacora-evidence'}-thumb-${ev.evidence_id}`}>
+        <Mail size={18} /><span className="w-full truncate text-center text-[9px]">{ev.filename}</span>
+      </button>
+      {open && <EmailViewer projectId={projectId} ev={ev} onClose={() => setOpen(false)} />}
+    </>
+  );
+};
+
+const FileThumb = ({ projectId, ev, onOpen, big, size }) => {
   const url = useEvidenceUrl(projectId, ev);
   if (ev.content_type === 'application/pdf') return (
     <button type="button" onClick={() => url && window.open(url, '_blank')} title={ev.filename}
