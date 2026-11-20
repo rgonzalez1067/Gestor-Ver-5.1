@@ -19,7 +19,7 @@ import {
   FileText, Send, Calendar, User, Store, Bell, BellRing, Lock, BarChart3, Mail,
   Plus, X, Paperclip, Image, Ticket, ChevronDown, Eye, Megaphone, ClipboardList,
   Hash, Trash2, AlertCircle, Shield, Edit3, Copy, ImagePlus, Server, Network, Edit2, Layers, FileBarChart, Flag, Landmark, FileDown, TrendingUp, Star, Download,
-  Loader2,
+  Loader2, RefreshCw,
 } from 'lucide-react';
 
 import { SingleBankSection } from '../components/projects/SingleBankSection';
@@ -42,6 +42,7 @@ import { MotivoAvanceSelector } from '../components/projects/MotivoAvance';
 import { EvidencePicker, addEvidenceFiles } from '../components/projects/bitacora/EvidencePicker';
 import { EntryEvidence } from '../components/projects/bitacora/EvidenceGallery';
 import { ProjectGallery } from '../components/projects/bitacora/ProjectGallery';
+import { ProjectStatusDialog, STATUS_CONFIG } from '../components/projects/ProjectStatusDialog';
 
 const ProjectDetail = () => {
   const { projectId } = useParams();
@@ -56,6 +57,7 @@ const ProjectDetail = () => {
   const [bitacoraFiles, setBitacoraFiles] = useState([]);
   const [bitacoraAlDia, setBitacoraAlDia] = useState(false);
   const [bitacoraTab, setBitacoraTab] = useState('list');
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [progressReportOpen, setProgressReportOpen] = useState(false);
   const [selectedStoreId, setSelectedStoreId] = useState(null);
 
@@ -1244,6 +1246,7 @@ const ProjectDetail = () => {
   return (
     <div className="flex min-h-screen bg-white">
       <Sidebar />
+      <ProjectStatusDialog project={project} open={statusDialogOpen} onOpenChange={setStatusDialogOpen} onChanged={fetchProject} />
       <main className="flex-1 p-8" data-testid="project-detail-page">
         <div className="max-w-7xl mx-auto">
           <Button variant="ghost" onClick={() => navigate('/projects')} className="mb-4 text-slate-600">
@@ -1256,15 +1259,13 @@ const ProjectDetail = () => {
             <div className="flex items-start justify-between mb-5 gap-4">
               <h1 className="text-2xl font-bold text-slate-900" data-testid="project-title">Detalle para Implementación del Proyecto</h1>
               <div className="flex flex-col items-end gap-2 shrink-0">
-                <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium border ${
-                  project.status === 'Por asignar' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                  project.status === 'Asignado' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                  project.status === 'En Gestión' ? 'bg-indigo-100 text-indigo-800 border-indigo-200' :
-                  project.status === 'Configurado en espera del Cliente' ? 'bg-cyan-100 text-cyan-800 border-cyan-200' :
-                  project.status === 'Suspendido' ? 'bg-red-100 text-red-800 border-red-200' :
-                  project.status === 'Implementado parcial' ? 'bg-orange-100 text-orange-800 border-orange-200' :
-                  'bg-emerald-100 text-emerald-800 border-emerald-200'
-                }`} data-testid="project-status">{project.status}</span>
+                <div className="flex items-center gap-2">
+                <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium border ${STATUS_CONFIG[project.status]?.color || 'bg-slate-100 text-slate-700 border-slate-200'}`} data-testid="project-status">{project.status}</span>
+                  <Button size="sm" variant="outline" onClick={() => setStatusDialogOpen(true)} title="Cambiar Estado"
+                    className="h-8 px-2 text-orange-600 hover:bg-orange-50" data-testid="detail-status-btn">
+                    <RefreshCw size={14} className="mr-1" />Cambiar Estado
+                  </Button>
+                </div>
                 {project.tipologia_proyecto && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full bg-teal-100 text-teal-700 border border-teal-200" data-testid="project-tipologia" title={project.patrocinador_nombre ? `Patrocinador: ${project.patrocinador_nombre}` : ''}>
                     {project.tipologia_proyecto}
