@@ -2978,11 +2978,10 @@ async def notify_new_integration_project(
     if not integrator:
         raise HTTPException(status_code=404, detail="Integrador no encontrado")
     
-    # Obtener email del Gerente de Implementación desde configuración
+    # Destinatarios: los define "Configuración de otras Acciones"; el Gerente de
+    # Implementación solo se usa como respaldo si la acción no está configurada.
     config = await db.config.find_one({"type": "app_settings"}, {"_id": 0})
     impl_manager_email = config.get("implementation_manager_email") if config else None
-    if not impl_manager_email:
-        raise HTTPException(status_code=400, detail="No hay correo de Gerente de Implementación configurado en Configuración > Correos de Notificación")
     
     # Obtener primer contacto técnico como responsable
     contacts = integrator.get("contacts", [])
@@ -3099,8 +3098,10 @@ async def notify_new_integration_project(
         subject = subject.replace(f"{{{key}}}", val)
     
     # Destinatarios (fallback legacy)
-    recipients = [impl_manager_email]
-    cc_list = list(extra_cc)
+    recipients = [impl_manager_email] if impl_manager_email else list(extra_cc)
+    cc_list = list(extra_cc) if impl_manager_email else []
+    if not recipients:
+        raise HTTPException(status_code=400, detail="La acción 'Nuevo Proyecto de Integración' no tiene destinatarios: configúrelos en Configuración de otras Acciones")
     
     try:
         from services.email_service import send_email, resolve_sender_for_area
@@ -3113,6 +3114,6 @@ async def notify_new_integration_project(
             sender=await resolve_sender_for_area("integradores"),
             cc=cc_list or None,
         )
-        return {"message": f"Notificacion enviada a {impl_manager_email}" + (f" y {len(cc_list)} destinatario(s) en copia" if cc_list else ""), "sent_to": recipients, "cc": cc_list}
+        return {"message": f"Notificacion enviada a {', '.join(recipients)}" + (f" y {len(cc_list)} destinatario(s) en copia" if cc_list else ""), "sent_to": recipients, "cc": cc_list}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al enviar correo: {str(e)}")

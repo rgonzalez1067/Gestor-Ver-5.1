@@ -4856,3 +4856,7 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Asistente: "Tipo de Integrador" (Integrador/Comercio) siempre seleccionable (antes bloqueado para integradores existentes). "Tipo de Integración" (CR/LP/PG/MP/TK) sin cambios.
 - ContactRoleSelect (components/integrators/ContactRoleSelect.jsx): roles fijos Contacto Principal, Responsable Técnico, Contacto Administrativo, Comercial en Reel Corporativo, Reel de Técnicos de Proyectos y filas nuevas del asistente; roles previos fuera de lista se conservan. QA iter389 100%.
 - Backlog: resetear contactos del asistente al cambiar de integrador; ruta 404 genérica.
+
+### Ajuste Nov 2026: Rol "Contacto Comercial" y notificación de Nuevo Proyecto de Integración
+- Rol "Comercial" → "Contacto Comercial" (ContactRoleSelect).
+- POST /integrators/{id}/notify-new-project ya no exige el correo del Gerente de Implementación: los destinatarios salen de Configuración de otras Acciones; el Gerente solo es respaldo si la acción no está configurada (si no hay ninguno → error claro).

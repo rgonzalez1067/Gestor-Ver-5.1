@@ -1,4 +1,4 @@
-export const CONTACT_ROLES = ['Contacto Principal', 'Responsable Técnico', 'Contacto Administrativo', 'Comercial'];
+export const CONTACT_ROLES = ['Contacto Principal', 'Responsable Técnico', 'Contacto Administrativo', 'Contacto Comercial'];
 
 // Rol fijo; si el contacto trae un rol anterior fuera de la lista se conserva como opción.
 export const ContactRoleSelect = ({ value, onChange, className = '', testId }) => (
