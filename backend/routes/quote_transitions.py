@@ -188,6 +188,7 @@ async def _create_project_from_quote(
         "banks": banks,
         "integrator_name": quote.get("integrator_name"),
         "integrator_app_name": quote.get("integrator_app_name"),
+        "integrator_id": quote.get("integrator_id") if quote.get("integrator_id") != "sin_integrador" else None,
         "pinpad_model": quote.get("pinpad_model"),
         "sponsor_bank_name": quote.get("sponsor_bank_name"),
         # Nota de provisión de seriales por un tercero (Infraestructura/Cliente/Banco).

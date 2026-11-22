@@ -115,6 +115,13 @@ async def _on_startup():
     except Exception as e:
         logging.warning(f"[startup] migrate_integration_modalities failed: {e}")
     try:
+        from services.integrator_companies import link_orphan_integrators
+        linked = await link_orphan_integrators()
+        if linked:
+            logging.info(f"[startup] empresas_integradoras: {linked} aplicativos vinculados")
+    except Exception as e:
+        logging.warning(f"[startup] link_orphan_integrators failed: {e}")
+    try:
         from services.security_policy import ensure_initial_setup
         await ensure_initial_setup()
         from config import ensure_sin_rif_client
@@ -389,6 +396,8 @@ api_router.include_router(commercial_categories_router)
 api_router.include_router(quotes_router)
 api_router.include_router(attachments_router)
 api_router.include_router(integrators_router)
+from routes.integrator_companies import router as integrator_companies_router
+api_router.include_router(integrator_companies_router)
 api_router.include_router(settings_router)
 api_router.include_router(projects_router)  # Projects router before seed_templates to allow new email-templates CRUD routes
 api_router.include_router(seed_templates_router)

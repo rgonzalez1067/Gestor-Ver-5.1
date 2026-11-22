@@ -17,7 +17,7 @@ import os
 import uuid
 from datetime import datetime
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://crm-cotizaciones--8cp564n9.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://gestor-proyectos-4--5tifwbuw.preview.emergentagent.com')
 
 class TestFastTrackFlow:
     """Test the complete Fast Track quote flow"""

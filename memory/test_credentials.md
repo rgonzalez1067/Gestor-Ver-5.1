@@ -1,3 +1,6 @@
+## QA — Empresas Integradoras (Nov 2026) — USAR ESTE ADMIN PARA QA
+- qa.integradores@megasoft.com.ve / QaIntegr2026*Ok  (role admin, must_change_password=False). Login devuelve `session_token`.
+
 ## ⚠️ POLÍTICA DE SEGURIDAD ACTIVA (Jun 2026) — LEER PRIMERO
 - Todos los usuarios quedaron con `must_change_password=True` (cambio forzado único). Login devuelve {status:"PASSWORD_EXPIRED", change_token} → POST /api/auth/expired-password/change {change_token,new_password}.
 - Contraseña: mínimo 12, mayúscula, minúscula, número y especial; historial 5; 5 intentos → bloqueo 15 min (423); 2FA por correo apagado por defecto.

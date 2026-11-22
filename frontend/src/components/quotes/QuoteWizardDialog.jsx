@@ -969,7 +969,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                         <div>
                           <Label className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                             <Users size={14} className="text-brand-blue-600" />
-                            Integrador {!isMPOS && <span className="text-red-500">*</span>}
+                            Empresa Integradora {!isMPOS && <span className="text-red-500">*</span>}
                             {isMPOS && <span className="text-slate-400 text-xs font-normal">(Opcional)</span>}
                           </Label>
                           <Select
@@ -977,7 +977,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                             onValueChange={onSelectIntegratorName}
                           >
                             <SelectTrigger data-testid="select-integrator">
-                              <SelectValue placeholder="Seleccione integrador..." />
+                              <SelectValue placeholder="Seleccione empresa integradora..." />
                             </SelectTrigger>
                             <SelectContent className="max-h-[280px]">
                               <div className="px-2 pb-2 sticky top-0 bg-white z-10">
@@ -1015,7 +1015,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                         {/* Campo Aplicativo (cascada): 1 app = auto/bloqueado; 2+ = drop-list */}
                         <div>
                           <Label className="text-sm font-medium text-slate-700 mb-2 block">
-                            Aplicativo Certificado
+                            Aplicativo / Integración
                             {selectedName && selectedName !== 'sin_integrador' && appsForIntegrator.length > 0 && (
                               <span className="text-amber-600 text-xs font-normal ml-1">({appsForIntegrator.length})</span>
                             )}
@@ -1038,7 +1038,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                             <div className="h-10 px-3 py-2 bg-slate-100 border border-slate-200 rounded-md flex items-center" data-testid="select-integrator-app-locked">
                               <span className={`text-sm ${quoteData.integrator_app_name ? 'text-slate-900 font-medium' : 'text-slate-400'}`}>
                                 {quoteData.integrator_app_name
-                                  || (!selectedName ? 'Se completa al seleccionar integrador' : 'Sin apps registradas')}
+                                  || (!selectedName ? 'Se completa al seleccionar la empresa integradora' : 'Sin apps registradas')}
                               </span>
                             </div>
                           )}

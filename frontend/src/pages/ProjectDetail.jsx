@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import api from '../utils/api';
@@ -43,6 +43,7 @@ import { EvidencePicker, addEvidenceFiles } from '../components/projects/bitacor
 import { EntryEvidence } from '../components/projects/bitacora/EvidenceGallery';
 import { ProjectGallery } from '../components/projects/bitacora/ProjectGallery';
 import { ProjectStatusDialog, STATUS_CONFIG } from '../components/projects/ProjectStatusDialog';
+import { ProjectTechniciansCard } from '../components/projects/ProjectTechniciansCard';
 
 const ProjectDetail = () => {
   const { projectId } = useParams();
@@ -249,6 +250,7 @@ const ProjectDetail = () => {
   const [editingIntegrator, setEditingIntegrator] = useState(false);
   const [integratorName, setIntegratorName] = useState('');
   const [applicationName, setApplicationName] = useState('');
+  const [integratorId, setIntegratorId] = useState('');
   const [integratorsList, setIntegratorsList] = useState([]);
   const [boxCount, setBoxCount] = useState(0);
   const [fechaProduccion, setFechaProduccion] = useState('');
@@ -268,6 +270,7 @@ const ProjectDetail = () => {
     if (project) {
       setIntegratorName(project.integrator_name || '');
       setApplicationName(project.integrator_app_name || project.application_name || '');
+      setIntegratorId(project.integrator_id || '');
       setBoxCount(project.box_count || project.cantidad_cajas || 0);
       setFechaProduccion((project.fecha_estimada_produccion || '').slice(0, 10));
     }
@@ -275,8 +278,11 @@ const ProjectDetail = () => {
 
   // Cargar lista de integradores para el selector
   useEffect(() => {
-    api.get('/integrators').then(r => setIntegratorsList(r.data || [])).catch(() => {});
+    api.get('/integrators', { params: { show_all: true } }).then(r => setIntegratorsList(r.data || [])).catch(() => {});
   }, []);
+  const companyNames = useMemo(() => Array.from(new Set(integratorsList.map(i => i.name).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })), [integratorsList]);
+  const companyApps = useMemo(() => integratorsList.filter(i => i.name === integratorName), [integratorsList, integratorName]);
 
   // Permisos: determinar si el usuario actual puede editar
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -344,6 +350,8 @@ const ProjectDetail = () => {
       await api.put(`/projects/${projectId}/implementation-fields`, {
         integrator_name: integratorName,
         integrator_app_name: applicationName,
+        integrator_id: integratorName === 'Stand Alone' ? null : (integratorId || null),
+        empresa_integradora_id: integratorsList.find(i => i.integrator_id === integratorId)?.empresa_integradora_id || null,
         box_count: boxCount,
       });
       toast.success('Campos actualizados');
@@ -1468,36 +1476,38 @@ const ProjectDetail = () => {
                 {editingIntegrator ? (
                   <div className="space-y-2 pb-2 border-b border-slate-100">
                     <div>
-                      <p className="text-xs text-slate-500 mb-1">Integrador</p>
+                      <p className="text-xs text-slate-500 mb-1">Empresa Integradora</p>
                       <Select value={integratorName} onValueChange={(v) => {
-                        if (v === 'Stand Alone') {
-                          setIntegratorName('Stand Alone');
-                          setApplicationName('');
-                        } else {
-                          const integ = integratorsList.find(i => i.integrator_id === v);
-                          if (integ) {
-                            setIntegratorName(integ.name);
-                            setApplicationName(integ.app_name || '');
-                          }
-                        }
+                        setIntegratorName(v);
+                        const apps = integratorsList.filter(i => i.name === v);
+                        if (v === 'Stand Alone' || apps.length !== 1) { setIntegratorId(''); setApplicationName(''); }
+                        else { setIntegratorId(apps[0].integrator_id); setApplicationName(apps[0].app_name || ''); }
                       }}>
                         <SelectTrigger className="h-7 text-xs" data-testid="integrator-select">
-                          <SelectValue placeholder="Seleccione integrador..." />
+                          <SelectValue placeholder="Seleccione empresa integradora..." />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Stand Alone">Stand Alone</SelectItem>
-                          {integratorsList.map(integ => (
-                            <SelectItem key={integ.integrator_id} value={integ.integrator_id}>
-                              {integ.name}{integ.app_name ? ` — ${integ.app_name}` : ''}
-                            </SelectItem>
-                          ))}
+                          {integratorName && integratorName !== 'Stand Alone' && !companyNames.includes(integratorName) && (
+                            <SelectItem value={integratorName}>{integratorName}</SelectItem>
+                          )}
+                          {companyNames.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 mb-1">Aplicativo</p>
-                      <Input value={applicationName} onChange={e => setApplicationName(e.target.value)}
-                        placeholder="Se autocompleta del integrador" className="h-7 text-xs" data-testid="application-input" />
+                      <p className="text-xs text-slate-500 mb-1">Aplicativo / Integración</p>
+                      <Select value={integratorId} disabled={!companyApps.length} onValueChange={(v) => {
+                        setIntegratorId(v);
+                        setApplicationName(integratorsList.find(i => i.integrator_id === v)?.app_name || '');
+                      }}>
+                        <SelectTrigger className="h-7 text-xs" data-testid="integrator-app-select">
+                          <SelectValue placeholder={companyApps.length ? 'Seleccione aplicativo...' : (applicationName || 'Sin aplicativos')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {companyApps.map(a => <SelectItem key={a.integrator_id} value={a.integrator_id}>{a.app_name || '(sin nombre)'}{a.integration_type ? ` · ${a.integration_type}` : ''}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <p className="text-xs text-slate-500 mb-1">Cantidad de Cajas/Terminales</p>
@@ -1513,7 +1523,7 @@ const ProjectDetail = () => {
                   <div className="space-y-2 pb-2 border-b border-slate-100">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs text-slate-500">Integrador</p>
+                        <p className="text-xs text-slate-500">Empresa Integradora</p>
                         <p className="text-sm font-semibold text-slate-700" data-testid="integrator-name">{project.integrator_name || 'Stand Alone'}</p>
                       </div>
                       {canEditMatrix && (
@@ -1523,9 +1533,10 @@ const ProjectDetail = () => {
                       )}
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500">Aplicativo</p>
+                      <p className="text-xs text-slate-500">Aplicativo / Integración</p>
                       <p className="text-sm font-semibold text-slate-700" data-testid="application-name">{project.integrator_app_name || project.application_name || '—'}</p>
                     </div>
+                    <ProjectTechniciansCard project={project} canEdit={canEditMatrix} onSaved={fetchProject} />
                     {/* Iter39: Nro de Cajas + Nro de PVV — informativos read-only.
                         PVV es el mismo valor del Resumen Ejecutivo bajo "Total de Terminales Virtuales". */}
                     <div className="grid grid-cols-2 gap-3 pt-1">

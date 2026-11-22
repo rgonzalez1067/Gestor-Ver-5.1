@@ -20,6 +20,7 @@ import { PhaseTag } from '../components/PhaseTag';
 import { getProductStatus } from '../utils/bankProductStatus';
 import { integratorModalityMatch, shouldShowIntegrationBadge, integrationTypesForName, formatIntegrationBadge, isSelectableIntegrator, isInProcessName } from '../utils/integratorModality';
 import { usePermission } from '../hooks/usePermission';
+import { IntegrationTechniciansReel, technicianError } from '../components/projects/IntegrationTechniciansReel';
 
 const QUOTE_TYPES = [
   { id: 'VPOS', label: 'VPOS', avail: 'vpos_available' },
@@ -264,6 +265,8 @@ export default function DirectProjectCreation() {
     integrator_name: '',
     integrator_id: '',
     integrator_app_name: '',
+    empresa_integradora_id: '',
+    integration_technicians: [],
     pinpad_model: '',
     pinpad_provider: '',      // Patrocinador de Pinpads: '' | 'client' | 'infrastructure' | 'bank'
     pinpad_bank: '',          // Patrocinador de Pinpads (nombre del banco final) — solo si provider='bank'
@@ -308,7 +311,7 @@ export default function DirectProjectCreation() {
     set({
       quote_type: v,
       boxes_grid: [],
-      integrator_name: '', integrator_id: '', integrator_app_name: '',
+      integrator_name: '', integrator_id: '', integrator_app_name: '', empresa_integradora_id: '', integration_technicians: [],
       includes_link_pago: false, includes_tokenizador: false,
       // Cambiar entre VPOS/MPOS y Gateway/Link reinicia el alcance seleccionado.
       ...(REQUIRES_HW(v) !== REQUIRES_HW(form.quote_type)
@@ -629,6 +632,8 @@ export default function DirectProjectCreation() {
       toast.error(`Hay ${errors.length} error(es) en el formulario. Revisa.`);
       return;
     }
+    const techErr = technicianError(form.integration_technicians);
+    if (techErr) { toast.error(techErr); return; }
     setSaving(true);
     try {
       const { data: client } = await api.get(`/clients/${form.client_id}`);
@@ -675,6 +680,7 @@ export default function DirectProjectCreation() {
       }
 
       const payload = { ...form, cantidad_cajas: Number(form.cantidad_cajas), attachments: uploadedAttachments };
+      payload.integration_technicians = (form.integration_technicians || []).filter((t) => t.name.trim());
       delete payload.equipment_serials;
       // Modelo de Pinpad: cada serial (cargado por Excel, lote o manual) hereda
       // el "Modelo Pinpad" general del proyecto cuando su fila no trae modelo,
@@ -874,24 +880,25 @@ export default function DirectProjectCreation() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* Cascada Integrador → App: 1 app = auto-selección; 2+ = drop-list obligatorio */}
             <div>
-              <Label className="text-xs">Integrador</Label>
+              <Label className="text-xs">Empresa Integradora</Label>
               <Select value={form.integrator_name || ''} onValueChange={(v) => {
                 // Evaluar apps del integrador para auto-seleccionar (Escenario A) o
                 // dejar pendiente la elección manual (Escenario B). Solo entre los
                 // integradores certificados compatibles con el tipo de proyecto.
                 const apps = certifiedIntegrators.filter((i) => i.name === v && (i.app_name || '').trim());
                 const recs = certifiedIntegrators.filter((i) => i.name === v);
+                const emp = { empresa_integradora_id: recs[0]?.empresa_integradora_id || '', integration_technicians: [] };
                 if (v === '__none__') {
-                  set({ integrator_name: '', integrator_id: '', integrator_app_name: '' });
+                  set({ integrator_name: '', integrator_id: '', integrator_app_name: '', empresa_integradora_id: '', integration_technicians: [] });
                 } else if (apps.length === 1) {
-                  set({ integrator_name: v, integrator_id: apps[0].integrator_id, integrator_app_name: apps[0].app_name || '' });
+                  set({ ...emp, integrator_name: v, integrator_id: apps[0].integrator_id, integrator_app_name: apps[0].app_name || '' });
                 } else if (apps.length === 0 && recs.length === 1) {
-                  set({ integrator_name: v, integrator_id: recs[0].integrator_id, integrator_app_name: '' });
+                  set({ ...emp, integrator_name: v, integrator_id: recs[0].integrator_id, integrator_app_name: '' });
                 } else {
-                  set({ integrator_name: v, integrator_id: '', integrator_app_name: '' });
+                  set({ ...emp, integrator_name: v, integrator_id: '', integrator_app_name: '' });
                 }
               }}>
-                <SelectTrigger className="h-10" data-testid="dp-integrator"><SelectValue placeholder="Sin integrador" /></SelectTrigger>
+                <SelectTrigger className="h-10" data-testid="dp-integrator"><SelectValue placeholder="Sin empresa integradora" /></SelectTrigger>
                 <SelectContent>
                   {form.integrator_name && <SelectItem value="__none__" data-testid="dp-integrator-none">Sin integrador</SelectItem>}
                   {integratorNames.length === 0 ? (
@@ -910,7 +917,7 @@ export default function DirectProjectCreation() {
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Aplicación {form.integrator_name && <span className="text-amber-600">({appsForIntegrator.length})</span>}</Label>
+              <Label className="text-xs">Aplicativo / Integración {form.integrator_name && <span className="text-amber-600">({appsForIntegrator.length})</span>}</Label>
               {appsForIntegrator.length >= 2 ? (
                 /* Escenario B: 2+ apps → drop-list obligatorio */
                 <Select
@@ -935,12 +942,15 @@ export default function DirectProjectCreation() {
                 >
                   {form.integrator_app_name
                     || (!form.integrator_name
-                      ? 'Elige integrador primero'
+                      ? 'Elige la empresa integradora primero'
                       : 'Sin apps registradas')}
                 </div>
               )}
             </div>
           </div>
+          {form.integrator_name && (
+            <IntegrationTechniciansReel value={form.integration_technicians} onChange={(v) => set({ integration_technicians: v })} integratorId={form.integrator_id} testPrefix="dp-tech" />
+          )}
           <DirectTechFields form={form} set={set} servers={servers} fiscalPrinters={fiscalPrinters} />
           {/* Hardware y Seriales (solo VPOS/MPOS) */}
           {REQUIRES_HW(form.quote_type) && (

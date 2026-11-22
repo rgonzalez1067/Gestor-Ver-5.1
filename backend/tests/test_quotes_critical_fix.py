@@ -8,7 +8,7 @@ import os
 import requests
 import pytest
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://crm-cotizaciones--8cp564n9.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://gestor-proyectos-4--5tifwbuw.preview.emergentagent.com").rstrip("/")
 ADMIN_EMAIL = "rgonzalez@megasoft.com.ve"
 ADMIN_PASSWORD = "admin123"
 CLIENT_ID = "cli_d7a6037a7cf7"  # ASTROCEL CELULARES

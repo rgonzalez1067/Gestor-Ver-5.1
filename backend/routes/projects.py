@@ -2634,6 +2634,12 @@ async def update_implementation_fields(project_id: str, body: dict, authorizatio
         update_set["integrator_app_name"] = body["application_name"]
     if "integrator_app_name" in body:
         update_set["integrator_app_name"] = body["integrator_app_name"]
+    for k in ("integrator_id", "empresa_integradora_id"):
+        if k in body:
+            update_set[k] = body[k] or None
+    if "integration_technicians" in body:
+        from routes.integrator_companies import validate_technicians
+        update_set["integration_technicians"] = validate_technicians(body["integration_technicians"])
     if "box_count" in body:
         update_set["box_count"] = body["box_count"]
     if "fecha_estimada_produccion" in body:
@@ -2641,6 +2647,10 @@ async def update_implementation_fields(project_id: str, body: dict, authorizatio
     if update_set:
         update_set["updated_at"] = datetime.now(timezone.utc).isoformat()
         await db.projects.update_one({"project_id": project_id}, {"$set": update_set})
+        if update_set.get("integration_technicians"):
+            from services.integrator_companies import remember_technicians
+            await remember_technicians(update_set.get("integrator_id") or project.get("integrator_id"),
+                                       update_set["integration_technicians"])
     return {"message": "Campos actualizados", **update_set}
 
 

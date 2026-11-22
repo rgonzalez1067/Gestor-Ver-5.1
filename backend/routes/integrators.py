@@ -148,6 +148,11 @@ async def create_integrator(integrator: IntegratorCreate, authorization: Optiona
 
     new_integrator = Integrator(**integrator.model_dump())
     doc = new_integrator.model_dump()
+    if doc.get("empresa_integradora_id"):
+        _emp = await db.empresas_integradoras.find_one({"empresa_id": doc["empresa_integradora_id"]}, {"_id": 0, "razon_social": 1})
+        if not _emp:
+            raise HTTPException(status_code=404, detail="Empresa Integradora no encontrada")
+        doc["name"] = _emp["razon_social"]
 
     # ===== Clasificación automática del Proyecto de Integración =====
     # Compara contra los registros existentes del mismo Integrador (por nombre):
@@ -202,6 +207,10 @@ async def create_integrator(integrator: IntegratorCreate, authorization: Optiona
 
     doc['created_at'] = doc['created_at'].isoformat()
     await db.integrators.insert_one(doc)
+    if not doc.get("empresa_integradora_id"):
+        from services.integrator_companies import link_orphan_integrators
+        await link_orphan_integrators()
+        doc = await db.integrators.find_one({"integrator_id": doc["integrator_id"]}, {"_id": 0})
     doc.pop('_id', None)
     return doc
 
@@ -288,6 +297,11 @@ async def update_integrator(integrator_id: str, integrator: IntegratorCreate, au
     # clasificación de alcance. El cierre ocurre EXCLUSIVAMENTE por el botón
     # "Cerrar Proyecto" (endpoint /close). Preservamos siempre estos campos.
     update_data["project_scope"] = existing.get("project_scope")
+    update_data["empresa_integradora_id"] = update_data.get("empresa_integradora_id") or existing.get("empresa_integradora_id")
+    if update_data["empresa_integradora_id"]:
+        _emp = await db.empresas_integradoras.find_one({"empresa_id": update_data["empresa_integradora_id"]}, {"_id": 0, "razon_social": 1})
+        if _emp:
+            update_data["name"] = _emp["razon_social"]
     update_data.pop("closed_at", None)
     update_data.pop("closed_by", None)
     # IMPLEMENTADOR: solo se actualiza si viene un valor desde la ficha (evita

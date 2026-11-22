@@ -27,6 +27,8 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Header, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from routes.integrator_companies import validate_technicians
+from services.integrator_companies import remember_technicians
 
 from config import db, get_current_user, UPLOADS_DIR
 from routes.quote_transitions import _create_project_from_quote
@@ -126,6 +128,8 @@ class DirectProjectCreate(BaseModel):
     integrator_id: Optional[str] = None
     integrator_name: Optional[str] = None
     integrator_app_name: Optional[str] = None
+    empresa_integradora_id: Optional[str] = None
+    integration_technicians: list[dict] = Field(default_factory=list)
 
     # Hardware (solo VPOS / MPOS) — pinpad_model ahora viene del catálogo de hardware
     pinpad_model: Optional[str] = None
@@ -307,6 +311,7 @@ async def create_direct_project(
     qtype = (payload.quote_type or "").upper()
     if qtype not in {"VPOS", "MPOS", "GATEWAY", "LINK_PAGO"}:
         raise HTTPException(status_code=400, detail=f"quote_type inválido: {qtype}")
+    technicians = validate_technicians(payload.integration_technicians)
 
     requires_hw = qtype in {"VPOS", "MPOS"}
     # Modelo de Pinpad: OPCIONAL (puede no estar disponible en la etapa inicial del despliegue).
@@ -636,8 +641,12 @@ async def create_direct_project(
             "shared_matrix": payload.shared_matrix if is_multirif else None,
             # quote_number cosmético (el quote_id es pseudo, no apunta a quote real)
             "quote_number": prd_number,
+            "integrator_id": payload.integrator_id or None,
+            "empresa_integradora_id": payload.empresa_integradora_id or None,
+            "integration_technicians": technicians,
         }},
     )
+    await remember_technicians(payload.integrator_id, technicians)
 
     # ---- Anexos cargados antes del envío (staging → proyecto + correo) ----
     # Persistimos la metadata en project.attachments y preparamos los binarios

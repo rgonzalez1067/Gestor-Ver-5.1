@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Calendar } from '../components/ui/calendar';
 import { ImportResultPanel } from '../components/ImportResultPanel';
-import { Plus, Pencil, Trash2, Upload, FileSpreadsheet, FileText, Search, Filter, Users, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, Award, Download, AlertCircle, RefreshCw, FileDown, CalendarDays, BookOpen, UserPlus, Phone, Mail, X, Layout, Lock, Eye, EyeOff, FlaskConical, PauseCircle, PlayCircle, ShieldCheck } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, FileSpreadsheet, FileText, Search, Filter, Users, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, Award, Download, AlertCircle, RefreshCw, FileDown, CalendarDays, BookOpen, UserPlus, Phone, Mail, X, Layout, Lock, Eye, EyeOff, FlaskConical, PauseCircle, PlayCircle, ShieldCheck, Building2 } from 'lucide-react';
 import { EntityEmailDialog } from '../components/EntityEmailDialog';
 import { InternalEmailInput } from '../components/InternalEmailInput';
 import { MassCommunicationDialog } from '../components/MassCommunicationDialog';
@@ -21,6 +21,7 @@ import { MassCommChooserDialog } from '../components/MassCommChooserDialog';
 import { BankMassCommunicationDialog } from '../components/BankMassCommunicationDialog';
 import { IntegratorCertificatesCell } from '../components/IntegratorCertificatesCell';
 import PurgeIntegratorsDialog from '../components/PurgeIntegratorsDialog';
+import { CompanyDirectory } from '../components/integrators/companies/CompanyDirectory';
 import api from '../utils/api';
 import { toast } from 'sonner';
 import { usePermission } from '../hooks/usePermission';
@@ -96,6 +97,8 @@ export const Integrators = () => {
   const [filterModality, setFilterModality] = useState('');
   const [filterGestor, setFilterGestor] = useState('');
   const [filterScope, setFilterScope] = useState(''); // '' | 'all' | 'new' | 'expansion'
+  const [mainView, setMainView] = useState('companies');
+  const [dirVersion, setDirVersion] = useState(0);
   // Wizard de creación (Nuevo Proyecto de Integración)
   const [wizardStep, setWizardStep] = useState(1);        // 1: identificación · 2: naturaleza
   const [integratorMode, setIntegratorMode] = useState(''); // '' | 'existing' | 'new'
@@ -196,6 +199,7 @@ export const Integrators = () => {
         api.get(url), api.get('/auth/users'), api.get('/integrators/products'), api.get('/auth/implementadores'), api.get('/integrators/coordinators'), api.get('/integrators/certificates/counts')
       ]);
       setIntegrators(intRes.data);
+      setDirVersion(v => v + 1);
       setCertCounts(certRes.data?.counts || {});
       setUsers(usersRes.data || []);
       setImplementadores(implRes.data || []);
@@ -393,6 +397,27 @@ export const Integrators = () => {
     setExpandTargetId(rows.length === 1 ? rows[0].integrator_id : '');
     setScopeChoice('');
     setWizardStep(2);
+  };
+
+  // Directorio de Empresas: "+ Agregar Aplicativo" abre el wizard bajo la empresa padre.
+  const handleAddAppForCompany = (company) => {
+    resetForm();
+    const name = company.razon_social;
+    const c0 = company.contacts?.[0];
+    const contacts = c0 ? [{ name: c0.full_name, email: c0.email || '', phone: c0.phone || '' }] : [];
+    setFormData((prev) => ({ ...prev, name, empresa_integradora_id: company.empresa_id, contacts }));
+    setNameQuery(name);
+    if (existingNames.includes(name)) selectExistingIntegrator(name);
+    else { setIntegratorMode('new'); setExistingName(''); }
+    setDialogOpen(true);
+  };
+
+  const handleEditAppFromDirectory = async (app) => {
+    let full = integrators.find((i) => i.integrator_id === app.integrator_id);
+    if (!full) {
+      try { full = (await api.get(`/integrators/${app.integrator_id}`)).data; } catch { toast.error('No se pudo cargar el aplicativo'); return; }
+    }
+    openEditDialog(full);
   };
 
   // El operador decide registrar un integrador completamente nuevo.
@@ -1392,8 +1417,12 @@ export const Integrators = () => {
                       {!editingIntegrator && <p className="text-xs font-semibold text-brand-blue-600 uppercase tracking-wider">Datos del Integrador</p>}
                       <div className="grid grid-cols-2 gap-3">
                         <div className="col-span-2">
-                          <Label>Nombre del Integrador *</Label>
+                          <Label>{editingIntegrator?.empresa_integradora_id ? 'Empresa Integradora' : 'Nombre del Integrador *'}</Label>
+                          {editingIntegrator?.empresa_integradora_id ? (
+                            <div className="h-10 flex items-center px-3 rounded-md border bg-slate-50 text-sm text-slate-700" data-testid="integrator-company-locked" title="Se edita desde la Ficha de la Empresa Integradora">{formData.name}</div>
+                          ) : (
                           <DebouncedInput value={formData.name} onCommit={(v) => setFormData(prev => ({ ...prev, name: v }))} placeholder="Ej: TechPay Solutions" required data-testid="integrator-name-input" />
+                          )}
                         </div>
                         <div>
                           <Label>Tipo de Integración *</Label>
@@ -1863,6 +1892,18 @@ export const Integrators = () => {
             </div>
           </div>
 
+          <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1 mb-4" role="tablist" data-testid="integrators-view-tabs">
+            {[['companies', 'Directorio de Empresas', Building2], ['projects', 'Proyectos de Integración', Layout]].map(([k, label, Icon]) => (
+              <button key={k} type="button" role="tab" aria-selected={mainView === k} onClick={() => setMainView(k)} data-testid={`integrators-view-${k}`}
+                className={`px-4 h-9 rounded-md text-sm font-medium inline-flex items-center gap-2 transition-colors ${mainView === k ? 'bg-white shadow-sm text-brand-blue-700' : 'text-slate-500 hover:text-slate-800'}`}>
+                <Icon size={15} />{label}
+              </button>
+            ))}
+          </div>
+
+          {mainView === 'companies' ? (
+            <CompanyDirectory version={dirVersion} canEdit={canEdit || canCreate} onAddApp={handleAddAppForCompany} onEditApp={handleEditAppFromDirectory} />
+          ) : (<>
           {/* Filters */}
           <div className="bg-white rounded-lg border border-slate-200 p-3 mb-4">
             <div className="flex flex-wrap gap-2 items-center">
@@ -2238,6 +2279,7 @@ export const Integrators = () => {
               </table>
             </div>
           </div>
+          </>)}
         </div>
 
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

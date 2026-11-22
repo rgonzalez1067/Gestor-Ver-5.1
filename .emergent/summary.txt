@@ -1,116 +1,130 @@
 <analysis>**original_problem_statement**: 
-El usuario solicitó una serie de requerimientos técnicos, mejoras y correcciones de bugs:
-1. **Nuevo tipo de Cotización MPOS:** Sin equipos, flujo similar a VPOS, pasando a histórico tras fase Configurada.
-2. **Unificación de Payment Gateway:** Incluir selectores SÍ/NO para Tokenizador y Link de Pago en cotizaciones PG, integrando sus anexos tarifarios dinámicamente en el PDF. Especializar el botón existente Link de Pago/Tokenizador solo para clientes que ya poseen PG.
-3. **Ajuste en Tabla de Costos Corporativos:** Agregar columna Costo Unitario (sin totalizar al final) en cotizaciones VPOS/MultiRIF corporativas, y reflejar montos netos directamente si hay descuentos, agregando nota aclaratoria.
-4. **Módulo de Pistas de Auditoría (Audit Trail):** Rastrear y visualizar de forma inmutable eventos CREATE, UPDATE, DELETE (excepto en Proyectos), con filtros y exportación a Excel.
-5. **Corrección de Bug:** Filtro de clientes por Nombre de Fantasía en la grilla de cotizaciones no aplicaba correctamente la vista.
-6. **Script de Soporte:** Proveer script para liberar seriales huérfanos tras eliminar ítems de inventario manualmente en BD.
-7. **Rebranding y PDFs:** Cambiar MegaNexus por Gestor - CRM en todo el sistema. Agregar logo de Mega Soft a la Nota de Transferencia de Inventario y asegurar que todos los reportes PDF muestren su encabezado en todas las páginas.
-8. **Duda sobre Backup/Fork:** Orientación sobre cómo bifurcar/respaldar el proyecto antes de un cambio mayor.
+El usuario solicitó un conjunto de funcionalidades avanzadas para la gestión de proyectos, cotizaciones y notificaciones en el CRM Gestor. Los requerimientos principales incluyeron:
+1. **Responsable del Avance en Grilla**: Llevar el selector de Motivo/Responsable del Avance (Cliente, Banco, Imple) a la grilla principal con botones de colores sincronizados y añadir un filtro en la cabecera. Posteriormente se renombró de Motivo a Responsable.
+2. **Evidencia Visual y Normalización SLA en Bitácora**: Permitir adjuntar imágenes, PDFs y correos (.eml) a las entradas de bitácora (soportando drag&drop y Ctrl+V). Habilitar un checkbox para normalizar el estado del proyecto a Al día al adjuntar evidencia. Incluir una Galería de Proyecto con pestañas para ver todos los adjuntos.
+3. **Bloqueo de Cierre Accidental de Modales**: Evitar que los modales de entrada de datos se cierren al hacer clic fuera de ellos (manteniendo el cierre con la tecla Esc).
+4. **Configuración de CC por Defecto**: Añadir un campo de configuración para incluir automáticamente un correo (ej. ) en copia a las notificaciones de proyectos.
+5. **Cierre Administrativo de Cotizaciones de Reparación**: Implementar un flujo exclusivo para administradores que permita forzar el cierre (Entregada) de cotizaciones antiguas de reparación que quedaron huérfanas sin datos en Taller.
+6. **Manejo de Archivos Especiales en Notificaciones**: Permitir envíos de  y  en notificaciones (bypass de restricciones de Resend vía enlaces de descarga generados por el backend).
+7. **Acceso Rápido a Cambio de Estado**: Duplicar el botón de Cambiar Estado desde la grilla hacia adentro del Detalle de Proyecto.
+8. **Reporte de Integradores Duplicados**: Generar una extracción en Excel identificando registros de integradores con nombres similares.
 
-**User's preferred language**: Spanish (Español)
-**INSTRUCT NEXT AGENT:** You MUST respond and communicate in Spanish only.
+**User's preferred language**: Spanish
+**INSTRUCT NEXT AGENT**: The user prefers to communicate in Spanish. You MUST automatically detect this and respond, provide all explanations, plans, and outputs in Spanish ONLY.
 
 **what currently exists?**: 
-Un robusto CRM/ERP (ahora llamado Gestor - CRM) con un motor complejo de cotizaciones, RBAC, auditoría global y control de inventario/seriales. Maneja generación de reportes avanzados en PDF usando WeasyPrint y ReportLab con encabezados persistentes.
+Gestor es un CRM altamente personalizado con control jerárquico de clientes, un potente motor de cotizaciones (que incluye hardware y reparaciones en taller), y un gestor de proyectos avanzado. Incluye un módulo de chat interno con ACL, control de métricas SLA (Retraso Medio/Crítico), histórico de bitácoras, generación de reportes complejos en Excel/PDF, y notificaciones automatizadas vía correo electrónico usando Resend.
 
 **Last working item**: 
-    - Last item agent was working: Responder a la consulta del usuario sobre cómo realizar una bifurcación (Fork) y proteger su código/datos antes de solicitar un ajuste importante. El agente explicó las herramientas de Emergent (Fork, Rollback, Save to Github) y cómo respaldar la BD local usando .
-    - Status: RESOLVED
-    - Agent Testing Done: NA
-    - Which testing method agent to use?: NA
+    - Last item agent was working: Generación de un reporte analítico en Excel para detectar Integradores Duplicados en la base de datos basándose en similitud de nombres y tipos.
+    - Status: COMPLETED
+    - Agent Testing Done: Y
+    - Which testing method agent to use?: NA (Report was generated via bash python script and output URL provided).
     - User Testing Done: N
 
 **All Pending/In progress Issue list**: 
-NONE.
+NONE. (Current priority is P0 waiting for user input).
 
 **In progress Task List**: 
 NONE.
 
 **Upcoming and Future Tasks**:
-Upcoming Tasks:
-- El usuario mencionó explícitamente: *Quiero realizar un ajuste importante, pero necesito bifurcar a una nueva version...*. Se espera que en el próximo mensaje (en este nuevo fork) el usuario detalle finalmente cuál es ese ajuste importante. (Priority P0)
+NONE explicit. Await user feedback.
 
 **Completed work in this session**:
-- Creación de flujo de Cotización MPOS sin equipos. (DONE)
-- Integración de Tokenizador/Link de Pago al flujo de Payment Gateway y separación del módulo Standalone. (DONE)
-- Adición de Columna Costo Unitario en Cotizaciones Corporativas y despliegue de montos netos post-descuento en la grilla. (DONE)
-- Módulo de Pistas de Auditoría (Backend interceptor + UI Frontend con filtros y exportación Excel). (DONE)
-- Corrección del bug de filtrado de clientes (por Nombre de Fantasía) en QuotesTable. (DONE)
-- Script en JS () proporcionado al usuario para limpieza de BD local. (DONE)
-- Rebranding de MegaNexus a Gestor - CRM (UI, emails, PDFs). (DONE)
-- Agregado de logo de Mega Soft y encabezados persistentes multipágina en Notas de Entrega y Reportes PDF. (DONE)
+- Integración de botones de color (Cliente: Rojo, Banco: Azul, Imple: Amarillo) para el Responsable del Avance en la grilla de proyectos. (DONE)
+- Filtro en la grilla por Responsable del Avance (Cliente, Banco, Imple, Sin motivo). (DONE)
+- Carga de evidencia visual (JPG, PNG, PDF, EML) en Bitácora, con visor modal (Lightbox / EML Viewer). (DONE)
+- Normalización automática de SLA a Al día condicionada a la carga de evidencia en Bitácora. (DONE)
+- Creación de la pestaña Galería dentro del detalle del Proyecto para visualizar todo el material adjunto agrupado. (DONE)
+- Bloqueo global de  en modales de carga de datos para evitar pérdida de información por clics accidentales. (DONE)
+- Configuración global para inyectar correos por defecto en el CC de Notificaciones (ej. ). (DONE)
+- Modal de Cierre Administrativo para cotizaciones de Reparación inconsistentes (Pagadas/Facturadas sin taller), archivando en histórico. (DONE)
+- Implementación de visor e ingesta de correos  tanto en Bitácora como en anexos de Notificaciones. (DONE)
+- Soporte para envío de  y  en notificaciones. Se construyó una solución que guarda el archivo en el backend y genera un link de descarga temporal inyectado en el correo, superando las limitantes de Resend. (DONE)
+- Inserción del botón Cambiar Estado dentro de la ficha de detalle del proyecto. (DONE)
+- Renombrado global de Motivo del Avance a Responsable del Avance. (DONE)
+- Exportación en Excel de posibles Integradores Duplicados en base a normalización de nombres. (DONE)
 
 **Earlier issues found/mentioned but not fixed**:
-NONE.
+- Ninguno.
 
 **Known issue recurrence from previous fork**:
 - Recurrence count: 0
 - Status: RESOLVED
 
 **Code Architecture**:
-- Frontend:  (Pistas de Auditoría),  (Lógica de modales y grillas de cotización), .
-- Backend: API en , motor de auditoría transversal en  (usado vía hooks en operaciones CRUD), y generación profunda de PDFs en ,  y .
+- Frontend ():
+  - : , , , .
+  - : ,  (Renombrado lógicamente a Responsable).
+  - : .
+  - :  (Nueva configuración), , .
+- Backend ():
+  - : Gestión de descargas seguras para .
+  - , : Lógica de cierre administrativo.
+  - : Procesador seguro de archivos de correo de Gmail.
+- Scripts ():
+  - : Script de analítica para generar el Excel de duplicados.
 
 **Key Technical Concepts**:
-- Audit Trail Interceptor: Se interceptan operaciones de BD en los endpoints para inyectar logs en la colección .
-- PDF Engine: ReportLab y Weasyprint con control de  y  para headers persistentes.
+- **SLA Reset (Bitácora)**: Marcar el checkbox Al Día envía un flag al endpoint que resetea las fechas de seguimiento del proyecto, impactando directamente en los KPIs del dashboard superior.
+- **Bypass de Resend para .EXE**: Resend bloquea silenciosamente o rechaza correos con adjuntos ejecutables. Se creó un router  que almacena el  físicamente y genera un HTML inyectando enlaces de expiración (30 días).
 
 **key DB schema**:
-  - : {fecha_hora, modulo, entidad, registro_id, accion, valores_anteriores, valores_nuevos, campos_modificados, usuario_id, usuario_nombre, ip_origen}
+  -  (Embebido en ): Soporta ahora el array  con campos , , , , .
+  -  (en colección ): Clave  para gestionar correos en copia por defecto.
 
 **changes in tech stack**: 
-Ninguno, pero se renombró el sistema globalmente a Gestor - CRM.
+-  integrado mediante librerías estándar () de Python para analizar adjuntos y renderizado HTML de correos importados.
 
 **All files of reference**:
--  &  (Nuevo sistema de auditoría).
--  y subs (UI de Auditoría).
--  (Gestión centralizada de encabezados HTML para WeasyPrint).
--  y  (Manejo de canvas en ReportLab).
--  y .
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
 
 **Areas that need refactoring**:
--  maneja excesiva lógica condicional de maquetación (más de 2200 líneas). Parte de los headers ya se abstrajeron, pero la generación de tablas comerciales sigue acoplada.
+-  y : Ambos componentes superaron las 1500 líneas de código debido a la gran cantidad de características inyectadas (Chat, Bitácora, Filtros Duales, Galerías, Cambio de Estados). Se recomienda extraer la botonera y las grillas a subcomponentes en futuras iteraciones técnicas si se requiere modificar más.
 
 **key api endpoints**:
--  y 
--  y  (Altamente modificados para incluir lógica Tokenizador/LP).
+-  (Subida multipart de evidencia y .eml)
+-  (Cierre forzoso de cotizaciones inconsistentes)
+-  (Descarga de archivos bypass)
 
 **Critical Info for New Agent**:
-- **Nombre del Sistema:** El sistema ahora se llama **Gestor - CRM**. No utilices el término MegaNexus.
-- El usuario ejecuta instancias locales en Docker con su propia base de datos MongoDB. Ocasionalmente pedirá scripts manuales (como el de los seriales huérfanos).
-- Al inicio de este fork, el usuario va a introducir un cambio crítico o grande. Presta mucha atención a sus requerimientos y asegúrate de planificar en pasos (ask_human).
+- **El término Motivo del Avance ha sido reemplazado funcionalmente por Responsable del Avance** (Cliente, Banco, Imple). Los componentes a nivel de código aún pueden llamarse  o manejar keys como , pero todo el frontend debe decir Responsable.
+- Nunca intentes adjuntar un archivo  al array de adjuntos de la función . Si el usuario pide enviar este tipo de archivos, siempre pásalos por la lógica implementada en  que genera el enlace de descarga.
+- Al testear o trabajar con , asegúrate de enviar el  de archivo explícito a la hora de armar el  en JS (usar el override programado en ), ya que algunos navegadores/SO no lo mapean a .
 
 **documents and test reports created in this job**:
--  (QA MPOS)
--  (QA Payment Gateway unificado)
--  (QA Pistas de Auditoría)
--  (Script standalone proporcionado al usuario).
+-  (Validación rigurosa del flujo de Bitácora + Al día).
+-  (Excel generado por el agente).
 
 **Last 10 User Messages and any pending HUMAN messages**:
-1. *(User)*: Bug en eliminar ítem del inventario dejando seriales colgados. -> *(Agent)*: Proveyó script de Mongo shell y pasos de ejecución.
-2. *(User)*: Dame el contenido de esos scripts -> *(Agent)*: Entregó script completo.
-3. *(User)*: Requerimiento de agregar logo a Nota de Transferencia, cambiar MegaNexus a Gestor - CRM, y colocar encabezados persistentes en reportes. -> *(Agent)*: Ejecutado y verificado.
-4. *(User)*: Quiero realizar un ajuste importante, pero necesito bifurcar a una nueva version para asegurarme de si no funciona el cambio pueda conservar la version actual -> *(Agent)*: Respondió vía  orientando sobre cómo hacer Fork, Rollback y respaldo vía .
-*Pending Human Messages*: El usuario está por solicitar el ajuste importante en el primer prompt de esta nueva sesión (Fork).
+- *(User)*: Cambiar el nombre del campo Motivo del Avance por Responsable del Avance. En ambas instancias de Proyecto. *(Agent)*: Búsqueda y reemplazo ejecutado y verificado. (Done).
+- *(User)*: Puede generarme una salida que me permita identificar que integradores estan registrados mas de una vez en la base de datos... Generame una salida excel. *(Agent)*: Script desarrollado y ejecutado, exportado en el directorio public. (Done).
+*(Pending Human Messages)*: None.
 
 **Project Health Check**:
-Broken: None.
-Mocked: None.
+- Broken: None.
+- Mocked: None.
 
 **3rd Party Integrations**:
-- Resend / SMTP (Manejo de emails) — requires User API Key.
+- SMTP / Resend (Requiere User API Key configurada para envío real de correos). Restricciones de adjuntos mitigadas internamente.
 
 **Testing status**:
-- Testing agent used after significant changes: YES
-- Troubleshoot agent used after agent stuck in loop: NO
-- Test files created: Tests locales Pytest añadidos para auditoría () y cambios corporativos.
-- Known regressions: Ninguna.
+- Testing agent used after significant changes: YES (Iteración 384 ejecutada para validar lógicas de SLA y manejo de adjuntos en la bitácora).
+- Troubleshoot agent used after agent stuck in loop: NO.
+- Test files created: Ninguno fuera del iteration JSON.
+- Known regressions: None.
 
 **Credentials to test flow**:
-- Email:  o 
-- Password: **** (Política de seguridad estricta).
+- Email:  (Admin).
+- Password: **** o ****.
 
 **What agent forgot to execute**:
-Todas las solicitudes previas fueron completadas exitosamente. A la espera de las instrucciones del nuevo feature importante.</analysis>
+- Nada, todos los reportes y nuevas características complejas solicitadas en el historial fueron completadas con éxito, incluyendo lógicas perimetrales para integraciones con archivos y restricciones del proveedor de correos.</analysis>

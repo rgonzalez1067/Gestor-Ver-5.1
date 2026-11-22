@@ -340,6 +340,7 @@ class TechnicalContact(BaseModel):
     name: str
     email: Optional[str] = None
     phone: Optional[str] = None
+    role: Optional[str] = None
 
 class BitacoraEntry(BaseModel):
     entry_id: str = Field(default_factory=lambda: f"bit_{uuid.uuid4().hex[:8]}")
@@ -489,6 +490,7 @@ class IntegratorCreate(BaseModel):
     # Ambiente de Prueba: periodo de vigencia (fechas ISO 'YYYY-MM-DD').
     test_env_start_date: Optional[str] = None
     test_env_end_date: Optional[str] = None
+    empresa_integradora_id: Optional[str] = None
 
     @field_validator("principal_contact_email")
     @classmethod
@@ -573,6 +575,7 @@ class Integrator(BaseModel):
     reactivated_at: Optional[str] = None
     reactivated_by: Optional[str] = None
     status_before_suspension: Optional[str] = None
+    empresa_integradora_id: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class QuoteItem(BaseModel):
