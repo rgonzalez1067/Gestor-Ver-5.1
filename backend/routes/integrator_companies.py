@@ -122,6 +122,65 @@ async def technician_suggestions(integrator_id: str, authorization: Optional[str
     return sorted(out, key=lambda t: t["name"].lower())
 
 
+@router.get("/integrator-companies/ecosystem-contacts")
+async def ecosystem_contacts(empresa_id: str, authorization: Optional[str] = Header(None)):
+    """Todos los contactos del ecosistema del integrador (empresa + aplicativos + proyectos), sin duplicados."""
+    await get_current_user(authorization)
+    seen, out = set(), []
+
+    def add(name, email, phone, role, source):
+        name = clean_name(name)
+        k = (email or "").strip().lower() or name.lower()
+        if name and k not in seen:
+            seen.add(k)
+            out.append({"name": name, "email": (email or "").strip(), "phone": (phone or "").strip(), "role": role or "", "source": source})
+
+    e = await db[COLL].find_one({"empresa_id": empresa_id}, {"_id": 0, "contacts": 1})
+    for c in (e or {}).get("contacts") or []:
+        add(c.get("full_name"), c.get("email"), c.get("phone"), c.get("role"), "Corporativo")
+    app_ids = []
+    async for a in db.integrators.find({"empresa_integradora_id": empresa_id}, {"_id": 0, "integrator_id": 1, "app_name": 1, "contacts": 1,
+                                                                                "principal_contact_name": 1, "principal_contact_email": 1, "principal_contact_phone": 1}):
+        app_ids.append(a["integrator_id"])
+        add(a.get("principal_contact_name"), a.get("principal_contact_email"), a.get("principal_contact_phone"), "Contacto Principal", f"Principal · {a.get('app_name') or ''}")
+        for c in a.get("contacts") or []:
+            add(c.get("name"), c.get("email"), c.get("phone"), c.get("role"), f"Técnico · {a.get('app_name') or ''}")
+    async for p in db.projects.find({"integrator_id": {"$in": app_ids}, "integration_technicians.0": {"$exists": True}},
+                                    {"_id": 0, "integration_technicians": 1, "project_name": 1}):
+        for t in p.get("integration_technicians") or []:
+            add(t.get("name"), t.get("email"), t.get("phone"), t.get("role"), "Proyecto")
+    return sorted(out, key=lambda t: t["name"].lower())
+
+
+class AddContactsPayload(BaseModel):
+    contacts: List[CompanyContact]
+
+
+@router.post("/integrator-companies/{empresa_id}/contacts")
+async def add_company_contacts(empresa_id: str, payload: AddContactsPayload, authorization: Optional[str] = Header(None)):
+    """Agrega contactos nuevos al Reel Corporativo (dedupe por email o nombre)."""
+    await require_permission(authorization, "integradores", "edit")
+    e = await db[COLL].find_one({"empresa_id": empresa_id}, {"_id": 0, "contacts": 1})
+    if not e:
+        raise HTTPException(404, "Empresa Integradora no encontrada")
+    merged = list(e.get("contacts") or [])
+    keys = {(c.get("email") or "").strip().lower() or (c.get("full_name") or "").strip().lower() for c in merged}
+    added = 0
+    for c in payload.contacts:
+        name = clean_name(c.full_name)
+        email = (c.email or "").strip()
+        k = email.lower() or name.lower()
+        if not name or k in keys or (email and not EMAIL_RE.match(email)):
+            continue
+        keys.add(k)
+        merged.append({"contact_id": f"ctc_{uuid.uuid4().hex[:8]}", "full_name": name, "phone": (c.phone or "").strip(),
+                       "email": email, "role": (c.role or "").strip()})
+        added += 1
+    if added:
+        await db[COLL].update_one({"empresa_id": empresa_id}, {"$set": {"contacts": merged}})
+    return {"added": added}
+
+
 @router.get("/integrator-companies/{empresa_id}")
 async def get_company(empresa_id: str, authorization: Optional[str] = Header(None)):
     await get_current_user(authorization)

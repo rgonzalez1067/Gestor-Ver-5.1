@@ -24,6 +24,8 @@ import PurgeIntegratorsDialog from '../components/PurgeIntegratorsDialog';
 import { CompanyDirectory } from '../components/integrators/companies/CompanyDirectory';
 import { AppFichaDialog } from '../components/integrators/apps/AppFichaDialog';
 import { isLockedApp } from '../components/integrators/apps/appPayload';
+import { WizardAppPicker } from '../components/integrators/wizard/WizardAppPicker';
+import { WizardContactsPicker, newContactsOf, cleanWizardContacts } from '../components/integrators/wizard/WizardContactsPicker';
 import api from '../utils/api';
 import { toast } from 'sonner';
 import { usePermission } from '../hooks/usePermission';
@@ -434,6 +436,15 @@ export const Integrators = () => {
   };
 
   // Guarda el flujo del wizard según modo/alcance.
+  const wizardEmpresaId = existingRows[0]?.empresa_integradora_id || formData.empresa_integradora_id || '';
+  // Los contactos registrados como nuevos en el asistente también van al Reel Corporativo.
+  const syncNewCompanyContacts = async (empresaId, contacts) => {
+    const fresh = newContactsOf(contacts);
+    if (!empresaId || !fresh.length) return;
+    try { await api.post(`/integrator-companies/${empresaId}/contacts`, { contacts: fresh }); }
+    catch { toast.error('El proyecto se guardó, pero no se pudieron agregar los contactos nuevos a la empresa'); }
+  };
+
   const handleWizardSubmit = async () => {
     // --- Caso: Asignación de Ambiente de Prueba (a un integrador existente) ---
     if (integratorMode === 'existing' && scopeChoice === 'test_environment') {
@@ -467,8 +478,9 @@ export const Integrators = () => {
         const res = await api.post(`/integrators/${expandTargetId}/expand`, {
           productos_certificar: (formData.productos_certificar || '').trim(),
           correo_eventual: (formData.correo_eventual || '').trim(),
-          contacts: (rc.name || rc.email || rc.phone) ? [rc] : [],
+          contacts: cleanWizardContacts(formData.contacts),
         });
+        await syncNewCompanyContacts(wizardEmpresaId, formData.contacts);
         toast.success('Proyecto de Ampliación registrado');
         setDialogOpen(false); resetForm(); fetchData();
         // Ejecutar el envío del Proyecto (notificación con Productos + CC eventual).
@@ -503,8 +515,9 @@ export const Integrators = () => {
       certProducts.forEach((p) => { initCerts[p.service_id] = 'N/A'; });
       // "Nuevo Tipo" / "Integrador Nuevo" NO llevan campos de complemento.
       const { productos_certificar, correo_eventual, ...cleanForm } = formData;
-      const payload = { ...cleanForm, name, project_scope: 'new', certifications: initCerts };
+      const payload = { ...cleanForm, name, project_scope: 'new', certifications: initCerts, contacts: cleanWizardContacts(formData.contacts) };
       const res = await api.post('/integrators', payload);
+      await syncNewCompanyContacts(res.data?.empresa_integradora_id || wizardEmpresaId, formData.contacts);
       toast.success(isNewType ? 'Nuevo tipo de integración registrado' : 'Integrador creado');
       setDialogOpen(false); resetForm(); fetchData();
       const newIntegrator = res.data;
@@ -516,7 +529,7 @@ export const Integrators = () => {
   };
 
   // Campos núcleo reutilizados por "Integrador Nuevo" y "Nuevo Tipo".
-  const renderWizardCoreFields = ({ lockIntegratorType }) => (
+  const renderWizardCoreFields = ({ lockIntegratorType, apps }) => (
     <div className="grid grid-cols-2 gap-3 border-t border-slate-200 pt-3">
       <div>
         <Label>Tipo de Integración *</Label>
@@ -537,8 +550,12 @@ export const Integrators = () => {
         )}
       </div>
       <div className="col-span-2">
-        <Label>Nombre del Aplicativo *</Label>
-        <DebouncedInput value={formData.app_name} onCommit={(v) => setFormData(prev => ({ ...prev, app_name: v }))} placeholder="Ej: PaymentHub v3" data-testid="wizard-app-name" />
+        {apps?.length ? (
+          <WizardAppPicker apps={apps} value={formData.app_name || ''} onChange={(v) => setFormData(prev => ({ ...prev, app_name: v }))} />
+        ) : (<>
+          <Label>Nombre del Aplicativo *</Label>
+          <DebouncedInput value={formData.app_name} onCommit={(v) => setFormData(prev => ({ ...prev, app_name: v }))} placeholder="Ej: PaymentHub v3" data-testid="wizard-app-name" />
+        </>)}
       </div>
       <div>
         <Label>Modalidad de Integración</Label>
@@ -554,48 +571,10 @@ export const Integrators = () => {
     </div>
   );
 
-  // Datos del Responsable por parte del Integrador (Nombre · Teléfono · Email).
-  // Se almacena como el primer contacto técnico (formData.contacts[0]).
-  // `required`=true en Integrador NUEVO (obligatorio); opcional cuando ya existe.
-  const respContact = (formData.contacts && formData.contacts[0]) || { name: '', email: '', phone: '' };
-  const setRespContact = (field, value) => {
-    setFormData(prev => {
-      const contacts = [...(prev.contacts || [])];
-      if (contacts.length === 0) contacts.push({ contact_id: `ctc_${Date.now().toString(36)}`, name: '', email: '', phone: '' });
-      contacts[0] = { ...contacts[0], [field]: value };
-      return { ...prev, contacts };
-    });
-  };
+  // Contactos del integrador: selección del ecosistema + registro de nuevos (contacts[0] = Responsable principal).
   const renderResponsibleContact = ({ required }) => (
-    <div className="border-t border-slate-200 pt-3 mt-3 space-y-2" data-testid="wizard-responsible-block">
-      <p className="text-xs font-semibold text-brand-blue-600 uppercase tracking-wider">
-        Responsable por parte del Integrador {required ? '*' : <span className="text-slate-400 normal-case font-normal">(opcional)</span>}
-      </p>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="col-span-2">
-          <Label>Nombre del Responsable {required && '*'}</Label>
-          <Input value={respContact.name || ''} onChange={(e) => setRespContact('name', e.target.value)} placeholder="Ej: María Rodríguez" data-testid="wizard-resp-name" />
-        </div>
-        <div>
-          <Label>Email del Responsable {required && '*'}</Label>
-          <Input
-            type="email"
-            value={respContact.email || ''}
-            onChange={(e) => setRespContact('email', e.target.value)}
-            placeholder="responsable@empresa.com"
-            data-testid="wizard-resp-email"
-            className={respContact.email && !EMAIL_RE.test(respContact.email.trim()) ? 'border-red-400 focus-visible:ring-red-400' : ''}
-          />
-          {respContact.email && !EMAIL_RE.test(respContact.email.trim()) && (
-            <p className="text-[11px] text-red-500 mt-0.5" data-testid="wizard-resp-email-error">Formato de correo inválido</p>
-          )}
-        </div>
-        <div>
-          <Label>Teléfono del Responsable {required && '*'}</Label>
-          <Input value={respContact.phone || ''} onChange={(e) => setRespContact('phone', e.target.value)} placeholder="+58 412..." data-testid="wizard-resp-phone" />
-        </div>
-      </div>
-    </div>
+    <WizardContactsPicker empresaId={wizardEmpresaId} contacts={formData.contacts} required={required}
+      onChange={(contacts) => setFormData(prev => ({ ...prev, contacts }))} />
   );
 
 
@@ -1864,7 +1843,7 @@ export const Integrators = () => {
                         {scopeChoice === 'new_type' && (
                           <div data-testid="wizard-new-type-block">
                             <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1">Nuevo Tipo para «{existingName}»</p>
-                            {renderWizardCoreFields({ lockIntegratorType: true })}
+                            {renderWizardCoreFields({ lockIntegratorType: true, apps: existingRows })}
                             {renderResponsibleContact({ required: false })}
                           </div>
                         )}
