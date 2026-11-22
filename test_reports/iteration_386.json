@@ -1,0 +1,25 @@
+{
+  "summary": "Short access check on the real account rgonzalez@megasoft.com.ve after the unlock and password reset. Only 2 logins were made, both with the correct password (1 API, 1 UI). No negative tests were run. Before logging in, the password was checked offline with config.verify_password: it matches MegaSoft2026*. Expiry: not expired. 2FA: off. Then POST /api/auth/login returned 200 'Login exitoso' with a session_token, role=admin and password_expires_in_days=null. The UI login at /login landed on /dashboard. /integrators loaded and showed data-testid=company-directory (380 companies). The DB after the logins shows account_status=ACTIVE, failed_login_attempts=0, no lockout_timestamp and must_change_password=False.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/integrators header", "issues": ["At 1920px the title 'Gestión de Integradores' wraps onto 2 lines. The row of 9 action buttons runs past the right edge of the content container: 'Nuevo Proyecto de Integración' ends beyond the directory card."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_rgonzalez_unlock_login.py", "/app/backend/tests/check_rgonzalez_state.py", "/app/test_reports/pytest/rgonzalez_login.xml"],
+  "action_items": ["None blocking. Optional: wrap or condense the /integrators header action buttons."],
+  "critical_code_review_comments": [
+    "login: reset_failures() runs after the password is verified but before the is_active check. A deactivated user with the correct password gets their counters reset and then a 403. Harmless, but the order could be is_active check first.",
+    "check_lock only auto-unlocks when the lockout duration has passed. An admin unlock goes through POST /api/admin/users/{id}/unlock, which is correct."
+  ],
+  "updated_files": ["/app/backend/tests/test_rgonzalez_unlock_login.py (new)", "/app/backend/tests/check_rgonzalez_state.py (new, read-only DB check)"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None. No data was created or modified apart from the 2 sessions created by the logins.",
+  "test_credentials": "rgonzalez@megasoft.com.ve / MegaSoft2026* (admin) - verified working",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "rgonzalez is the user's real account: never try wrong passwords with it (5 failures = 15 min lockout). For regression runs use check_rgonzalez_state.py, which is read-only and verifies the password offline without spending login attempts. Server clock is Nov 2026; password_changed_at=2026-11-22, max age 90 days.",
+  "rca of the issue": "The account was LOCKED with failed_login_attempts=5 and the stored hash did not match MegaSoft2026*. The main agent set account_status=ACTIVE, failed_login_attempts=0, removed lockout_timestamp and set a new hash with must_change_password=False. Verified fixed."
+}
