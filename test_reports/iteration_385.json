@@ -1,0 +1,46 @@
+{
+  "summary": "Iter385 – Empresas Integradoras (padre) → Aplicativos (hijos) + Reel de Técnicos. Backend: 22/23 pytest passed (1 skipped: non-admin DELETE 403 – no valid non-admin creds; code check OK). Frontend: QA1 (Natural + Jurídica created via UI with 2 contacts, PDF/PNG RIF, search, Ficha, preview, download), QA2 (accordion expand/collapse, Ficha incompleta badge + filter, edit dialog with integrator-company-locked, move dialog, Agregar Aplicativo opens wizard preloaded), Proyectos de Integración tab regression, Project Detail cascade Empresa A-Z → Aplicativo + 3 technicians reel saved/displayed + suggestions + invalid-email toast, Direct Projects reel (3 techs, auto app) and Quote wizard labels all PASS. Found 1 functional UI bug (MoveAppDialog stale state), 1 migration data gap (contacts not copied from 'email'/contacts[]), and minor issues.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "migration link_orphan_integrators / _principal_contact", "issue": "Only 42 of 380 migrated companies got a corporate contact. Migration only reads principal_contact_name/email/phone (44 records). It ignores the 'Correo de Contacto' field `email` (187 integrators have it, e.g. Pushve V1.0 has \"'Aldo Materan' <aldo.materan1@gmail.com>\") and the `contacts[]` array (158 integrators; 93 companies with no contact have apps that do have contacts[]). So 'Contacto Principal' shows '—' for most companies, which goes against the user's choice 'se copió el Contacto Principal'."},
+      {"endpoint": "db.empresas_integradoras", "issue": "No unique indexes on rif / norm_name. The 409 uniqueness check is find-then-insert, so two requests at the same time can both get through. GET /api/integrator-companies runs link_orphan_integrators (writes during a read) and can create duplicate companies when 2 list calls run concurrently. Add unique (sparse/partial) indexes on rif and norm_name."},
+      {"endpoint": "POST /api/integrators (without empresa_integradora_id)", "issue": "project_scope (new/component/expansion) is still worked out by exact-name regex before linking. A variant name like 'X, C.A.' vs 'X C.A' is grouped into the same company but is classified as 'new'. Consider classifying by norm_company/empresa instead."},
+      {"endpoint": "DELETE /api/integrators/{id}", "issue": "Deleting the last app of an auto-created company leaves an empty 'Ficha incompleta' company behind (cleanup is manual). Not a bug, just to be aware of."},
+      {"endpoint": "PUT /api/projects/{id}/implementation-fields", "issue": "Only get_current_user, no RBAC permission check (pre-existing). Now also writes integrators.contacts through remember_technicians."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "MoveAppDialog", "issue": "The 'Cancelar' button calls onClose() but does not reset q/target (the reset only runs in onOpenChange on Esc/X). When the dialog reopens, even for a DIFFERENT app, it keeps the previous search and selected target, and 'Mover aplicativo' is already enabled. A misclick can move the wrong app. Reproduced: pick an option → Cancelar → reopen → confirm enabled, search='QA UI Juridica'.", "selector": "[data-testid=move-app-confirm-btn]", "priority": "MEDIUM"},
+      {"component": "CompanyFormDialog.save", "issue": "If POST company succeeds but the RIF upload fails, an error toast shows and the dialog stays open. Saving again POSTs again → 409 duplicate RIF. After a successful create, it should switch to edit mode (company=data) or close and warn.", "selector": "[data-testid=company-save-btn]", "priority": "LOW"},
+      {"component": "RifDocumentField preview (PDF)", "issue": "Esc does not close the PDF preview when focus is inside the iframe (closes fine for PNG and via the X button).", "selector": "[data-testid=rif-preview-dialog]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Project Detail → Implementación → Reel de Técnicos (pd-tech-*)", "issues": ["The 4 inputs (name/phone/email/role) are squeezed into the narrow middle column. Values are cut off ('QA Tec', '04´', 'qa.tecr'). Stack them in 2 rows or use 2 columns."]},
+      {"screen": "Directorio de Empresas", "issues": ["Migration grouping leaves near-duplicate companies, e.g. 'RPM Consultores C.A.', 'Integrador RPM Consultores C.A (Push)', 'RPM Consultores C.A (Push) 26611 Y 32421', 'RPM Engineering, C.A. / RPM Consultores C.A (Push)'. This is expected with exact normalized grouping; users can consolidate with Move. Mention it to the user."]},
+      {"screen": "MoveAppDialog / ProjectDetail integrator save", "issues": ["The Cancelar button in move-app-dialog and the Guardar/Cancelar buttons in the ProjectDetail integrator editor have no data-testid."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_integrator_companies.py", "/app/test_reports/pytest/iter385_integrator_companies.xml"],
+  "action_items": [
+    "Fix MoveAppDialog: reset q/target when the app changes or on Cancelar (e.g. useEffect on app?.integrator_id, or call the same reset in the Cancel handler).",
+    "Extend the migration contact copy: use the integrator `email` field (parse 'Name <mail>') and contacts[] when principal_contact_* is empty (runs only for orphans, so a one-off backfill script is needed for the 380 existing companies).",
+    "Add unique indexes on empresas_integradoras.rif (partial, rif not null) and norm_name; move link_orphan_integrators out of the GET list path or guard it.",
+    "CompanyFormDialog: after a successful create followed by a failed RIF upload, avoid a duplicate POST.",
+    "Make the Project Detail technician reel layout readable in the narrow column."
+  ],
+  "critical_code_review_comments": [
+    "routes/integrator_companies.py GET list writes to the DB (link_orphan_integrators) on every call. This is a race risk and slow (it scans orphans every time).",
+    "ProjectDetail/DirectProjectCreation cascades group apps by integrators.name string, not by empresa_integradora_id. This works because name is synced, but it is fragile if the sync is missed (e.g. direct DB edits).",
+    "No unique index for RIF/razón social; uniqueness is enforced only at the app level."
+  ],
+  "updated_files": ["/app/backend/tests/test_integrator_companies.py"],
+  "success_rate": {"backend": "100% (22/22 executed, 1 skipped)", "frontend": "~92% (all requested flows work; 1 medium UI state bug)"},
+  "test_credentials": "qa.integradores@megasoft.com.ve / QaIntegr2026*Ok (admin). kherrera Kherrera2026*Qa and Test1234! both returned 401, so the non-admin DELETE test was skipped.",
+  "seed_data_creation": "Created and deleted: QA companies (API: 'QA Empresa Juridica <suf>', 'QA Persona Natural…', 'QA SinDoc…', auto 'QA Auto Integrador…'; UI: 'QA UI Juridica Alfa' J-40998877-1, 'QA UI Natural Beta' V-40998877-2), QA apps (int_e4dcbccd90b9 etc.). Final count back to 380, no QA left. Project prj_e3bf34094a91 was temporarily linked to the QA app plus 3 QA technicians, then reverted to Bigwise / Stellar Webstore V2.0.0 (integration_technicians now [] and empresa_integradora_id null where the fields may not have existed before). The real Bigwise integrator contacts were not touched.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Route is /direct-projects (not /direct-projects/new). A full direct-project creation was NOT executed, to avoid notification emails to real client contacts (engine_try_dispatch). Only the reel UI (3 techs, auto app) and the backend 400 on an invalid tech email were verified. The persistence path (direct_projects.py lines 645-649) was only reviewed in code. Quote wizard: labels and the 1-app auto cascade were verified; the multi-app select-integrator-app path was not exercised. UI login trick: POST /api/auth/login then set localStorage session_token + user."
+}

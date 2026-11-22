@@ -4,6 +4,8 @@ import uuid
 import unicodedata
 from datetime import datetime, timezone
 
+from pymongo.errors import DuplicateKeyError
+
 from config import db
 
 COLL = "empresas_integradoras"
@@ -52,15 +54,60 @@ def _new_company(razon_social, contacts):
     }
 
 
+_FREE_EMAIL_RE = re.compile(r'[\w.+-]+@[\w-]+\.[\w.-]+')
+
+
+def _contact(name, email, phone):
+    return {"contact_id": f"ctc_{uuid.uuid4().hex[:8]}", "full_name": name, "phone": (phone or "").strip(),
+            "email": (email or "").strip(), "role": "Contacto Principal"}
+
+
 def _principal_contact(row):
+    """Contacto Principal → 1er contacto técnico → texto libre del campo 'email'."""
     name = clean_name(row.get("principal_contact_name"))
     email = (row.get("principal_contact_email") or "").strip()
     if not name and email:
         name = next((c.get("name") for c in (row.get("contacts") or []) if (c.get("email") or "").strip().lower() == email.lower()), "") or email
-    if not name:
+    if name:
+        return _contact(name, email, row.get("principal_contact_phone"))
+    first = next((c for c in (row.get("contacts") or []) if clean_name(c.get("name"))), None)
+    if first:
+        return _contact(clean_name(first.get("name")), first.get("email"), first.get("phone"))
+    raw = str(row.get("email") or "")
+    m = _FREE_EMAIL_RE.search(raw)
+    if not m:
         return None
-    return {"contact_id": f"ctc_{uuid.uuid4().hex[:8]}", "full_name": name, "phone": (row.get("principal_contact_phone") or "").strip(),
-            "email": email, "role": "Contacto Principal"}
+    before = clean_name(re.sub(r"[<>'\"]", " ", raw[:m.start()]).strip(" ,;:-"))
+    return _contact(before or m.group(0).split("@")[0], m.group(0), "")
+
+
+def _company_contacts(rows):
+    contacts, seen = [], set()
+    for r in rows:
+        c = _principal_contact(r)
+        k = (c or {}).get("email", "").lower() or (c or {}).get("full_name", "").lower()
+        if c and k not in seen:
+            seen.add(k)
+            contacts.append(c)
+    return contacts
+
+
+async def ensure_indexes():
+    await db[COLL].create_index("empresa_id", unique=True)
+    await db[COLL].create_index("norm_name", unique=True)
+    await db[COLL].create_index("rif", unique=True, partialFilterExpression={"rif": {"$type": "string"}})
+
+
+async def backfill_migrated_contacts():
+    """Empresas migradas sin contactos: toma el contacto disponible en sus aplicativos."""
+    n = 0
+    async for e in db[COLL].find({"migrated": True, "contacts": {"$size": 0}}, {"_id": 0, "empresa_id": 1}):
+        rows = await db.integrators.find({"empresa_integradora_id": e["empresa_id"]}, {"_id": 0}).to_list(None)
+        contacts = _company_contacts(rows)
+        if contacts:
+            await db[COLL].update_one({"empresa_id": e["empresa_id"], "contacts": {"$size": 0}}, {"$set": {"contacts": contacts}})
+            n += 1
+    return n
 
 
 async def link_orphan_integrators():
@@ -79,15 +126,12 @@ async def link_orphan_integrators():
         company = by_norm.get(key)
         if not company:
             razon = max((clean_name(r.get("name")) for r in rows), key=len) or "Sin nombre"
-            contacts, seen = [], set()
-            for r in rows:
-                c = _principal_contact(r)
-                k = (c or {}).get("email", "").lower() or (c or {}).get("full_name", "").lower()
-                if c and k not in seen:
-                    seen.add(k)
-                    contacts.append(c)
-            company = _new_company(razon, contacts)
-            await db[COLL].insert_one(dict(company))
+            company = _new_company(razon, _company_contacts(rows))
+            company["norm_name"] = key
+            try:
+                await db[COLL].insert_one(dict(company))
+            except DuplicateKeyError:
+                company = await db[COLL].find_one({"norm_name": key}, {"_id": 0})
             by_norm[key] = company
         await db.integrators.update_many(
             {"integrator_id": {"$in": [r["integrator_id"] for r in rows]}},

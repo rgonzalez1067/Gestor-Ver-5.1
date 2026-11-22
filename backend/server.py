@@ -115,8 +115,12 @@ async def _on_startup():
     except Exception as e:
         logging.warning(f"[startup] migrate_integration_modalities failed: {e}")
     try:
-        from services.integrator_companies import link_orphan_integrators
+        from services.integrator_companies import link_orphan_integrators, ensure_indexes, backfill_migrated_contacts
+        await ensure_indexes()
         linked = await link_orphan_integrators()
+        filled = await backfill_migrated_contacts()
+        if filled:
+            logging.info(f"[startup] empresas_integradoras: {filled} empresas con contacto completado")
         if linked:
             logging.info(f"[startup] empresas_integradoras: {linked} aplicativos vinculados")
     except Exception as e:

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../ui/dialog';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 export const MoveAppDialog = ({ app, companies, onClose, onMoved }) => {
   const [q, setQ] = useState('');
   const [target, setTarget] = useState('');
+  useEffect(() => { setQ(''); setTarget(''); }, [app]);
   const options = useMemo(() => {
     const s = q.trim().toLowerCase();
     return companies.filter(c => c.empresa_id !== app?.empresa_integradora_id && (!s || c.razon_social.toLowerCase().includes(s) || (c.rif || '').toLowerCase().includes(s))).slice(0, 60);
@@ -21,7 +22,7 @@ export const MoveAppDialog = ({ app, companies, onClose, onMoved }) => {
   };
 
   return (
-    <Dialog open={!!app} onOpenChange={(o) => { if (!o) { onClose(); setQ(''); setTarget(''); } }}>
+    <Dialog open={!!app} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-lg" data-testid="move-app-dialog">
         <DialogHeader><DialogTitle className="text-base">Mover «{app?.app_name}» a otra Empresa Integradora</DialogTitle></DialogHeader>
         <Input placeholder="Buscar empresa por nombre o RIF..." value={q} onChange={e => setQ(e.target.value)} data-testid="move-app-search" />
@@ -35,7 +36,7 @@ export const MoveAppDialog = ({ app, companies, onClose, onMoved }) => {
           {!options.length && <p className="px-3 py-3 text-xs text-slate-400">Sin coincidencias</p>}
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button variant="ghost" onClick={onClose} data-testid="move-app-cancel-btn">Cancelar</Button>
           <Button disabled={!target} onClick={move} data-testid="move-app-confirm-btn">Mover aplicativo</Button>
         </DialogFooter>
       </DialogContent>

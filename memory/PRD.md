@@ -4818,3 +4818,17 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Nov 2026: Correos .eml (≤15MB) como evidencia en Bitácora (cuentan como respaldo Al día) y como adjunto en ventanas de Notificaciones/Otras Notificaciones de Proyectos. Visor interno EmailViewer (De/Para/CC/Fecha, HTML en iframe sandbox con imágenes cid embebidas, adjuntos descargables, descarga .eml). Galería con filtro 'Correos'. Backend services/eml_parser.py; GET /projects/{pid}/bitacora/evidence/{eid}/email y /email/attachments/{idx}.
 - Nov 2026: Notificaciones de Proyectos aceptan .ppt/.pptx (adjunto normal) y .exe (≤50MB) que se envía como enlace de descarga público temporal (30 días) en el cuerpo del correo (Resend bloquea .exe). routes/download_links.py, colección download_links, GET /api/public/downloads/{token} (RBAC exento, 410 al vencer). Registro en historial/bitácora: download_links.
 - Nov 2026: Botón 'Cambiar Estado' en la ficha del proyecto (mismo diálogo compartido components/projects/ProjectStatusDialog.jsx que la grilla; refresca la ficha). Badge de estado en ficha usa STATUS_CONFIG.
+
+### Feature: Empresas Integradoras (Padre) → Aplicativos (Hijos) + Reel de Técnicos — Nov 2026
+- Nueva colección `empresas_integradoras` (empresa_id, tipo_persona Natural/Jurídica, razon_social, norm_name único, rif único normalizado, direccion_fiscal, rif_document_url/filename, contacts[], migrated). Aplicativos = `integrators` con `empresa_integradora_id`; `name` del hijo se sincroniza con la razón social.
+- Migración automática al iniciar (services/integrator_companies.py): agrupación por nombre normalizado (unifica C.A/S.A, etc.) → 380 empresas para 499 registros; empresas migradas = "Ficha incompleta" (sin RIF/dirección). Contactos: Contacto Principal → 1er contacto técnico → correo libre (248/380 con contacto). Índices únicos norm_name/rif.
+- API: GET/POST/PUT/DELETE /api/integrator-companies, POST/GET /{id}/rif-document, PUT /api/integrators/{id}/company (mover), GET /api/integrator-companies/technicians?integrator_id=.
+- UI /integrators: pestañas "Directorio de Empresas" (acordeón +/-, ficha, RIF escaneado con vista previa/descarga, reel corporativo, agregar/editar/mover aplicativo) y "Proyectos de Integración" (grilla original).
+- Proyectos: `integration_technicians` (name, phone, email, role) en Proyectos Directos y Detalle de Proyecto (ProjectTechniciansCard); técnicos nuevos se guardan en `integrators.contacts` para sugerencias. Cascada Empresa (A-Z) → Aplicativo en Proyecto Directo, Detalle y Cotizaciones. Proyecto desde cotización ahora guarda integrator_id.
+- Auditoría: `empresas_integradoras` → módulo Integradores en audit_trails.
+- QA iter385: backend 22/22, frontend ~92%; corregido MoveAppDialog (estado previo), backfill de contactos e índices únicos.
+
+### Backlog (Empresas Integradoras)
+- P1: Reel de técnicos en Detalle de Proyecto se ve apretado en la columna angosta (apilar campos).
+- P1: Si falla la carga del RIF tras crear la empresa, el reintento da 409 (pasar a modo edición).
+- P2: Clasificación new/component/expansion por empresa en vez de nombre exacto; empresa vacía al borrar su último aplicativo; Esc en vista previa PDF; RBAC en implementation-fields; consolidar empresas casi duplicadas (ej. variantes RPM) con "Mover".
