@@ -1,0 +1,30 @@
+{
+  "summary": "Frontend testing as QA admin of the contact Role select and the 'Tipo de Integrador' select. All 5 requested flows pass. (1) Wizard, New Integrator: wizard-integrator-type is a select with exactly [Integrador, Comercio]; the locked element no longer renders; wizard-integration-type still offers CR/LP/PG/MP/TK; selecting Comercio works. (2) Wizard, existing Galac -> wizard-scope-new-type: the select comes pre-selected with 'Integrador' (the current value) and can be changed to Comercio. (3) wizard-resp-role and wizard-resp-role-1 (after wizard-add-new-contact-btn) offer exactly Rol..., Contacto Principal, Responsable Técnico, Contacto Administrativo, Comercial. (4) Directorio new-company-btn: created 'QA Roles Empresa T1' with 2 contacts (Contacto Administrativo, Responsable Técnico); POST returned 200 with both roles saved. After the role was set to 'Director' via API, the Ficha showed company-contact-role-0 with 'Director' as an extra option and selected; the 4 standard options were still there. (5) Project detail prj_1b982687dfb5: edit-project-techs-btn -> pd-tech-add-btn -> pd-tech-role-0 has the 4 options; saved 'QA Tecnico T1 / Responsable Técnico', and the view shows the role badge, so it persisted. /direct-projects: after picking dp-integrator, dp-tech-role-0 has the 4 options and selecting Comercial works. The direct project was NOT submitted, to avoid creating a real project. The wizard was cancelled and never submitted.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Asistente Nuevo Proyecto de Integración - contact rows", "issues": ["The Role select is col-span-2 and too narrow: 'Comercial' is cut to 'Comercia', and 'Contacto Principal' and 'Contacto Administrativo' will be cut too. Widen it (e.g. Name col-span-3, Email col-span-2 or 3, Role col-span-3) or shorten the labels."]},
+      {"screen": "Asistente - switching from New Integrator to an existing integrator", "issues": ["Minor: new-contact rows typed in New Integrator mode stay in the list after switching to an existing integrator (Galac). Consider resetting contacts when the selected integrator changes."]},
+      {"screen": "Unknown routes (e.g. /direct-projects/new)", "issues": ["The page is blank because there is no 404 or fallback route. The real route is /direct-projects."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Widen the wizard contact Role select (WizardContactsPicker.jsx line 78, col-span-2) so the full role names are visible",
+    "Optional: reset formData.contacts when the integrator selection or wizard mode changes",
+    "Optional: add a catch-all route (404 or redirect) in App.js"
+  ],
+  "critical_code_review_comments": [
+    "ContactRoleSelect is a shared component that keeps legacy roles as an extra option. Good design.",
+    "Integrators.jsx line 543: if an existing integrator_type is outside [Integrador, Comercio], the select shows empty and the user must choose again. All DB values are already Integrador/Comercio, so there is no impact today.",
+    "Integrators.jsx is very large (>2000 lines) and should be split."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100%"},
+  "seed_data_creation": "Created QA company emp_74052180b058 ('QA Roles Empresa T1') and deleted it (DELETE 200, then GET 404). Added technician 'QA Tecnico T1' to prj_1b982687dfb5; the field was absent originally and was restored by $unset of integration_technicians. No notification emails were sent.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login: get session_token via POST /api/auth/login (qa.integradores@megasoft.com.ve), set it in localStorage, open '/', then the target route. The direct project page is /direct-projects (there is no /new). In existing company data every contact role is 'Contacto Principal' (253 contacts), so there are no legacy roles in the DB; to test a legacy role, set it via PUT on a QA company. prj_1b982687dfb5 has an integrator and originally no integration_technicians."
+}

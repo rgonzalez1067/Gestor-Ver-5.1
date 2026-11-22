@@ -4851,3 +4851,8 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - /expand: los contactos del asistente quedan primero; dedupe por email y nombre (también en ecosistema y reel).
 - QA iter388: frontend 8/8; backend 7/8 → dedupe por nombre y orden del Responsable principal corregidos.
 - Backlog: fila de contacto nuevo angosta; POST /integrators copia contactos de un Nuevo Tipo a todas las apps homónimas (comportamiento previo).
+
+### Ajuste Nov 2026: Tipo de Integrador y Roles fijos
+- Asistente: "Tipo de Integrador" (Integrador/Comercio) siempre seleccionable (antes bloqueado para integradores existentes). "Tipo de Integración" (CR/LP/PG/MP/TK) sin cambios.
+- ContactRoleSelect (components/integrators/ContactRoleSelect.jsx): roles fijos Contacto Principal, Responsable Técnico, Contacto Administrativo, Comercial en Reel Corporativo, Reel de Técnicos de Proyectos y filas nuevas del asistente; roles previos fuera de lista se conservan. QA iter389 100%.
+- Backlog: resetear contactos del asistente al cambiar de integrador; ruta 404 genérica.
