@@ -1,3 +1,6 @@
+## ADMIN PRINCIPAL (actualizado Nov 2026)
+- rgonzalez@megasoft.com.ve / MegaSoft2026*  (role admin, desbloqueado, must_change_password=False). NO probar claves incorrectas: 5 fallos = bloqueo 15 min (campos account_status/failed_login_attempts/lockout_timestamp).
+
 ## QA — Empresas Integradoras (Nov 2026) — USAR ESTE ADMIN PARA QA
 - qa.integradores@megasoft.com.ve / QaIntegr2026*Ok  (role admin, must_change_password=False). Login devuelve `session_token`.
 
