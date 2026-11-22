@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="8" time="7.356" timestamp="2026-11-22T20:18:51.546950+00:00" hostname="agent-env-9774c002-28fd-41e1-a887-d767ee74bf0c"><testcase classname="tests.test_ecosystem_contacts" name="test_ecosystem_contacts_galac" time="6.243" /><testcase classname="tests.test_ecosystem_contacts" name="test_ecosystem_contacts_unknown_empresa" time="0.339" /><testcase classname="tests.test_ecosystem_contacts" name="test_ecosystem_contacts_requires_auth" time="0.009" /><testcase classname="tests.test_ecosystem_contacts" name="test_ecosystem_contacts_missing_param" time="0.046" /><testcase classname="tests.test_ecosystem_contacts" name="test_add_contacts_dedupe_and_invalid" time="0.232" /><testcase classname="tests.test_ecosystem_contacts" name="test_add_contacts_404" time="0.053" /><testcase classname="tests.test_ecosystem_contacts" name="test_add_contacts_requires_auth" time="0.007" /><testcase classname="tests.test_ecosystem_contacts" name="test_add_contacts_dedupe_name_only_vs_existing_email" time="0.132"><failure message="AssertionError: name-only duplicate of existing contact was added&#10;assert {'added': 1} == {'added': 0}&#10;  &#10;  Differing items:&#10;  {'added': 1} != {'added': 0}&#10;  &#10;  Full diff:&#10;    {&#10;  -     'added': 0,...&#10;  &#10;  ...Full output truncated (4 lines hidden), use '-vv' to show">E   AssertionError: name-only duplicate of existing contact was added
+    assert {'added': 1} == {'added': 0}
+      
+      Differing items:
+      {'added': 1} != {'added': 0}
+      
+      Full diff:
+        {
+      -     'added': 0,...
+      
+      ...Full output truncated (4 lines hidden), use '-vv' to show</failure></testcase></testsuite></testsuites>

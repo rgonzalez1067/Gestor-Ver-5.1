@@ -1,0 +1,37 @@
+{
+  "summary": "Tested the Integrators wizard: existing-app picker and ecosystem-contacts picker. Backend: 7 of 8 pytest cases pass. The one failure is a minor dedupe gap. Frontend: all 8 requested flows pass end to end with the QA admin against Galac emp_bbeb6f5908f2. These were New Type (pick existing app, eco contact plus new contact), Expansion, New Integrator regression and Directorio 'Agregar Aplicativo'. All QA data was removed and Galac is back to its original state. No notification emails were sent.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/integrator-companies/{empresa_id}/contacts", "issue": "A contact is matched by its email, or by its name only when it has no email. So a name-only contact whose name matches an existing contact that has an email is added as a duplicate. Example: posting {full_name:'Kevin Morillo', email:''} to Galac returned added=1 and created a duplicate Kevin. GET ecosystem-contacts has the same gap. Fix: also check names against the existing names when the incoming email is empty."},
+      {"endpoint": "POST /api/integrators (existing behavior, not new)", "issue": "Contacts sent with a new type are copied into the contacts of every same-name row. In testing, 'QA Contacto Nuevo' landed in all 3 real Galac apps. This may be intended, but it means every contact picked or added in the wizard spreads to all of the integrator's apps."},
+      {"endpoint": "POST /api/integrators/{id}/expand", "issue": "Picked contacts are added to the end of the existing contacts list. The contact the user starred as 'Responsable principal' in the wizard is therefore not first (contacts[0]) in the saved record, even though the wizard hint says the first one becomes the Responsable principal."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Wizard contacts block", "issues": ["The new-contact row is a 12-column grid; the name and email fields are narrow, so values get cut off (e.g. 'qa.nuevo388@ex'). Minor."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_ecosystem_contacts.py", "/app/test_reports/pytest/pytest_results_388.xml"],
+  "action_items": [
+    "Optional: also dedupe by name in add_company_contacts and ecosystem_contacts when the incoming email is empty but an existing contact with that name has an email",
+    "Optional: in /expand, put the wizard's first contact (Responsable principal) at the front of the saved list, or change the wizard hint",
+    "Optional: widen the name and email inputs in the new-contact row"
+  ],
+  "critical_code_review_comments": [
+    "WizardContactsPicker toggle builds contact_id from Date.now() only. Two picks in the same millisecond would share an id, and that id is used as the React key. Add a random suffix as newRow() does.",
+    "Ecosystem button testids use the index in the filtered list (wizard-ecosystem-contact-{i}). The index changes with the search text, so it is not a stable selector.",
+    "When opened from the Directorio, the wizard prefills company.contacts[0] as a selected (not _new) contact. For a NEW company whose first contact has no phone, the required check (Name+Email+Phone) blocks saving, and the user can't edit that row; it can only be removed.",
+    "Integrators.jsx is about 2890 lines; consider splitting it further."
+  ],
+  "updated_files": ["/app/backend/tests/test_ecosystem_contacts.py"],
+  "success_rate": {"backend": "88% (7/8, 1 minor dedupe gap)", "frontend": "100% (8/8 flows)"},
+  "seed_data_creation": "Created and removed: int_cf074808d755 (Galac LP, new type then expanded), int_9af33a156343 plus empresa emp_dde887af8148 ('QA Integrador 388 Nuevo'), and 'QA ' contacts. Deleted through the API. The QA contacts in the Galac reel and in the contacts of the 3 Galac apps were removed directly in Mongo. Galac now matches its pre-test state: reel [Kevin Morillo]; apps 664660/6c019 [Kevin]; eca933 [Kevin, David, Maria].",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "To log in, set localStorage session_token, open '/', then '/integrators' (going straight to /integrators can land on the dashboard). Galac has 3 ecosystem contacts, not 5: David Garcia, Kevin Morillo (Corporativo), Maria Barreto. No app has principal_contact_name, so there is no 'Principal ·' source. Creating a new type copies its contacts into all same-name rows; snapshot those rows' contacts before testing and restore them afterwards. After switching the wizard scope, wait for wizard-ecosystem-list, because it loads asynchronously.",
+  "rca of the issue": "Dedupe gap: each contact gets one key, its email or, if it has none, its name. A name-only entry gets the key 'kevin morillo', which differs from the existing contact's key (its email), so it is not detected as a duplicate."
+}

@@ -4844,3 +4844,10 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Matriz de apps Suspendidas/legacy sin alcance activo exige la función especial (heredado de la regla previa) — confirmar con el usuario.
 - Auditoría guarda content_b64 de certificados (pesado) y el motivo solo en bitácora.
 - Ficha: altura fija entre pestañas, prellenar Componente/Versión de re-emisión desde componente_version, editar contactos técnicos con la función.
+
+### Feature: Asistente con selector de Aplicativos y Contactos del ecosistema — Nov 2026
+- WizardAppPicker: en "Nuevo Tipo" de integrador existente, lista A-Z de aplicativos de la empresa + "Otro aplicativo (nuevo)" con aviso de duplicado.
+- WizardContactsPicker: lista buscable de TODOS los contactos del ecosistema (GET /api/integrator-companies/ecosystem-contacts: corporativos, principal y técnicos de cada app, técnicos de proyectos), selección múltiple, alta de nuevos; contacts[0] = Responsable principal. Nuevos → POST /api/integrator-companies/{id}/contacts (Reel Corporativo).
+- /expand: los contactos del asistente quedan primero; dedupe por email y nombre (también en ecosistema y reel).
+- QA iter388: frontend 8/8; backend 7/8 → dedupe por nombre y orden del Responsable principal corregidos.
+- Backlog: fila de contacto nuevo angosta; POST /integrators copia contactos de un Nuevo Tipo a todas las apps homónimas (comportamiento previo).

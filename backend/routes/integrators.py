@@ -1551,14 +1551,15 @@ async def expand_integrator_type(integrator_id: str, payload: Optional[ExpandPay
             set_data["correo_eventual"] = payload.correo_eventual
         # Fusionar el Responsable capturado (dedupe por email) en los contactos del integrador.
         if payload.contacts:
-            merged = list(existing.get("contacts") or [])
-            existing_emails = {(c.get("email") or "").strip().lower() for c in merged}
-            for c in payload.contacts:
-                email_key = (c.get("email") or "").strip().lower()
-                if not email_key or email_key not in existing_emails:
-                    merged.append(c)
-                    if email_key:
-                        existing_emails.add(email_key)
+            # Los del asistente van primero (contacts[0] = Responsable principal); luego los previos sin duplicar.
+            merged, seen = [], set()
+            for c in list(payload.contacts) + list(existing.get("contacts") or []):
+                em = (c.get("email") or "").strip().lower()
+                nm = (c.get("name") or "").strip().lower()
+                if (em and em in seen) or (nm and nm in seen) or not (em or nm):
+                    continue
+                seen.update(k for k in (em, nm) if k)
+                merged.append(c)
             set_data["contacts"] = merged
     await db.integrators.update_one(
         {"integrator_id": integrator_id},

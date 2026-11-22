@@ -130,10 +130,11 @@ async def ecosystem_contacts(empresa_id: str, authorization: Optional[str] = Hea
 
     def add(name, email, phone, role, source):
         name = clean_name(name)
-        k = (email or "").strip().lower() or name.lower()
-        if name and k not in seen:
-            seen.add(k)
-            out.append({"name": name, "email": (email or "").strip(), "phone": (phone or "").strip(), "role": role or "", "source": source})
+        em = (email or "").strip().lower()
+        if not name or (em and em in seen) or name.lower() in seen:
+            return
+        seen.update(k for k in (em, name.lower()) if k)
+        out.append({"name": name, "email": (email or "").strip(), "phone": (phone or "").strip(), "role": role or "", "source": source})
 
     e = await db[COLL].find_one({"empresa_id": empresa_id}, {"_id": 0, "contacts": 1})
     for c in (e or {}).get("contacts") or []:
@@ -164,15 +165,16 @@ async def add_company_contacts(empresa_id: str, payload: AddContactsPayload, aut
     if not e:
         raise HTTPException(404, "Empresa Integradora no encontrada")
     merged = list(e.get("contacts") or [])
-    keys = {(c.get("email") or "").strip().lower() or (c.get("full_name") or "").strip().lower() for c in merged}
+    keys = set()
+    for c in merged:
+        keys.update(k for k in ((c.get("email") or "").strip().lower(), (c.get("full_name") or "").strip().lower()) if k)
     added = 0
     for c in payload.contacts:
         name = clean_name(c.full_name)
         email = (c.email or "").strip()
-        k = email.lower() or name.lower()
-        if not name or k in keys or (email and not EMAIL_RE.match(email)):
+        if not name or name.lower() in keys or (email and email.lower() in keys) or (email and not EMAIL_RE.match(email)):
             continue
-        keys.add(k)
+        keys.update(k for k in (email.lower(), name.lower()) if k)
         merged.append({"contact_id": f"ctc_{uuid.uuid4().hex[:8]}", "full_name": name, "phone": (c.phone or "").strip(),
                        "email": email, "role": (c.role or "").strip()})
         added += 1
