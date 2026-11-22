@@ -491,6 +491,7 @@ class IntegratorCreate(BaseModel):
     test_env_start_date: Optional[str] = None
     test_env_end_date: Optional[str] = None
     empresa_integradora_id: Optional[str] = None
+    change_reason: Optional[str] = None
 
     @field_validator("principal_contact_email")
     @classmethod
@@ -566,6 +567,9 @@ class Integrator(BaseModel):
     cert_component: Optional[str] = None
     cert_version: Optional[str] = None
     cert_products: Optional[str] = None
+    cert_outdated: Optional[bool] = None
+    cert_outdated_reason: Optional[str] = None
+    cert_outdated_at: Optional[str] = None
     certified_at: Optional[str] = None
     certified_by: Optional[str] = None
     closed_at: Optional[str] = None

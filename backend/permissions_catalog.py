@@ -136,6 +136,12 @@ SPECIAL_PERMISSIONS = [
     {"id": "integradores:cerrar_proyecto", "module": "integradores",
      "label": "Cerrar Proyecto de Integración",
      "description": "Habilita el botón del candado para cerrar Proyectos de Integración (genera certificado y correo de cierre). Sin este permiso, solo el Administrador puede cerrar proyectos."},
+    {"id": "integradores:editar_certificados", "module": "integradores",
+     "label": "Modificar Aplicativos Certificados",
+     "description": "Permite modificar la Matriz de Productos y los datos técnicos de aplicativos Certificados/Cerrados (con motivo obligatorio registrado en bitácora y auditoría)."},
+    {"id": "integradores:gestionar_certificados", "module": "integradores",
+     "label": "Gestionar Certificados (Gerente de Implementación)",
+     "description": "Permite re-emitir certificados desactualizados y administrar el histórico de certificados (marcar vigente / anular)."},
 ]
 
 SPECIAL_FLAG_IDS = [s["id"] for s in SPECIAL_PERMISSIONS]

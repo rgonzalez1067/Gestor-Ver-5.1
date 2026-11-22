@@ -130,3 +130,7 @@ Muchos tests antiguos de /app/backend/tests usan "Mega2026*" y bloquean a rgonza
 ## QA — Iter373 (segmentación Histórico por departamento / cobro recurrente directos)
 - jdolande@megasoft.com.ve / QaMegaSoft2026*x → Ejecutivo, Ventas Pyme (quote_history=read propio). Reseteado con config.hash_password, must_change_password=False.
 - mmartin@megasoft.com.ve / QaMegaSoft2026*x → Ejecutivo, Ventas Corporativas. quote_history originalmente 'none' (se otorga 'read' temporal con `python /app/backend/tests/ui_fixture_iter373.py setup`, se revierte con `cleanup`).
+
+## QA — Aplicativos certificados (Nov 2026)
+- qa.editor@megasoft.com.ve / QaIntegr2026*Ok — role user, integradores=edit, SIN funciones especiales.
+- qa.gerente@megasoft.com.ve / QaIntegr2026*Ok — role user, integradores=edit + integradores:editar_certificados + integradores:gestionar_certificados.

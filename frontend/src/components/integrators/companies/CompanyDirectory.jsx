@@ -33,7 +33,7 @@ const CompanyRow = ({ c, open, onToggle, onOpenFicha }) => (
   </tr>
 );
 
-export const CompanyDirectory = ({ version, canEdit, onAddApp, onEditApp }) => {
+export const CompanyDirectory = ({ version, canEdit, onAddApp, onEditApp, onViewApp }) => {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -84,7 +84,7 @@ export const CompanyDirectory = ({ version, canEdit, onAddApp, onEditApp }) => {
             {filtered.slice(0, limit).map(c => (
               <Fragment key={c.empresa_id}>
                 <CompanyRow c={c} open={!!expanded[c.empresa_id]} onToggle={() => setExpanded(p => ({ ...p, [c.empresa_id]: !p[c.empresa_id] }))} onOpenFicha={() => openFicha(c)} />
-                {expanded[c.empresa_id] && <tr><td colSpan={6} className="p-0"><CompanyAppsPanel company={c} canEdit={canEdit} onAddApp={onAddApp} onEditApp={onEditApp} onMoveApp={setMoving} /></td></tr>}
+                {expanded[c.empresa_id] && <tr><td colSpan={6} className="p-0"><CompanyAppsPanel company={c} canEdit={canEdit} onAddApp={onAddApp} onEditApp={onEditApp} onViewApp={onViewApp} onMoveApp={setMoving} /></td></tr>}
               </Fragment>
             ))}
             {!filtered.length && <tr><td colSpan={6} className="p-6 text-center text-sm text-slate-400">Sin resultados</td></tr>}

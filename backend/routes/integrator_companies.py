@@ -18,7 +18,7 @@ RIF_DIR = UPLOADS_DIR / "integrator_rif"
 RIF_TYPES = {'.pdf': 'application/pdf', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png'}
 APP_FIELDS = {"_id": 0, "integrator_id": 1, "app_name": 1, "integration_type": 1, "integration_modality": 1,
               "integrator_status": 1, "integrator_type": 1, "integration_phase": 1, "componente_version": 1,
-              "cert_version": 1, "project_scope": 1, "implementador": 1, "gestor": 1, "empresa_integradora_id": 1}
+              "cert_version": 1, "project_scope": 1, "implementador": 1, "gestor": 1, "empresa_integradora_id": 1, "cert_outdated": 1}
 
 
 class CompanyContact(BaseModel):

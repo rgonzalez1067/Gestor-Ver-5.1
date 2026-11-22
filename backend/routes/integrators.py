@@ -285,7 +285,7 @@ async def get_integrator(integrator_id: str, authorization: Optional[str] = Head
 
 @router.put("/integrators/{integrator_id}", response_model=Integrator)
 async def update_integrator(integrator_id: str, integrator: IntegratorCreate, authorization: Optional[str] = Header(None)):
-    await get_current_user(authorization)
+    current_user = await get_current_user(authorization)
     
     existing = await db.integrators.find_one({"integrator_id": integrator_id})
     if not existing:
@@ -313,19 +313,20 @@ async def update_integrator(integrator_id: str, integrator: IntegratorCreate, au
     if existing.get("integrator_status") == "Cerrado" or incoming_status == "Cerrado":
         # Ni se cierra por edición, ni se reactiva un proyecto ya cerrado editando la ficha.
         update_data["integrator_status"] = existing.get("integrator_status")
-    # RESTRICCIÓN DE SEGURIDAD — MATRIZ DE PRODUCTOS SOLO-LECTURA:
-    # No se permite modificar la matriz de certificaciones si el integrador NO está
-    # en fase de Proyecto Activo (scope clasificado y estatus != Cerrado).
-    incoming_certs = update_data.get("certifications")
-    if incoming_certs is not None and incoming_certs != (existing.get("certifications") or {}):
-        _scope = existing.get("project_scope")
-        _is_active = _scope in ("new", "component", "expansion", "test_environment") and existing.get("integrator_status") != "Cerrado"
-        if not _is_active:
-            raise HTTPException(status_code=403, detail="La Matriz de Productos es de solo lectura: el integrador no se encuentra en fase de Proyecto Activo.")
+    # BLOQUEO DE APLICATIVOS CERTIFICADOS/CERRADOS (y Matriz fuera de Proyecto Activo):
+    # solo admin o Función Especial 'integradores:editar_certificados', con motivo obligatorio.
+    from services.integrator_locks import diff_changes, enforce_lock, register_locked_change
+    change_reason = (update_data.pop("change_reason", None) or "").strip()
+    sent_keys = integrator.model_dump(exclude_unset=True).keys()
+    _changes = diff_changes(existing, {k: update_data[k] for k in sent_keys if k in update_data},
+                            {p["id"]: p["name"] for p in INTEGRATOR_PRODUCTS})
+    _locked_change = enforce_lock(existing, _changes, change_reason, current_user)
     await db.integrators.update_one(
         {"integrator_id": integrator_id},
         {"$set": update_data}
     )
+    if _locked_change:
+        await register_locked_change(existing, _changes, change_reason, current_user)
     
     updated = await db.integrators.find_one({"integrator_id": integrator_id}, {"_id": 0})
     return updated
@@ -1012,6 +1013,7 @@ async def list_integrator_certificates(integrator_id: str, authorization: Option
     async for c in db.integrator_certificates.find(
         {"integrator_id": integrator_id}, {"_id": 0, "content_b64": 0}
     ).sort("created_at", -1):
+        c.setdefault("status", "vigente")
         items.append(c)
     return {"certificates": items, "total": len(items)}
 
@@ -1042,6 +1044,71 @@ async def upload_integrator_certificate_manual(
         integrator_id, fname, content, "manual", f"Manual - {uname}", current_user,
     )
     return {"status": "ok", "certificate_id": cert_id, "original_name": fname}
+
+
+@router.post("/integrators/{integrator_id}/certificates/reissue")
+async def reissue_integrator_certificate(
+    integrator_id: str,
+    componente: Optional[str] = Form(None),
+    version_componente: Optional[str] = Form(None),
+    authorization: Optional[str] = Header(None),
+):
+    """Re-emite el Certificado con la Matriz vigente; los anteriores quedan en el histórico como 'reemplazado'."""
+    from services.integrator_locks import has_flag, CERT_SPECIAL
+    current_user = await get_current_user(authorization)
+    if not has_flag(current_user, CERT_SPECIAL):
+        raise HTTPException(status_code=403, detail="Requiere la Función Especial 'Gestionar Certificados (Gerente de Implementación)'")
+    existing = await db.integrators.find_one({"integrator_id": integrator_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Integrator not found")
+    componente = (componente or existing.get("cert_component") or "").strip()
+    version_componente = (version_componente or existing.get("cert_version") or "").strip()
+    if not componente or not version_componente:
+        raise HTTPException(status_code=400, detail="Componente y Versión del Componente son obligatorios")
+    productos_str = _certified_products_string(existing)
+    tpl = await _resolve_implementer_cert_template(existing)
+    cert_bytes = await _generate_integration_certificate_pdf(existing, componente, version_componente, productos_str, base_pdf_bytes=tpl)
+    if not cert_bytes:
+        raise HTTPException(status_code=422, detail="No se pudo generar el certificado")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.integrator_certificates.update_many(
+        {"integrator_id": integrator_id, "status": {"$nin": ["anulado", "reemplazado"]}},
+        {"$set": {"status": "reemplazado", "status_updated_at": now_iso}})
+    uname = f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip() or current_user.get("email", "")
+    cert_id = await _store_integrator_certificate(
+        integrator_id, f"Certificado_{existing.get('name', 'Integracion')}_reemision.pdf", cert_bytes,
+        "reissue", f"Re-emisión - {uname}", current_user)
+    await db.integrator_certificates.update_one({"certificate_id": cert_id}, {"$set": {"status": "vigente"}})
+    await db.integrators.update_one({"integrator_id": integrator_id}, {
+        "$set": {"cert_component": componente, "cert_version": version_componente, "cert_products": productos_str,
+                 "cert_reissued_at": now_iso, "cert_reissued_by": current_user.get("email"), "cert_outdated": False},
+        "$unset": {"cert_outdated_at": "", "cert_outdated_reason": "", "cert_outdated_by": ""}})
+    return {"status": "ok", "certificate_id": cert_id, "productos_certificados": productos_str}
+
+
+class CertificateStatusPayload(BaseModel):
+    status: Literal["vigente", "anulado"]
+    note: Optional[str] = None
+
+
+@router.patch("/integrators/certificates/{certificate_id}/status")
+async def set_certificate_status(certificate_id: str, payload: CertificateStatusPayload, authorization: Optional[str] = Header(None)):
+    from services.integrator_locks import has_flag, CERT_SPECIAL
+    current_user = await get_current_user(authorization)
+    if not has_flag(current_user, CERT_SPECIAL):
+        raise HTTPException(status_code=403, detail="Requiere la Función Especial 'Gestionar Certificados (Gerente de Implementación)'")
+    cert = await db.integrator_certificates.find_one({"certificate_id": certificate_id}, {"_id": 0, "integrator_id": 1})
+    if not cert:
+        raise HTTPException(status_code=404, detail="Certificado no encontrado")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    if payload.status == "vigente":
+        await db.integrator_certificates.update_many(
+            {"integrator_id": cert["integrator_id"], "certificate_id": {"$ne": certificate_id}, "status": {"$nin": ["anulado", "reemplazado"]}},
+            {"$set": {"status": "reemplazado", "status_updated_at": now_iso}})
+    await db.integrator_certificates.update_one({"certificate_id": certificate_id}, {"$set": {
+        "status": payload.status, "status_note": (payload.note or "").strip(), "status_updated_at": now_iso,
+        "status_updated_by": current_user.get("email")}})
+    return {"status": "ok"}
 
 
 

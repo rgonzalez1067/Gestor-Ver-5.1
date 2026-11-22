@@ -22,6 +22,8 @@ import { BankMassCommunicationDialog } from '../components/BankMassCommunication
 import { IntegratorCertificatesCell } from '../components/IntegratorCertificatesCell';
 import PurgeIntegratorsDialog from '../components/PurgeIntegratorsDialog';
 import { CompanyDirectory } from '../components/integrators/companies/CompanyDirectory';
+import { AppFichaDialog } from '../components/integrators/apps/AppFichaDialog';
+import { isLockedApp } from '../components/integrators/apps/appPayload';
 import api from '../utils/api';
 import { toast } from 'sonner';
 import { usePermission } from '../hooks/usePermission';
@@ -99,6 +101,7 @@ export const Integrators = () => {
   const [filterScope, setFilterScope] = useState(''); // '' | 'all' | 'new' | 'expansion'
   const [mainView, setMainView] = useState('companies');
   const [dirVersion, setDirVersion] = useState(0);
+  const [fichaAppId, setFichaAppId] = useState(null);
   // Wizard de creación (Nuevo Proyecto de Integración)
   const [wizardStep, setWizardStep] = useState(1);        // 1: identificación · 2: naturaleza
   const [integratorMode, setIntegratorMode] = useState(''); // '' | 'existing' | 'new'
@@ -413,12 +416,14 @@ export const Integrators = () => {
   };
 
   const handleEditAppFromDirectory = async (app) => {
+    if (isLockedApp(app)) { setFichaAppId(app.integrator_id); return; }
     let full = integrators.find((i) => i.integrator_id === app.integrator_id);
     if (!full) {
       try { full = (await api.get(`/integrators/${app.integrator_id}`)).data; } catch { toast.error('No se pudo cargar el aplicativo'); return; }
     }
     openEditDialog(full);
   };
+  const openEditOrFicha = (intg) => (isLockedApp(intg) ? setFichaAppId(intg.integrator_id) : openEditDialog(intg));
 
   // El operador decide registrar un integrador completamente nuevo.
   const startNewIntegrator = () => {
@@ -1902,7 +1907,7 @@ export const Integrators = () => {
           </div>
 
           {mainView === 'companies' ? (
-            <CompanyDirectory version={dirVersion} canEdit={canEdit || canCreate} onAddApp={handleAddAppForCompany} onEditApp={handleEditAppFromDirectory} />
+            <CompanyDirectory version={dirVersion} canEdit={canEdit || canCreate} onAddApp={handleAddAppForCompany} onEditApp={handleEditAppFromDirectory} onViewApp={(a) => setFichaAppId(a.integrator_id)} />
           ) : (<>
           {/* Filters */}
           <div className="bg-white rounded-lg border border-slate-200 p-3 mb-4">
@@ -2175,7 +2180,7 @@ export const Integrators = () => {
                               data-testid={`notify-${intg.integrator_id}`} title="Enviar notificación">
                               <Mail size={13} />
                             </Button>
-                            {canEdit && <Button size="sm" variant="ghost" onClick={() => openEditDialog(intg)} className="text-brand-blue-600 hover:bg-blue-50 h-7 w-7 p-0" data-testid={`edit-${intg.integrator_id}`}><Pencil size={13} /></Button>}
+                            {canEdit && <Button size="sm" variant="ghost" onClick={() => openEditOrFicha(intg)} className="text-brand-blue-600 hover:bg-blue-50 h-7 w-7 p-0" data-testid={`edit-${intg.integrator_id}`}><Pencil size={13} /></Button>}
                             {(isAdmin || hasSpecial('integradores:cerrar_proyecto')) && intg.integrator_status !== 'Cerrado' && (
                               <Button size="sm" variant="ghost" onClick={() => handleCloseProject(intg)} className="text-slate-500 hover:bg-slate-200 h-7 w-7 p-0" data-testid={`close-project-${intg.integrator_id}`} title="Cerrar Proyecto"><Lock size={13} /></Button>
                             )}
@@ -2281,6 +2286,10 @@ export const Integrators = () => {
           </div>
           </>)}
         </div>
+
+        <AppFichaDialog integratorId={fichaAppId} onClose={() => setFichaAppId(null)} canEdit={canEdit}
+          canModifyLocked={isAdmin || hasSpecial('integradores:editar_certificados')}
+          canManageCerts={isAdmin || hasSpecial('integradores:gestionar_certificados')} onChanged={fetchData} />
 
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
           <AlertDialogContent>
