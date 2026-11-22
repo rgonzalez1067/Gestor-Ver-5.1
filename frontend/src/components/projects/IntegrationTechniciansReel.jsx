@@ -3,8 +3,7 @@ import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Plus, X, Wrench, UserPlus } from 'lucide-react';
 import api from '../../utils/api';
-
-const ROLES = ['Desarrollador Backend', 'Desarrollador Frontend', 'Líder Técnico', 'Soporte en Sitio', 'Infraestructura / Redes', 'QA / Pruebas', 'Gerente de Proyecto'];
+import { ContactRoleSelect } from '../integrators/ContactRoleSelect';
 export const emptyTechnician = () => ({ tech_id: '', name: '', phone: '', email: '', role: '' });
 
 export const useTechnicianSuggestions = (integratorId) => {
@@ -50,7 +49,6 @@ export const IntegrationTechniciansReel = ({ value, onChange, integratorId, test
         </div>
       )}
       <datalist id={`${testPrefix}-names`}>{suggestions.map((s, i) => <option key={i} value={s.name} />)}</datalist>
-      <datalist id={`${testPrefix}-roles`}>{ROLES.map(r => <option key={r} value={r} />)}</datalist>
       {techs.length === 0 && <p className="text-[11px] text-slate-400" data-testid={`${testPrefix}-empty`}>Sin técnicos asignados a esta integración.</p>}
       <div className="space-y-2">
         {techs.map((t, idx) => (
@@ -58,7 +56,7 @@ export const IntegrationTechniciansReel = ({ value, onChange, integratorId, test
             <Input className="md:col-span-3 h-8 text-xs" placeholder="Nombre del Técnico *" list={`${testPrefix}-names`} value={t.name} onChange={e => onName(idx, e.target.value)} data-testid={`${testPrefix}-name-${idx}`} />
             <Input className="md:col-span-2 h-8 text-xs" placeholder="Teléfono" value={t.phone} onChange={e => update(idx, { phone: e.target.value })} data-testid={`${testPrefix}-phone-${idx}`} />
             <Input className="md:col-span-3 h-8 text-xs" placeholder="Correo electrónico" value={t.email} onChange={e => update(idx, { email: e.target.value })} data-testid={`${testPrefix}-email-${idx}`} />
-            <Input className="md:col-span-3 h-8 text-xs" placeholder="Rol / Especialidad" list={`${testPrefix}-roles`} value={t.role} onChange={e => update(idx, { role: e.target.value })} data-testid={`${testPrefix}-role-${idx}`} />
+            <ContactRoleSelect className="md:col-span-3 h-8" value={t.role} onChange={(v) => update(idx, { role: v })} testId={`${testPrefix}-role-${idx}`} />
             <Button type="button" size="sm" variant="ghost" className="md:col-span-1 h-8 w-8 p-0 text-red-500" onClick={() => onChange(techs.filter((_, i) => i !== idx))} data-testid={`${testPrefix}-remove-${idx}`}><X size={14} /></Button>
           </div>
         ))}

@@ -3,6 +3,7 @@ import { Input } from '../../ui/input';
 import { Button } from '../../ui/button';
 import { Search, UserPlus, X, Check, Star } from 'lucide-react';
 import api from '../../../utils/api';
+import { ContactRoleSelect } from '../ContactRoleSelect';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const keyOf = (c) => (c.email || '').trim().toLowerCase() || (c.name || '').trim().toLowerCase();
@@ -74,7 +75,7 @@ export const WizardContactsPicker = ({ empresaId, contacts, onChange, required }
               <Input className="col-span-3 h-8 text-xs bg-white" placeholder={`Nombre${required && idx === 0 ? ' *' : ''}`} value={c.name} onChange={(e) => update(idx, { name: e.target.value })} data-testid={`wizard-resp-name${idx ? `-${idx}` : ''}`} />
               <Input className={`col-span-3 h-8 text-xs bg-white ${c.email && !EMAIL_RE.test(c.email.trim()) ? 'border-red-400' : ''}`} placeholder="Email" value={c.email} onChange={(e) => update(idx, { email: e.target.value })} data-testid={`wizard-resp-email${idx ? `-${idx}` : ''}`} />
               <Input className="col-span-2 h-8 text-xs bg-white" placeholder="Teléfono" value={c.phone} onChange={(e) => update(idx, { phone: e.target.value })} data-testid={`wizard-resp-phone${idx ? `-${idx}` : ''}`} />
-              <Input className="col-span-2 h-8 text-xs bg-white" placeholder="Rol" value={c.role || ''} onChange={(e) => update(idx, { role: e.target.value })} data-testid={`wizard-resp-role${idx ? `-${idx}` : ''}`} />
+              <ContactRoleSelect className="col-span-2 h-8" value={c.role} onChange={(v) => update(idx, { role: v })} testId={`wizard-resp-role${idx ? `-${idx}` : ''}`} />
             </>) : (
               <div className="col-span-10 text-xs"><span className="font-semibold text-slate-800">{c.name}</span> <span className="text-slate-500">{c.email}{c.phone ? ` · ${c.phone}` : ''}</span>{c.role && <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-700">{c.role}</span>}</div>
             )}

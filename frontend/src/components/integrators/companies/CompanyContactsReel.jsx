@@ -1,8 +1,7 @@
 import { Input } from '../../ui/input';
 import { Button } from '../../ui/button';
 import { Plus, X, Contact as ContactIcon } from 'lucide-react';
-
-const ROLES = ['Director', 'Gerente General', 'Líder Técnico', 'Administrativo', 'Comercial', 'Contacto Principal', 'Soporte'];
+import { ContactRoleSelect } from '../ContactRoleSelect';
 export const emptyCompanyContact = () => ({ contact_id: '', full_name: '', phone: '', email: '', role: '' });
 
 export const CompanyContactsReel = ({ contacts, onChange }) => {
@@ -18,7 +17,6 @@ export const CompanyContactsReel = ({ contacts, onChange }) => {
           <Plus size={14} className="mr-1" /> Agregar Contacto
         </Button>
       </div>
-      <datalist id="company-contact-roles">{ROLES.map(r => <option key={r} value={r} />)}</datalist>
       {contacts.length === 0 && <p className="text-xs text-slate-400" data-testid="company-contacts-empty">Sin contactos registrados.</p>}
       <div className="space-y-2">
         {contacts.map((c, idx) => (
@@ -26,7 +24,7 @@ export const CompanyContactsReel = ({ contacts, onChange }) => {
             <Input className="col-span-3 h-9" placeholder="Nombre *" value={c.full_name} onChange={e => update(idx, { full_name: e.target.value })} data-testid={`company-contact-name-${idx}`} />
             <Input className="col-span-2 h-9" placeholder="Teléfono" value={c.phone} onChange={e => update(idx, { phone: e.target.value })} data-testid={`company-contact-phone-${idx}`} />
             <Input className="col-span-3 h-9" placeholder="Email" value={c.email} onChange={e => update(idx, { email: e.target.value })} data-testid={`company-contact-email-${idx}`} />
-            <Input className="col-span-3 h-9" placeholder="Rol en la empresa" list="company-contact-roles" value={c.role} onChange={e => update(idx, { role: e.target.value })} data-testid={`company-contact-role-${idx}`} />
+            <ContactRoleSelect className="col-span-3 h-9" value={c.role} onChange={(v) => update(idx, { role: v })} testId={`company-contact-role-${idx}`} />
             <Button type="button" size="sm" variant="ghost" className="col-span-1 h-9 w-9 p-0 text-red-500" onClick={() => onChange(contacts.filter((_, i) => i !== idx))} data-testid={`company-contact-remove-${idx}`}><X size={15} /></Button>
           </div>
         ))}

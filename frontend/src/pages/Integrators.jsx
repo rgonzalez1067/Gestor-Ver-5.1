@@ -529,7 +529,7 @@ export const Integrators = () => {
   };
 
   // Campos núcleo reutilizados por "Integrador Nuevo" y "Nuevo Tipo".
-  const renderWizardCoreFields = ({ lockIntegratorType, apps }) => (
+  const renderWizardCoreFields = ({ apps }) => (
     <div className="grid grid-cols-2 gap-3 border-t border-slate-200 pt-3">
       <div>
         <Label>Tipo de Integración *</Label>
@@ -540,14 +540,10 @@ export const Integrators = () => {
       </div>
       <div>
         <Label>Tipo de Integrador *</Label>
-        {lockIntegratorType ? (
-          <div className="h-10 flex items-center px-3 rounded-md border bg-slate-50 text-sm text-slate-600" data-testid="wizard-integrator-type-locked">{formData.integrator_type || '—'}</div>
-        ) : (
-          <Select value={formData.integrator_type} onValueChange={(v) => setFormData({ ...formData, integrator_type: v })}>
-            <SelectTrigger data-testid="wizard-integrator-type"><SelectValue placeholder="Seleccione..." /></SelectTrigger>
-            <SelectContent>{INTEGRATOR_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-          </Select>
-        )}
+        <Select value={INTEGRATOR_TYPES.includes(formData.integrator_type) ? formData.integrator_type : ''} onValueChange={(v) => setFormData(prev => ({ ...prev, integrator_type: v }))}>
+          <SelectTrigger data-testid="wizard-integrator-type"><SelectValue placeholder="Seleccione..." /></SelectTrigger>
+          <SelectContent>{INTEGRATOR_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+        </Select>
       </div>
       <div className="col-span-2">
         {apps?.length ? (
@@ -1711,7 +1707,7 @@ export const Integrators = () => {
                         {integratorMode === 'new' && (
                           <div data-testid="wizard-new-integrator-fields">
                             <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1">Alta de Nuevo Integrador · «{formData.name}»</p>
-                            {renderWizardCoreFields({ lockIntegratorType: false })}
+                            {renderWizardCoreFields({})}
                             {renderResponsibleContact({ required: true })}
                           </div>
                         )}
@@ -1843,7 +1839,7 @@ export const Integrators = () => {
                         {scopeChoice === 'new_type' && (
                           <div data-testid="wizard-new-type-block">
                             <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1">Nuevo Tipo para «{existingName}»</p>
-                            {renderWizardCoreFields({ lockIntegratorType: true, apps: existingRows })}
+                            {renderWizardCoreFields({ apps: existingRows })}
                             {renderResponsibleContact({ required: false })}
                           </div>
                         )}
