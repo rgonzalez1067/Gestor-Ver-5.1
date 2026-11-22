@@ -4832,3 +4832,15 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - P1: Reel de técnicos en Detalle de Proyecto se ve apretado en la columna angosta (apilar campos).
 - P1: Si falla la carga del RIF tras crear la empresa, el reintento da 409 (pasar a modo edición).
 - P2: Clasificación new/component/expansion por empresa en vez de nombre exacto; empresa vacía al borrar su último aplicativo; Esc en vista previa PDF; RBAC en implementation-fields; consolidar empresas casi duplicadas (ej. variantes RPM) con "Mover".
+
+### Feature: Ficha del Aplicativo + Bloqueo de Certificados — Nov 2026
+- AppFichaDialog (components/integrators/apps/) con pestañas Datos Técnicos / Matriz de Productos / Contactos Técnicos / Certificados; se abre desde el Directorio (ojo o nombre) y desde el lápiz de aplicativos certificados.
+- Funciones Especiales nuevas: `integradores:editar_certificados` (editar matriz y datos técnicos de Certificados/Cerrados, motivo ≥10 obligatorio → bitácora + audit) e `integradores:gestionar_certificados` (re-emitir, marcar vigente/anular, cargar certificado manual).
+- services/integrator_locks.py: is_locked/diff_changes/enforce_lock/register_locked_change. Aplicativos bloqueados solo escriben los campos enviados (fix de borrado por PUT parcial).
+- Cambio de matriz con certificados emitidos → cert_outdated + certificados 'desactualizado'. POST /integrators/{id}/certificates/reissue y PATCH /integrators/certificates/{id}/status. Histórico con estados vigente/desactualizado/reemplazado/anulado.
+- QA iter387: frontend 100%, backend 15/16 → bug crítico de PUT parcial corregido y verificado.
+
+### Backlog (Ficha del Aplicativo)
+- Matriz de apps Suspendidas/legacy sin alcance activo exige la función especial (heredado de la regla previa) — confirmar con el usuario.
+- Auditoría guarda content_b64 de certificados (pesado) y el motivo solo en bitácora.
+- Ficha: altura fija entre pestañas, prellenar Componente/Versión de re-emisión desde componente_version, editar contactos técnicos con la función.

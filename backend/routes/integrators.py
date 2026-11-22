@@ -321,6 +321,11 @@ async def update_integrator(integrator_id: str, integrator: IntegratorCreate, au
     _changes = diff_changes(existing, {k: update_data[k] for k in sent_keys if k in update_data},
                             {p["id"]: p["name"] for p in INTEGRATOR_PRODUCTS})
     _locked_change = enforce_lock(existing, _changes, change_reason, current_user)
+    from services.integrator_locks import is_active, is_locked
+    if is_locked(existing) or not is_active(existing):
+        # Bloqueados: solo se escriben los campos enviados (evita borrar con defaults None).
+        _keep = set(sent_keys) | {"project_scope", "empresa_integradora_id", "name"}
+        update_data = {k: v for k, v in update_data.items() if k in _keep}
     await db.integrators.update_one(
         {"integrator_id": integrator_id},
         {"$set": update_data}
@@ -1026,7 +1031,8 @@ async def upload_integrator_certificate_manual(
 ):
     """Carga manual de un Certificado (PDF) como NUEVA versión, sin sobreescribir."""
     current_user = await get_current_user(authorization)
-    if (current_user or {}).get("role", "") not in ("admin", "implementador", "coordinador", "gestor"):
+    from services.integrator_locks import has_flag, CERT_SPECIAL
+    if (current_user or {}).get("role", "") not in ("admin", "implementador", "coordinador", "gestor") and not has_flag(current_user, CERT_SPECIAL):
         raise HTTPException(status_code=403, detail="No tiene permisos para cargar certificados")
     intg = await db.integrators.find_one({"integrator_id": integrator_id}, {"_id": 0, "name": 1})
     if not intg:
@@ -1066,7 +1072,10 @@ async def reissue_integrator_certificate(
     if not componente or not version_componente:
         raise HTTPException(status_code=400, detail="Componente y Versión del Componente son obligatorios")
     productos_str = _certified_products_string(existing)
-    tpl = await _resolve_implementer_cert_template(existing)
+    try:
+        tpl = await _resolve_implementer_cert_template(existing)
+    except HTTPException as ex:
+        raise HTTPException(status_code=ex.status_code, detail=str(ex.detail).replace("antes de cerrar el proyecto", "antes de re-emitir el certificado").replace("antes de cerrar", "antes de re-emitir"))
     cert_bytes = await _generate_integration_certificate_pdf(existing, componente, version_componente, productos_str, base_pdf_bytes=tpl)
     if not cert_bytes:
         raise HTTPException(status_code=422, detail="No se pudo generar el certificado")

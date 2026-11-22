@@ -1,0 +1,40 @@
+{
+  "summary": "Iter387 - Ficha del Aplicativo + bloqueo de aplicativos Certificados/Cerrados (Función Especial + motivo), certificados desactualizados, re-emisión e histórico. Backend: 15/16 pytest passed (localhost:8001). FRONTEND: every requested flow works (editor read-only, gerente matrix/data edit with reason, reissue, vigente/anulado, download, banners/badges, permission checkboxes in Permisos de Usuarios). Found 1 CRITICAL security bug: the lock can be bypassed with a partial PUT payload, which wipes the matrix of a certified app (200 OK, no reason, no bitácora). All tests ran on TEST_ copies of int_f6cbdce034f9 (int_test387lock/actv/notp/clos), which were deleted afterwards. The real int_f6cbdce034f9 was verified unchanged (0 certificates, matrix intact).",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "PUT /api/integrators/{id}", "issue": "LOCK BYPASS / DATA LOSS: update_integrator applies $set with integrator.model_dump(), which includes defaults (None) for EVERY field NOT sent, but diff_changes/enforce_lock only evaluate sent_keys (exclude_unset). A user WITHOUT the special function (qa.editor) sending {name, integrator_type, app_name, integrator_status:'Certificado'} gets 200 and the certified app is left with certifications=None, contacts=None, observations=None, gestor=None, etc., without a reason or bitácora entry. Reproduced in test_partial_payload_bypass. Fix: build update_data = model_dump(exclude_unset=True) (keeping the project_scope/status/implementador safeguards), or run the diff against the full model_dump instead of only sent_keys.", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "services/integrator_locks.enforce_lock", "issue": "Matrix changes require the special function whenever the app is NOT active (not is_active), not only when it is Certificado/Cerrado. 44 'Suspendido'/legacy apps with no active scope now give 403 to normal editors who change the matrix from the classic edit form. Confirm this is intended (the original requirement only mentioned Certificados/Cerrados)."},
+      {"endpoint": "POST /api/integrators/{id}/certificates/reissue", "issue": "The 400 message for a missing template says '...antes de cerrar el proyecto' (reused from close); in a reissue context it should say 'antes de re-emitir'."},
+      {"endpoint": "POST /api/integrators/{id}/certificates (upload manual)", "issue": "Only roles admin/implementador/coordinador/gestor are allowed; a 'Gerente de Implementación' with role=user plus gestionar_certificados cannot upload a manual certificate. Consider has_flag(CERT_SPECIAL)."},
+      {"endpoint": "audit_trails", "issue": "The generic audit records the integrator_certificates CREATE including full content_b64 (truncated, but it bloats audit). The locked-change reason is saved in bitácora, not in the audit trail fields."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "AppFichaDialog", "issues": ["The dialog height changes per tab, so it jumps vertically when switching tabs (consider a min-height).", "The Componente/Versión inputs in the reissue form are empty for legacy apps (cert_component null); they could be pre-filled from componente_version.", "Contactos Técnicos tab is read-only even with the special function, although 'contacts' is tracked as a locked field."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_integrator_cert_locks.py", "/app/backend/tests/ui_fixture_iter387_locks.py", "/app/test_reports/pytest/iter387_cert_locks.xml"],
+  "action_items": [
+    "CRITICAL: fix the PUT /api/integrators/{id} partial-payload bypass (unsent fields overwritten with None, skipping the lock). Use exclude_unset for $set or diff the full payload.",
+    "Confirm or limit matrix locking for non-active, non-certified apps (Suspendido/legacy).",
+    "Reissue 400 message wording ('re-emitir' instead of 'cerrar').",
+    "Optional: allow gestionar_certificados to upload manual certificates; prefill reissue component/version."
+  ],
+  "critical_code_review_comments": [
+    "routes/integrators.py update_integrator: $set uses the full model_dump with defaults, while the lock diff uses only sent keys, so the two are inconsistent (root cause of the bypass).",
+    "set_certificate_status: marking a certificate 'anulado' when it was the only vigente one leaves no vigente certificate and does not change cert_outdated. Acceptable, but no warning is shown.",
+    "Frontend correctly sends the full record via buildPayload, so the bypass is only exploitable via API, but it is still a server-side authorization hole."
+  ],
+  "updated_files": ["/app/backend/tests/test_integrator_cert_locks.py", "/app/backend/tests/ui_fixture_iter387_locks.py"],
+  "success_rate": {"backend": "94% (15/16)", "frontend": "100%"},
+  "seed_data_creation": "Created TEST_ copies int_test387lock (Certificado), int_test387actv (scope new), int_test387notp (implementador without template), int_test387clos (Cerrado) via ui_fixture_iter387_locks.py create. All copies, their certificates and bitácora entries were deleted (cleanup). Audit_trails entries for these TEST ids remain (append-only log). No real app or certificate was modified.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: python /app/backend/tests/ui_fixture_iter387_locks.py create && pytest tests/test_integrator_cert_locks.py -p no:xdist -o addopts='' ; then cleanup. test_partial_payload_bypass destroys the LOCK copy's matrix, so run it last or recreate the fixture (it currently runs before TestCertificates, which then fails with a KeyError cascade). Use localhost:8001 for Python requests. UI login: input[type=email]/[type=password]/button[type=submit]. Binaural company empresa_id emp_36e9e77f1af7 (search 'Binaural' then company-toggle).",
+  "rca of the issue": "Bypass: IntegratorCreate has defaults for all optional fields. update_data = integrator.model_dump() fills unsent fields with None, but sent_keys = model_dump(exclude_unset=True).keys() is what diff_changes sees, so enforce_lock finds no changes and $set wipes the omitted fields. Repro: login qa.editor, PUT /api/integrators/<certified> {name:'x', integrator_type:'Integrador', app_name:'...', integrator_status:'Certificado'} returns 200 and certifications becomes null."
+}
