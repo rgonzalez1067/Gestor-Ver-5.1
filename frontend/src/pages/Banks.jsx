@@ -376,10 +376,10 @@ export const Banks = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex page-fixed-shell bg-white">
       <Sidebar />
-      <main className="flex-1 p-8" data-testid="banks-page">
-        <div className="max-w-7xl mx-auto">
+      <main className="flex-1 page-fixed-main p-8" data-testid="banks-page">
+        <div className="max-w-7xl mx-auto page-fixed-main">
           {/* Header */}
           <div className="flex justify-between items-center mb-4">
             <div>
@@ -695,6 +695,7 @@ export const Banks = () => {
             </Button>
           </div>
 
+          <div className="page-scroll-area pr-1" data-testid="banks-scroll-area">
           {/* Vista agrupada: Bancos por Procesador (validación de asignaciones) */}
           {viewMode === 'by-processor' && (() => {
             const processors = banks.filter(b => b.type === 'Procesador').sort((a, b) => a.name.localeCompare(b.name));
@@ -910,6 +911,7 @@ export const Banks = () => {
               <p className="text-sm mt-1">Cree su primer banco usando el botón superior</p>
             </div>
           )}
+          </div>
         </div>
 
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

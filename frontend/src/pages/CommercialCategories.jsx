@@ -126,10 +126,10 @@ export const CommercialCategories = () => {
     : cats;
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex page-fixed-shell bg-slate-50">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-6xl mx-auto p-6 lg:p-8">
+      <main className="flex-1 page-fixed-main" data-testid="cc-page">
+        <div className="max-w-6xl mx-auto p-6 lg:p-8 page-fixed-main">
           {/* Header */}
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
@@ -200,7 +200,7 @@ export const CommercialCategories = () => {
           </div>
 
           {/* Table */}
-          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-lg border border-slate-200 page-scroll-area" data-testid="cc-scroll-area">
             {loading ? (
               <div className="py-16 text-center text-sm text-slate-400">Cargando catálogo...</div>
             ) : filtered.length === 0 ? (
@@ -208,7 +208,7 @@ export const CommercialCategories = () => {
                 {q ? 'Sin resultados para la búsqueda.' : 'No hay categorías aún. Crea la primera con el botón arriba.'}
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div>
                 <table className="w-full text-sm" data-testid="cc-table">
                   <thead className="bg-slate-50 border-b border-slate-200">
                     <tr>
