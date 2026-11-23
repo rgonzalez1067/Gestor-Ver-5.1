@@ -1,16 +1,18 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
-import { Plus, Minus, Search, Building2, AlertTriangle, FileCheck2, IdCard } from 'lucide-react';
+import { Plus, Minus, Search, Building2, AlertTriangle, FileCheck2, IdCard, Trash2 } from 'lucide-react';
 import { CompanyFormDialog } from './CompanyFormDialog';
 import { CompanyAppsPanel } from './CompanyAppsPanel';
 import { MoveAppDialog } from './MoveAppDialog';
+import { DeleteAppDialog } from './DeleteAppDialog';
+import { DirectoryMaintenance } from './DirectoryMaintenance';
 import api from '../../../utils/api';
 import { toast } from 'sonner';
 
 const PAGE = 60;
 
-const CompanyRow = ({ c, open, onToggle, onOpenFicha }) => (
+const CompanyRow = ({ c, open, onToggle, onOpenFicha, onDelete }) => (
   <tr className={`border-t border-slate-100 transition-colors ${open ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`} data-testid={`company-row-${c.empresa_id}`}>
     <td className="px-3 py-2.5 w-12">
       <button onClick={onToggle} aria-expanded={open} data-testid={`company-toggle-${c.empresa_id}`}
@@ -29,11 +31,12 @@ const CompanyRow = ({ c, open, onToggle, onOpenFicha }) => (
     </td>
     <td className="px-3 py-2.5 text-sm text-slate-600">{c.principal_contact || '—'}</td>
     <td className="px-3 py-2.5 text-sm"><span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold text-xs" data-testid={`company-app-count-${c.empresa_id}`}>{c.app_count} App{c.app_count === 1 ? '' : 's'}</span></td>
-    <td className="px-3 py-2.5 text-right"><Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onOpenFicha} data-testid={`company-ficha-btn-${c.empresa_id}`}><IdCard size={13} className="mr-1" />Ficha</Button></td>
+    <td className="px-3 py-2.5 text-right whitespace-nowrap"><Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onOpenFicha} data-testid={`company-ficha-btn-${c.empresa_id}`}><IdCard size={13} className="mr-1" />Ficha</Button>
+      {onDelete && c.app_count === 0 && <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:bg-red-50" title="Eliminar empresa sin aplicativos" onClick={onDelete} data-testid={`company-delete-btn-${c.empresa_id}`}><Trash2 size={13} /></Button>}</td>
   </tr>
 );
 
-export const CompanyDirectory = ({ version, canEdit, onAddApp, onEditApp, onViewApp }) => {
+export const CompanyDirectory = ({ version, canEdit, canDelete, canManageCerts, onAddApp, onEditApp, onViewApp }) => {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -43,6 +46,7 @@ export const CompanyDirectory = ({ version, canEdit, onAddApp, onEditApp, onView
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [moving, setMoving] = useState(null);
+  const [deletingApp, setDeletingApp] = useState(null);
 
   const load = useCallback(async () => {
     try { setCompanies((await api.get('/integrator-companies')).data || []); }
@@ -58,13 +62,21 @@ export const CompanyDirectory = ({ version, canEdit, onAddApp, onEditApp, onView
   }, [companies, search, onlyIncomplete]);
   const incomplete = companies.filter(c => c.ficha_incompleta).length;
   const openFicha = (c) => { setEditing(c); setFormOpen(true); };
+  const deleteCompany = async (c) => {
+    if (!window.confirm(`¿Eliminar la Empresa Integradora «${c.razon_social}»? No tiene aplicativos asociados.`)) return;
+    try { await api.delete(`/integrator-companies/${c.empresa_id}/safe`); toast.success('Empresa Integradora eliminada'); load(); }
+    catch (e) { toast.error(e.response?.data?.detail || 'No se pudo eliminar la empresa'); }
+  };
 
   return (
     <div className="bg-white rounded-lg border border-slate-200 overflow-hidden" data-testid="company-directory">
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 bg-slate-900 text-white flex-wrap">
         <div className="flex items-center gap-2"><Building2 size={18} /><h2 className="text-sm font-bold uppercase tracking-wider text-white">Directorio de Empresas Integradoras</h2>
           <span className="text-xs text-slate-300" data-testid="company-total">{companies.length} empresas · {incomplete} fichas incompletas</span></div>
-        {canEdit && <Button size="sm" className="bg-brand-green-600 hover:bg-brand-green-700 h-8" onClick={() => { setEditing(null); setFormOpen(true); }} data-testid="new-company-btn"><Plus size={14} className="mr-1" />Nueva Empresa Integradora</Button>}
+        <div className="flex items-center gap-2 flex-wrap">
+          <DirectoryMaintenance emptyCount={companies.filter(c => c.app_count === 0).length} canDelete={canDelete} canManageCerts={canManageCerts} onDone={load} />
+          {canEdit && <Button size="sm" className="bg-brand-green-600 hover:bg-brand-green-700 h-8" onClick={() => { setEditing(null); setFormOpen(true); }} data-testid="new-company-btn"><Plus size={14} className="mr-1" />Nueva Empresa Integradora</Button>}
+        </div>
       </div>
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-100">
         <div className="relative flex-1 max-w-md"><Search size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
@@ -83,8 +95,8 @@ export const CompanyDirectory = ({ version, canEdit, onAddApp, onEditApp, onView
           <tbody>
             {filtered.slice(0, limit).map(c => (
               <Fragment key={c.empresa_id}>
-                <CompanyRow c={c} open={!!expanded[c.empresa_id]} onToggle={() => setExpanded(p => ({ ...p, [c.empresa_id]: !p[c.empresa_id] }))} onOpenFicha={() => openFicha(c)} />
-                {expanded[c.empresa_id] && <tr><td colSpan={6} className="p-0"><CompanyAppsPanel company={c} canEdit={canEdit} onAddApp={onAddApp} onEditApp={onEditApp} onViewApp={onViewApp} onMoveApp={setMoving} /></td></tr>}
+                <CompanyRow c={c} open={!!expanded[c.empresa_id]} onToggle={() => setExpanded(p => ({ ...p, [c.empresa_id]: !p[c.empresa_id] }))} onOpenFicha={() => openFicha(c)} onDelete={canDelete ? () => deleteCompany(c) : null} />
+                {expanded[c.empresa_id] && <tr><td colSpan={6} className="p-0"><CompanyAppsPanel company={c} canEdit={canEdit} onAddApp={onAddApp} onEditApp={onEditApp} onViewApp={onViewApp} onMoveApp={setMoving} onDeleteApp={canDelete ? setDeletingApp : null} /></td></tr>}
               </Fragment>
             ))}
             {!filtered.length && <tr><td colSpan={6} className="p-6 text-center text-sm text-slate-400">Sin resultados</td></tr>}
@@ -94,6 +106,7 @@ export const CompanyDirectory = ({ version, canEdit, onAddApp, onEditApp, onView
       {filtered.length > limit && <div className="p-3 text-center border-t"><Button variant="outline" size="sm" onClick={() => setLimit(l => l + PAGE)} data-testid="company-load-more">Mostrar más ({filtered.length - limit} restantes)</Button></div>}
       <CompanyFormDialog open={formOpen} onOpenChange={setFormOpen} company={editing} onSaved={load} />
       <MoveAppDialog app={moving} companies={companies} onClose={() => setMoving(null)} onMoved={load} />
+      <DeleteAppDialog app={deletingApp} onClose={() => setDeletingApp(null)} onDeleted={load} />
     </div>
   );
 };

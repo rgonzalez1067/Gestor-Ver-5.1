@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
-import { Download, RefreshCw, Ban, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Download, RefreshCw, Ban, CheckCircle2, AlertTriangle, Upload } from 'lucide-react';
 import api from '../../../utils/api';
 import { toast } from 'sonner';
 
@@ -39,6 +39,17 @@ const ReissueForm = ({ app, onDone, onCancel }) => {
 export const AppCertificatesTab = ({ app, canManage, onChanged }) => {
   const [items, setItems] = useState([]);
   const [reissuing, setReissuing] = useState(false);
+  const fileRef = useRef(null);
+  const uploadPdf = async (e) => {
+    const f = e.target.files?.[0]; e.target.value = '';
+    if (!f) return;
+    if (!/\.pdf$/i.test(f.name)) { toast.error('Solo se permiten archivos PDF'); return; }
+    try {
+      const fd = new FormData(); fd.append('file', f);
+      await api.post(`/integrators/${app.integrator_id}/certificates`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      toast.success('Certificado cargado al histórico'); load(); onChanged();
+    } catch (err) { toast.error(err.response?.data?.detail || 'Error al cargar el certificado'); }
+  };
   const load = useCallback(() => api.get(`/integrators/${app.integrator_id}/certificates`).then((r) => setItems(r.data?.certificates || [])).catch(() => setItems([])), [app.integrator_id]);
   useEffect(() => { load(); }, [load, app]);
 
@@ -63,7 +74,11 @@ export const AppCertificatesTab = ({ app, canManage, onChanged }) => {
       )}
       <div className="flex items-center justify-between">
         <p className="text-[11px] uppercase tracking-wide text-slate-400">Histórico de Certificados ({items.length})</p>
-        {canManage && !reissuing && <Button size="sm" variant="outline" onClick={() => setReissuing(true)} data-testid="reissue-cert-btn"><RefreshCw size={13} className="mr-1" />Re-emitir certificado</Button>}
+        {canManage && !reissuing && <div className="flex gap-2">
+          <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={uploadPdf} data-testid="manual-cert-input" />
+          <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} data-testid="manual-cert-btn"><Upload size={13} className="mr-1" />Cargar certificado (PDF)</Button>
+          <Button size="sm" variant="outline" onClick={() => setReissuing(true)} data-testid="reissue-cert-btn"><RefreshCw size={13} className="mr-1" />Re-emitir certificado</Button>
+        </div>}
       </div>
       {reissuing && <ReissueForm app={app} onCancel={() => setReissuing(false)} onDone={() => { setReissuing(false); load(); onChanged(); }} />}
       {items.length === 0 ? <p className="text-xs text-slate-400">Este aplicativo no tiene certificados emitidos.</p> : (

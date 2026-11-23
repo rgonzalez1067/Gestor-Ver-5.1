@@ -1878,7 +1878,7 @@ export const Integrators = () => {
           </div>
 
           {mainView === 'companies' ? (
-            <CompanyDirectory version={dirVersion} canEdit={canEdit || canCreate} onAddApp={handleAddAppForCompany} onEditApp={handleEditAppFromDirectory} onViewApp={(a) => setFichaAppId(a.integrator_id)} />
+            <CompanyDirectory version={dirVersion} canEdit={canEdit || canCreate} canDelete={isAdmin || hasSpecial('integradores:eliminar_registros')} canManageCerts={isAdmin || hasSpecial('integradores:gestionar_certificados')} onAddApp={handleAddAppForCompany} onEditApp={handleEditAppFromDirectory} onViewApp={(a) => setFichaAppId(a.integrator_id)} />
           ) : (<>
           {/* Filters */}
           <div className="bg-white rounded-lg border border-slate-200 p-3 mb-4">

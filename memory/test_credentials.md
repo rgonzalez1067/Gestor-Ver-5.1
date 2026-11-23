@@ -133,4 +133,4 @@ Muchos tests antiguos de /app/backend/tests usan "Mega2026*" y bloquean a rgonza
 
 ## QA — Aplicativos certificados (Nov 2026)
 - qa.editor@megasoft.com.ve / QaIntegr2026*Ok — role user, integradores=edit, SIN funciones especiales.
-- qa.gerente@megasoft.com.ve / QaIntegr2026*Ok — role user, integradores=edit + integradores:editar_certificados + integradores:gestionar_certificados.
+- qa.gerente@megasoft.com.ve / QaIntegr2026*Ok — role user, integradores=edit + integradores:editar_certificados + integradores:gestionar_certificados + integradores:eliminar_registros.

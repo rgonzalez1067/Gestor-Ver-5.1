@@ -1,12 +1,12 @@
 import { Button } from '../../ui/button';
-import { Plus, Pencil, ArrowRightLeft, CornerDownRight, Eye } from 'lucide-react';
+import { Plus, Pencil, ArrowRightLeft, CornerDownRight, Eye, Trash2 } from 'lucide-react';
 
 const STATUS_STYLE = {
   Certificado: 'bg-emerald-100 text-emerald-700', 'En proceso': 'bg-amber-100 text-amber-700',
   Suspendido: 'bg-red-100 text-red-700', Cerrado: 'bg-slate-200 text-slate-600',
 };
 
-export const CompanyAppsPanel = ({ company, canEdit, onAddApp, onEditApp, onViewApp, onMoveApp }) => (
+export const CompanyAppsPanel = ({ company, canEdit, onAddApp, onEditApp, onViewApp, onMoveApp, onDeleteApp }) => (
   <div className="pl-10 pr-4 py-3 bg-slate-50 border-t border-slate-200 animate-in fade-in slide-in-from-top-1 duration-200" data-testid={`company-apps-panel-${company.empresa_id}`}>
     <div className="flex items-center justify-between mb-2">
       <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5"><CornerDownRight size={13} /> Aplicativos / Integraciones asociadas</p>
@@ -37,6 +37,7 @@ export const CompanyAppsPanel = ({ company, canEdit, onAddApp, onEditApp, onView
                 <button className="text-slate-400 hover:text-emerald-600 p-1" title="Ver ficha completa" onClick={() => onViewApp(a)} data-testid={`company-app-view-${a.integrator_id}`}><Eye size={13} /></button>
                 <button className="text-slate-400 hover:text-brand-blue-600 p-1" title="Ver / editar detalle técnico" onClick={() => onEditApp(a)} data-testid={`company-app-edit-${a.integrator_id}`}><Pencil size={13} /></button>
                 {canEdit && <button className="text-slate-400 hover:text-amber-600 p-1" title="Mover a otra empresa" onClick={() => onMoveApp(a)} data-testid={`company-app-move-${a.integrator_id}`}><ArrowRightLeft size={13} /></button>}
+                {onDeleteApp && <button className="text-slate-400 hover:text-red-600 p-1" title="Eliminar aplicativo" onClick={() => onDeleteApp(a)} data-testid={`company-app-delete-${a.integrator_id}`}><Trash2 size={13} /></button>}
               </td>
             </tr>
           ))}

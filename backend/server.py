@@ -413,6 +413,8 @@ api_router.include_router(attachments_router)
 api_router.include_router(integrators_router)
 from routes.integrator_companies import router as integrator_companies_router
 api_router.include_router(integrator_companies_router)
+from routes.integrator_maintenance import router as integrator_maintenance_router
+api_router.include_router(integrator_maintenance_router)
 api_router.include_router(settings_router)
 api_router.include_router(projects_router)  # Projects router before seed_templates to allow new email-templates CRUD routes
 api_router.include_router(seed_templates_router)

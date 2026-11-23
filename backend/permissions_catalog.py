@@ -142,6 +142,9 @@ SPECIAL_PERMISSIONS = [
     {"id": "integradores:gestionar_certificados", "module": "integradores",
      "label": "Gestionar Certificados (Gerente de Implementación)",
      "description": "Permite re-emitir certificados desactualizados y administrar el histórico de certificados (marcar vigente / anular)."},
+    {"id": "integradores:eliminar_registros", "module": "integradores",
+     "label": "Eliminar Empresas y Aplicativos",
+     "description": "Permite eliminar Empresas Integradoras sin aplicativos y Aplicativos duplicados (bloqueado si tienen cotizaciones, proyectos o certificados)."},
 ]
 
 SPECIAL_FLAG_IDS = [s["id"] for s in SPECIAL_PERMISSIONS]
