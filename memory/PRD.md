@@ -4880,3 +4880,8 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 
 ## 2026-06 Filtro Con/Sin Certificado
 - components/integrators/CertFilter.jsx (Todos/Con/Sin). Directorio: filtra aplicativos por has_certificate y oculta empresas sin coincidencias (contador). Proyectos: reemplaza el toggle "Con Certificado" (usa certCounts).
+
+## 2026-06 Avisos en Pantalla (Configurador)
+- /settings/ui-alerts (admin): enciende/apaga "push" (popups+beep de NotificationBell) y "unread_banner" (GlobalUnreadBanner) por global/departamento/persona; basta un nivel apagado.
+- Backend routes/ui_alerts.py: GET/PUT /api/settings/ui-alerts (admin), GET /api/notifications/ui-alerts/me (todos; ruta exenta de RBAC). Doc en db.app_settings key=ui_alerts.
+- Frontend: UnreadMessagesContext expone alerts (polling 20s).

@@ -56,6 +56,13 @@ export default function UiAlertsConfig() {
               departments={data.departments} users={data.users}
               onChange={(rule) => setData((d) => ({ ...d, config: { ...d.config, [rid]: rule } }))} />
           ))}
+          {data && (
+            <div className="flex justify-end">
+              <Button onClick={save} disabled={saving} className="bg-brand-green-600 hover:bg-brand-green-700" data-testid="ui-alerts-save-bottom-btn">
+                <Save size={16} className="mr-2" />{saving ? 'Guardando...' : 'Guardar cambios'}
+              </Button>
+            </div>
+          )}
         </div>
       </main>
     </div>

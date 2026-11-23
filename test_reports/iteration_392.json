@@ -1,0 +1,24 @@
+{
+  "summary": "Tested the 'Avisos en Pantalla' feature (UI alerts on/off at 3 levels). Backend: 10/10 pytest passed (GET/PUT /api/settings/ui-alerts, GET /api/notifications/ui-alerts/me rule enabled && dept not off && user not off, other dept no effect, 422 invalid payload, 403 for non-admin qa.editor, 401/403 unauth). Frontend at 1366x768 as QA admin: /settings tile open-ui-alerts-btn (inside the general-config-toggle collapsible) opens /settings/ui-alerts; both cards render with global switch, 9 dept switches, person search -> option -> chip -> remove. Save persists across reload. Real banner effect verified using a temporary TEST_ unread inbox message: banner visible -> hidden after turning off global / dept 'Ventas Pyme' / person user_qaintegr01 + save (immediate via refresh()) -> visible again after turning each back on. Push popup gating verified by code review only (NotificationBell returns before beep/toast when alerts.push=false); a live WS push was not triggered, to avoid sending real notifications. Config restored to all-on ({}) and the TEST_ message deleted.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/settings/ui-alerts at 1366x768", "issues": ["The fixed global-unread-banner (top-right, z max) covers the 'Guardar cambios' button (ui-alerts-save-btn) while it is showing. The click still worked in the automated test, but a user cannot see the button visually. Suggest offsetting the header or making the save bar sticky at the bottom.", "The page is long (two full cards) and the save button is only at the top. A sticky or bottom save button would help."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_ui_alerts_iter392.py", "/app/backend/tests/ui_fixture_iter392.py", "/app/test_reports/pytest/pytest_iter392.xml"],
+  "action_items": ["(Minor) Avoid the unread banner overlapping the Save button on /settings/ui-alerts"],
+  "critical_code_review_comments": [
+    "The /settings/ui-alerts route is not admin-guarded on the frontend. A non-admin gets the page shell plus a 403 toast. Consider redirecting.",
+    "The page subtitle says changes apply 'en menos de un minuto', but polling is 20s. This is fine, just a copy inconsistency.",
+    "Department and user names are not validated against existing values on PUT. This is acceptable because only admins can call it."
+  ],
+  "updated_files": ["/app/backend/tests/test_ui_alerts_iter392.py", "/app/backend/tests/ui_fixture_iter392.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporary inbox_messages doc message_id=TEST_msg_iter392_uialerts for user_qaintegr01 (created, then deleted by id). ui_alerts config restored to all-on.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Use `python /app/backend/tests/ui_fixture_iter392.py setup|cleanup` to give QA admin 1 unread message. The open-ui-alerts-btn tile is inside the general-config-toggle collapsible on /settings. Non-admin for 403: qa.editor@megasoft.com.ve / QaIntegr2026*Ok."
+}
