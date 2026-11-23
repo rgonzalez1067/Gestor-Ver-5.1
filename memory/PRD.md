@@ -4894,3 +4894,7 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Backlog: reporte Embudo por Referente (contactos -> cotizaciones -> proyectos -> cierre).
 
 - 2026-06: DELETE /api/referentes/{id} (admin) bloqueado con 409 si tiene contactos vinculados; botón papelera + confirmación en /catalogs/referentes.
+
+## 2026-06 Análisis de la Gestión de Contactos (admin)
+- Botón "Análisis de Gestión" en /initial-contacts abre ContactAnalysisDialog: filtros Referente, Desde/Hasta (fecha registro), Asignado, Segmento (sede), Estatus; KPIs; filas expandibles con interacciones (bitácora embebida + initial_contact_logs).
+- Backend routes/initial_contacts_report.py: GET /api/initial-contacts-report y /export?format=xlsx|pdf (Resumen/Contactos/Interacciones; PDF con detalle por contacto).

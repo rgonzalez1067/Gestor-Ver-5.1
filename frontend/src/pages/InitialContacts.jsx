@@ -16,6 +16,8 @@ import { InitialContactEmailDialog } from '../components/InitialContactEmailDial
 import BitacoraModal from '../components/BitacoraModal';
 import { TwinScrollTable } from '../components/TwinScrollTable';
 import { ReferentePicker, referentePayload } from '../components/referentes/ReferentePicker';
+import { ContactAnalysisDialog } from '../components/initialContacts/ContactAnalysisDialog';
+import { BarChart3 } from 'lucide-react';
 
 export const InitialContacts = () => {
   const [contacts, setContacts] = useState([]);
@@ -92,6 +94,7 @@ export const InitialContacts = () => {
   const isAdmin = currentUser?.role === 'admin';
   const [referentes, setReferentes] = useState({ items: [], can_create: false });
   const [createRef, setCreateRef] = useState({ referente_id: '', nuevo: null });
+  const [analysisOpen, setAnalysisOpen] = useState(false);
   const [editRef, setEditRef] = useState({ referente_id: '', nuevo: null });
   const fetchReferentes = () => api.get('/referentes').then((r) => setReferentes(r.data)).catch(() => {});
   const refInvalid = (v) => v.nuevo && !v.nuevo.nombre_referente.trim();
@@ -294,10 +297,18 @@ export const InitialContacts = () => {
             <h1 className="text-3xl font-bold text-slate-900 font-manrope">Contacto Inicial</h1>
             <p className="text-sm text-slate-500 mt-1">Gestion de leads y prospeccion temprana</p>
           </div>
-          <Button onClick={() => setCreateOpen(true)} className="bg-brand-green-600 hover:bg-brand-green-700" data-testid="create-contact-btn">
-            <Plus size={16} className="mr-1" /> Nuevo Contacto
-          </Button>
+          <div className="flex gap-2">
+            {isAdmin && (
+              <Button variant="outline" onClick={() => setAnalysisOpen(true)} data-testid="open-contact-analysis-btn">
+                <BarChart3 size={16} className="mr-1.5 text-brand-blue-600" /> Análisis de Gestión
+              </Button>
+            )}
+            <Button onClick={() => setCreateOpen(true)} className="bg-brand-green-600 hover:bg-brand-green-700" data-testid="create-contact-btn">
+              <Plus size={16} className="mr-1" /> Nuevo Contacto
+            </Button>
+          </div>
         </div>
+        {isAdmin && <ContactAnalysisDialog open={analysisOpen} onClose={() => setAnalysisOpen(false)} />}
 
         {/* Filters */}
         <div className="flex items-center gap-3 mb-4">
