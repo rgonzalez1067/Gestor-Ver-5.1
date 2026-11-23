@@ -1,0 +1,37 @@
+{
+  "summary": "Backend and frontend testing of Directory maintenance: safe delete of apps and companies, purge of empty companies, rebuild of legacy certificates, bulk ZIP upload of certificates, and permissions. Backend: 15 of 16 pytest tests pass and 1 is skipped. The purge test was skipped on purpose, because the only empty company is a real one: emp_010e8d59c8d6 'Software A2 de A2Softway'. GET /references returns quotes (5), projects (8) and certificates for int_84c3acb5fc3b. DELETE /safe returns 403 for qa.editor, 409 with detail.message, quotes and projects when the app is referenced, 200 for a new 'QA Duplicado' app, and then 404. Company /safe returns 400 when the company has apps, 200 when it is empty, then 404, and 403 for the editor. Rebuild-legacy is idempotent: created=0 and skipped=3 (3MIT, Bigwise, Tealca) with a clear message. All 33 legacy certificates have status vigente and created_at equal to certified_at, and the download is a valid %PDF. Bulk-upload: a unique match is stored with origin manual and label 'Carga en lote - <user>'; non-PDF files are ignored; a fake .pdf gets 'No es un PDF válido'; no match gets 'Sin coincidencia'; twins get 'Ambiguo entre 2 aplicativos'; an invalid ZIP returns 400. Frontend: all flows pass for admin, gerente and editor (see context).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/integrators/certificates/bulk-upload", "issue": "The example file from the brief, 'Certificado_Binaural C.A_Odoo Versión 16.pdf', returns 'Ambiguo entre 2 aplicativos'. The reason is that Binaural C.A / 'Odoo Versión  16' exists twice as exact duplicates (int_f6cbdce034f9 and int_66e555d93dd7, same empresa, both Certificado). There are 16 name+app_name duplicate groups in the DB. When the candidates are exact twins, consider a tie-break: prefer the twin with quotes/projects or certified_at, or attach to one twin. The user said duplicates exist, so their real ZIPs will often hit this."},
+      {"endpoint": "POST /api/integrators/certificates/bulk-upload", "issue": "A certificate is inserted without status (it shows as vigente by default) and earlier vigente certificates are not marked 'reemplazado'. An app can end up with 2 vigente certificates (for example a legacy rebuilt one plus the uploaded original). There is also no dedupe, so uploading the same ZIP twice duplicates the rows. There is no ZIP size or entry limit."},
+      {"endpoint": "rebuild-legacy (data coverage)", "issue": "Information only: 312 apps have status 'Certificado' but no certificate. 309 of them have no certified_at/cert_component, so they cannot be rebuilt; only a ZIP upload or a manual upload will cover them."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DeleteAppDialog quote link", "issue": "The link goes to /quotes?search=COT-..., but Quotes.jsx only reads ?highlight= (line 397). The link opens the full quotes list unfiltered. Fix: use `/quotes?highlight=${encodeURIComponent(q.quote_number)}`.", "selector": "[data-testid='delete-app-quotes'] a", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "DeleteAppDialog", "issues": ["If GET /references fails, the dialog falls back to empty references and enables Eliminar. The backend still guards with 409, but it would be better to show an error state."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter390_integrator_maintenance.py", "/app/backend/tests/ui_fixture_iter390_maint.py", "/app/test_reports/pytest/iter390.xml"],
+  "action_items": [
+    "DeleteAppDialog.jsx: change the quote link from ?search= to ?highlight= so Quotes.jsx highlights the quote",
+    "bulk-upload: add a tie-break for exact duplicate apps (same name and app_name), otherwise the Binaural-style files stay unmatched",
+    "bulk-upload: mark earlier vigente certificates as 'reemplazado' (as reissue does) and/or skip duplicates by filename+size; add a size limit"
+  ],
+  "critical_code_review_comments": [
+    "purge-empty: `distinct('empresa_integradora_id')` followed by a separate find has a small race window if an app is created at the same moment. Acceptable.",
+    "rebuild-legacy uses distinct over all certificates, including anulado ones, so an app whose only certificate was annulled is never rebuilt. Probably intended.",
+    "Rebuilt certificates record created_by_name as the user who ran the rebuild (shows 'QA Integradores' under the origin). Consider 'Sistema'."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter390_integrator_maintenance.py", "/app/backend/tests/ui_fixture_iter390_maint.py"],
+  "success_rate": {"backend": "100% (15/15 executed, 1 skipped on purpose)", "frontend": "95% (all flows work; 1 wrong quote link param)"},
+  "seed_data_creation": "Everything was created and then removed by id: the API app 'QA Duplicado xxxx' plus its auto-created empresa; QA companies emp_qa390*; QA apps int_qa390*; and the 'Carga en lote' certificates for the QA apps only. The final check found no QA leftovers, 0 'Carga en lote' certificates, 33 legacy certificates still vigente, and emp_010e8d59c8d6 as the only empty company (real, untouched). Purge was NOT run.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use http://localhost:8001 for Python requests. Companies live in collection empresas_integradoras (field razon_social). Fixture: python /app/backend/tests/ui_fixture_iter390_maint.py create|cleanup. POST /api/integrators auto-creates an empresa that becomes empty after the app is deleted, so clean it up. Do not run purge while emp_010e8d59c8d6 (real) is the empty company. UI results: the admin sees the 3 maintenance buttons; purge shows the count (2 with the QA empty company, 1 after it was deleted via company-delete-btn + confirm); rebuild opens the result dialog with 0 created and 3 pending; the ZIP upload shows 1 associated and 1 'Sin coincidencia'. For int_84c3acb5fc3b the dialog shows blocked, 5 quotes and 8 projects, with confirm disabled. The QA app with a certificate is blocked by delete-app-certs; after the certificate was removed it shows delete-app-ok and deletes, and the company then shows 0 Apps with its delete button. The Ficha Certificados tab shows 'Reconstruido - certificación del 2026-09-23' (Vigente) plus manual-cert-btn for gerente. The editor sees no maintenance, delete or manual-cert buttons."
+}

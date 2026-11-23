@@ -147,11 +147,26 @@ async def bulk_upload_certificates(file: UploadFile = File(...), authorization: 
                 continue
             scored.append((len(a["_tok"] & ftok) / max(len(a["_tok"]), 1), a))
         scored.sort(key=lambda x: -x[0])
+        top = [x for x in scored if scored and x[0] == scored[0][0]]
+        if len(top) > 1 and len({(norm_company(t[1].get("name")), norm_company(t[1].get("app_name"))) for t in top}) == 1:
+            # Duplicados exactos (mismo nombre y aplicativo): se usa el que tiene más uso (certificación / cotizaciones).
+            async def _weight(a):
+                full = await db.integrators.find_one({"integrator_id": a["integrator_id"]}, {"_id": 0, "certified_at": 1})
+                return (1 if (full or {}).get("certified_at") else 0) + await db.quotes.count_documents({"integrator_id": a["integrator_id"]})
+            weights = [await _weight(t[1]) for t in top]
+            scored = [top[weights.index(max(weights))]]
         if not scored or (len(scored) > 1 and scored[0][0] == scored[1][0]):
             reason = "Sin coincidencia" if not scored else f"Ambiguo entre {len([s for s in scored if s[0] == scored[0][0]])} aplicativos"
             unmatched.append({"filename": fname, "reason": reason})
             continue
         a = scored[0][1]
-        await _store_integrator_certificate(a["integrator_id"], fname, data, "manual", f"Carga en lote - {uname}", user)
+        if await db.integrator_certificates.find_one({"integrator_id": a["integrator_id"], "original_name": fname, "size": len(data)}, {"_id": 1}):
+            unmatched.append({"filename": fname, "reason": f"Ya estaba cargado en {a.get('name')} · {a.get('app_name')}"})
+            continue
+        await db.integrator_certificates.update_many(
+            {"integrator_id": a["integrator_id"], "status": {"$nin": ["anulado", "reemplazado"]}},
+            {"$set": {"status": "reemplazado", "status_updated_at": datetime.now(timezone.utc).isoformat()}})
+        cid = await _store_integrator_certificate(a["integrator_id"], fname, data, "manual", f"Carga en lote - {uname}", user)
+        await db.integrator_certificates.update_one({"certificate_id": cid}, {"$set": {"status": "vigente"}})
         matched.append({"filename": fname, "integrator_id": a["integrator_id"], "name": a.get("name"), "app_name": a.get("app_name")})
     return {"matched": matched, "unmatched": unmatched}
