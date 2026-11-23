@@ -39,6 +39,7 @@ from routes.new_products import router as new_products_router
 from routes.inventory import router as inventory_router
 from routes.inventory_temporary import router as inventory_temporary_router
 from routes.initial_contacts import router as initial_contacts_router
+from routes.referentes import router as referentes_router
 from routes.initial_contact_communications import router as initial_contact_comms_router
 from routes.client_communications import router as client_comms_router
 from routes.sales_reports import router as sales_reports_router
@@ -431,6 +432,7 @@ api_router.include_router(new_products_router)
 api_router.include_router(inventory_router)
 api_router.include_router(inventory_temporary_router)
 api_router.include_router(initial_contacts_router)
+api_router.include_router(referentes_router)
 api_router.include_router(initial_contact_comms_router)
 api_router.include_router(client_comms_router)
 api_router.include_router(sales_reports_router)
@@ -694,6 +696,12 @@ async def create_indexes():
                 logging.info("[iter55] initial_contact_dates_backfill_v1 done")
         except Exception as e:
             logging.warning(f"Iter55 backfill failed: {e}")
+
+        try:
+            from routes.referentes import migrate_free_text_referidos
+            await migrate_free_text_referidos()
+        except Exception as e:
+            logging.warning(f"Referentes migration failed: {e}")
 
     # Fire-and-forget — el startup retorna de inmediato, K8s pasa el readiness.
     import asyncio as _asyncio

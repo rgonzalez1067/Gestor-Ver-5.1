@@ -124,6 +124,9 @@ async def create_external_contact(
         assigned_user_id = default_user["user_id"]
     
     referred = (data.referred_by or "").strip() or "API Externa"
+    from routes.referentes import create_or_get_referente, ReferenteIn, TipoReferente
+    ref = await create_or_get_referente(ReferenteIn(nombre_referente=referred[:150], tipo_referente=TipoReferente.EMPRESA), None)
+    referred = ref["nombre_referente"]
     
     contact = {
         "contact_id": contact_id,
@@ -133,6 +136,7 @@ async def create_external_contact(
         "legal_name": data.legal_name.strip(),
         "interest_notes": (data.interest_notes or "").strip()[:500],
         "referred_by": referred,
+        "referente_id": ref["referente_id"],
         "assigned_to_user_id": assigned_user_id,
         "assigned_to_name": assigned_name,
         "due_date": None,

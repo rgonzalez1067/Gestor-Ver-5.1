@@ -46,6 +46,7 @@ import IntegrationReport from './pages/IntegrationReport';
 import Hardware from './pages/Hardware';
 import FiscalPrintersCatalog from './pages/FiscalPrintersCatalog';
 import ServersCatalog from './pages/ServersCatalog';
+import Referentes from './pages/Referentes';
 import MediosPago from './pages/MediosPago';
 import Integrators from './pages/Integrators';
 import Quotes from './pages/Quotes';
@@ -126,6 +127,11 @@ function AppRouter() {
       <Route path="/catalogs/fiscal-printers" element={
         <ProtectedRoute>
           <FiscalPrintersCatalog />
+        </ProtectedRoute>
+      } />
+      <Route path="/catalogs/referentes" element={
+        <ProtectedRoute>
+          <Referentes />
         </ProtectedRoute>
       } />
       <Route path="/catalogs/servers" element={

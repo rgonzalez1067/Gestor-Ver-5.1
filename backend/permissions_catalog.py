@@ -129,6 +129,9 @@ SPECIAL_PERMISSIONS = [
     {"id": "integradores:mass_comm", "module": "integradores",
      "label": "Comunicación Masiva a Integradores",
      "description": "Habilita el envío de comunicaciones masivas en copia oculta (BCC) a grupos de integradores, con plantilla de la biblioteca y adjuntos (repositorio + archivos locales)."},
+    {"id": "referentes:crear", "module": "initial_contacts",
+     "label": "Crear Referentes",
+     "description": "Permite registrar nuevos Referentes (opción «Otro») desde el campo Referido Por del Contacto Inicial."},
     # Integradores — Cierre de Proyecto de Integración
     {"id": "configuracion:auditor", "module": "configuracion",
      "label": "Auditor (Pistas de Auditoría)",

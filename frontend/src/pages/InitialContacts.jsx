@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { InitialContactEmailDialog } from '../components/InitialContactEmailDialog';
 import BitacoraModal from '../components/BitacoraModal';
 import { TwinScrollTable } from '../components/TwinScrollTable';
+import { ReferentePicker, referentePayload } from '../components/referentes/ReferentePicker';
 
 export const InitialContacts = () => {
   const [contacts, setContacts] = useState([]);
@@ -89,11 +90,16 @@ export const InitialContacts = () => {
   const [editing, setEditing] = useState(false);
 
   const isAdmin = currentUser?.role === 'admin';
+  const [referentes, setReferentes] = useState({ items: [], can_create: false });
+  const [createRef, setCreateRef] = useState({ referente_id: '', nuevo: null });
+  const [editRef, setEditRef] = useState({ referente_id: '', nuevo: null });
+  const fetchReferentes = () => api.get('/referentes').then((r) => setReferentes(r.data)).catch(() => {});
+  const refInvalid = (v) => v.nuevo && !v.nuevo.nombre_referente.trim();
 
   // Expanded rows
   const [expandedRow, setExpandedRow] = useState(null);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); fetchReferentes(); }, []);
 
   const fetchData = async () => {
     try {
@@ -117,8 +123,11 @@ export const InitialContacts = () => {
     if (!formData.phone && !formData.email) {
       toast.error('Debe indicar al menos Teléfono o Email'); return;
     }
+    if (refInvalid(createRef)) { toast.error('Indique el nombre del nuevo referente'); return; }
     try {
-      await api.post('/initial-contacts', formData);
+      await api.post('/initial-contacts', { ...formData, ...referentePayload(createRef) });
+      setCreateRef({ referente_id: '', nuevo: null });
+      fetchReferentes();
       toast.success('Contacto inicial creado');
       setCreateOpen(false);
       setFormData({ contact_name: '', phone: '', email: '', legal_name: '', interest_notes: '', referred_by: '', assigned_to_user_id: '', due_date: '' });
@@ -188,6 +197,7 @@ export const InitialContacts = () => {
       sede: c.sede === 'CORP' ? 'CORP' : 'PYME',
       interest_notes: c.interest_notes || '',
     });
+    setEditRef({ referente_id: c.referente_id || '', nuevo: null });
     setEditOpen(true);
   };
 
@@ -196,9 +206,11 @@ export const InitialContacts = () => {
     if (!editForm.contact_name.trim() || !editForm.legal_name.trim()) {
       toast.error('Nombre del contacto y Razón Social son obligatorios'); return;
     }
+    if (refInvalid(editRef)) { toast.error('Indique el nombre del nuevo referente'); return; }
     setEditing(true);
     try {
-      await api.put(`/initial-contacts/${editContact.contact_id}`, editForm);
+      await api.put(`/initial-contacts/${editContact.contact_id}`, { ...editForm, ...referentePayload(editRef) });
+      fetchReferentes();
       toast.success('Contacto actualizado');
       setEditOpen(false);
       setEditContact(null);
@@ -506,7 +518,7 @@ export const InitialContacts = () => {
               </div>
               <div>
                 <Label className="text-xs font-semibold text-blue-600">Referido Por</Label>
-                <Input value={formData.referred_by} onChange={(e) => setFormData({ ...formData, referred_by: e.target.value })} placeholder="Ej: Aliado X, LinkedIn, API Web..." className="border-blue-200 bg-blue-50/50 focus:bg-white" data-testid="input-referred-by" />
+                <ReferentePicker referentes={referentes.items} canCreate={referentes.can_create} value={createRef} onChange={setCreateRef} testId="input-referred-by" />
               </div>
               <div>
                 <Label>Aspectos de Interes para el Contacto</Label>
@@ -572,6 +584,10 @@ export const InitialContacts = () => {
               <div>
                 <Label>Nombre Juridico (Razon Social) *</Label>
                 <Input value={editForm.legal_name} onChange={(e) => setEditForm({ ...editForm, legal_name: e.target.value })} placeholder="Razon social" data-testid="edit-legal-name" />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold text-blue-600">Referido Por</Label>
+                <ReferentePicker referentes={referentes.items} canCreate={referentes.can_create} value={editRef} onChange={setEditRef} testId="edit-referred-by" />
               </div>
               <div>
                 <Label>Sede</Label>

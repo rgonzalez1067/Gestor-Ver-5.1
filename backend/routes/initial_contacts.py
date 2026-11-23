@@ -7,6 +7,7 @@ import uuid
 import logging
 
 from config import db, get_current_user
+from routes.referentes import ReferenteIn, resolve_contact_referente
 from services.assignment_notifications import (
     notify_initial_contact_assigned,
 )
@@ -22,6 +23,8 @@ class InitialContactCreate(BaseModel):
     legal_name: str
     interest_notes: Optional[str] = ""
     referred_by: Optional[str] = ""
+    referente_id: Optional[str] = None
+    nuevo_referente: Optional[ReferenteIn] = None
     assigned_to_user_id: Optional[str] = None
     due_date: Optional[str] = None
 
@@ -47,6 +50,8 @@ class InitialContactEdit(BaseModel):
     email: Optional[str] = None
     sede: Optional[str] = None
     interest_notes: Optional[str] = None
+    referente_id: Optional[str] = None
+    nuevo_referente: Optional[ReferenteIn] = None
 
 # --- Helpers ---
 HIERARCHY_CAN_ASSIGN = {
@@ -117,6 +122,7 @@ async def create_initial_contact(data: InitialContactCreate, authorization: Opti
         or _valid_sede(current_user.get("sede"))
         or "PYME"
     )
+    referente = await resolve_contact_referente(current_user, data.referente_id, data.nuevo_referente)
     
     contact = {
         "contact_id": contact_id,
@@ -125,7 +131,8 @@ async def create_initial_contact(data: InitialContactCreate, authorization: Opti
         "email": (data.email or "").strip(),
         "legal_name": data.legal_name.strip(),
         "interest_notes": (data.interest_notes or "").strip()[:300],
-        "referred_by": (data.referred_by or "").strip(),
+        "referred_by": referente["nombre_referente"] if referente else (data.referred_by or "").strip(),
+        "referente_id": referente["referente_id"] if referente else None,
         "assigned_to_user_id": assigned_user_id,
         "assigned_to_name": assigned_name,
         "due_date": data.due_date or None,
@@ -227,6 +234,13 @@ async def edit_initial_contact(contact_id: str, data: InitialContactEdit, author
     updates = {}
     changes = []
     incoming = data.model_dump(exclude_unset=True)
+    ref_id = incoming.pop("referente_id", None)
+    incoming.pop("nuevo_referente", None)
+    referente = await resolve_contact_referente(current_user, ref_id, data.nuevo_referente)
+    if referente and referente["referente_id"] != contact.get("referente_id"):
+        updates["referente_id"] = referente["referente_id"]
+        updates["referred_by"] = referente["nombre_referente"]
+        changes.append(f"Referido Por: «{contact.get('referred_by') or '—'}» → «{referente['nombre_referente']}»")
     for field, raw in incoming.items():
         if raw is None:
             continue

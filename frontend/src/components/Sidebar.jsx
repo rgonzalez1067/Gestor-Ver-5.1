@@ -76,6 +76,7 @@ const menuItems = [
       { path: '/hardware', icon: Boxes, label: 'Bienes y Servicios' },
       { path: '/catalogs/fiscal-printers', icon: Printer, label: 'Impresoras Fiscales', adminOnly: true },
       { path: '/catalogs/servers', icon: Server, label: 'Servidores', adminOnly: true },
+      { path: '/catalogs/referentes', icon: UserCheck, label: 'Referentes', adminOnly: true },
       { path: '/commercial-categories', icon: Tag, label: 'Categoría Comercial' },
       { path: '/exchange-rate', icon: TrendingUp, label: 'Tasa de Cambio' },
     ]
