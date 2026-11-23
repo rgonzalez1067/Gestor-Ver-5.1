@@ -1,5 +1,5 @@
 import { Button } from '../../ui/button';
-import { Plus, Pencil, ArrowRightLeft, CornerDownRight, Eye, Trash2 } from 'lucide-react';
+import { Plus, Pencil, ArrowRightLeft, CornerDownRight, Eye, Trash2, FileCheck2 } from 'lucide-react';
 
 const STATUS_STYLE = {
   Certificado: 'bg-emerald-100 text-emerald-700', 'En proceso': 'bg-amber-100 text-amber-700',
@@ -26,6 +26,7 @@ export const CompanyAppsPanel = ({ company, canEdit, onAddApp, onEditApp, onView
             <tr key={a.integrator_id} className="border-t border-slate-100 hover:bg-blue-50/40 transition-colors" data-testid={`company-app-row-${a.integrator_id}`}>
               <td className="px-3 py-2 font-semibold text-slate-800" data-testid={`company-app-name-${a.integrator_id}`}>
                 <button className="text-left hover:text-brand-blue-600 hover:underline" onClick={() => onViewApp(a)}>{a.app_name || '—'}</button>
+                {a.has_certificate && <span className="ml-1.5 inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold align-middle" title="Tiene certificado cargado en el histórico" data-testid={`company-app-has-cert-${a.integrator_id}`}><FileCheck2 size={10} />Certificado cargado</span>}
                 {a.cert_outdated && <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold" data-testid={`company-app-outdated-${a.integrator_id}`}>Cert. desactualizado</span>}
               </td>
               <td className="px-3 py-2"><span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-bold text-[10px]">{a.integration_type || '—'}</span></td>

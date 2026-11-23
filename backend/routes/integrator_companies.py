@@ -92,7 +92,9 @@ async def list_companies(authorization: Optional[str] = Header(None)):
     await get_current_user(authorization)
     await link_orphan_integrators()
     apps_by = {}
+    with_cert = set(await db.integrator_certificates.distinct("integrator_id", {"status": {"$ne": "anulado"}}))
     async for a in db.integrators.find({}, APP_FIELDS):
+        a["has_certificate"] = a["integrator_id"] in with_cert
         apps_by.setdefault(a.get("empresa_integradora_id"), []).append(a)
     out = [_present(e, apps_by.get(e["empresa_id"], [])) async for e in db[COLL].find({}, {"_id": 0})]
     out.sort(key=lambda e: e["razon_social"].lower())
