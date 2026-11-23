@@ -1134,19 +1134,18 @@ export const Integrators = () => {
   );
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex page-fixed-shell bg-white">
       <Sidebar />
-      <main className="flex-1 p-8" data-testid="integrators-page">
-        <div className="max-w-7xl mx-auto">
+      <main className="flex-1 page-fixed-main p-8" data-testid="integrators-page">
+        <div className="max-w-7xl mx-auto page-fixed-main">
           {/* Header */}
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 font-manrope flex items-center gap-3">
+          <div className="flex justify-between items-center gap-4 mb-4">
+            <div className="shrink-0">
+              <h1 className="text-3xl font-bold text-slate-900 font-manrope flex items-center gap-3 whitespace-nowrap" data-testid="integrators-title">
                 <Users className="text-brand-blue-600" size={28} />Gestión de Integradores
               </h1>
-              <p className="text-slate-500 mt-1">Tablero de asignación de proyectos, certificación y seguimiento de implementadores</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" onClick={() => openSummary()} data-testid="summary-btn" className="border-purple-200 text-purple-700 hover:bg-purple-50"><Filter size={16} className="mr-1" />Resumen</Button>
               <Button variant="outline" onClick={() => navigate('/integrators/communications')} data-testid="integrator-templates-btn" className="border-blue-200 text-blue-700 hover:bg-blue-50"><Layout size={16} className="mr-1" />Plantillas</Button>
               {canEdit && (
@@ -1980,12 +1979,12 @@ export const Integrators = () => {
           </div>
 
           {/* Table */}
-          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden" data-testid="integrators-table">
+          <div className="bg-white rounded-lg border border-slate-200 page-fixed-main" data-testid="integrators-table">
             {/* Barra de scroll horizontal SUPERIOR, sincronizada con la inferior */}
             <div ref={topScrollRef} onScroll={handleTopScroll} className="overflow-x-auto overflow-y-hidden border-b border-slate-100" style={{ height: '14px' }} data-testid="integrators-top-scroll">
               <div style={{ minWidth: '1400px', height: '1px' }} />
             </div>
-            <div ref={bottomScrollRef} onScroll={handleBottomScroll} className="overflow-x-auto" data-testid="integrators-bottom-scroll">
+            <div ref={bottomScrollRef} onScroll={handleBottomScroll} className="page-scroll-area" data-testid="integrators-bottom-scroll">
               <table className="w-full" style={{ tableLayout: 'fixed', minWidth: '1400px' }}>
                 <colgroup>
                   <col style={{ width: '16%' }} />

@@ -14,7 +14,7 @@ export const CompanyAppsPanel = ({ company, canEdit, onAddApp, onEditApp, onView
     </div>
     {company.apps.length === 0 ? <p className="text-xs text-slate-400 py-2">Esta empresa aún no tiene aplicativos.</p> : (
       <table className="w-full text-xs bg-white rounded-md border border-slate-200 overflow-hidden">
-        <thead className="bg-slate-100 text-slate-500 text-[11px] uppercase">
+        <thead className="bg-slate-100 text-slate-500 text-[11px] uppercase !static !shadow-none">
           <tr>
             <th className="text-left px-3 py-2">Nombre del Aplicativo</th><th className="text-left px-3 py-2">Tipo de Integración</th>
             <th className="text-left px-3 py-2">Modalidad</th><th className="text-left px-3 py-2">Estatus Homologación</th>

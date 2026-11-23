@@ -69,7 +69,7 @@ export const CompanyDirectory = ({ version, canEdit, canDelete, canManageCerts, 
   };
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 overflow-hidden" data-testid="company-directory">
+    <div className="bg-white rounded-lg border border-slate-200 page-fixed-main" data-testid="company-directory">
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 bg-slate-900 text-white flex-wrap">
         <div className="flex items-center gap-2"><Building2 size={18} /><h2 className="text-sm font-bold uppercase tracking-wider text-white">Directorio de Empresas Integradoras</h2>
           <span className="text-xs text-slate-300" data-testid="company-total">{companies.length} empresas · {incomplete} fichas incompletas</span></div>
@@ -86,6 +86,7 @@ export const CompanyDirectory = ({ version, canEdit, canDelete, canManageCerts, 
           <AlertTriangle size={13} /> Fichas incompletas
         </button>
       </div>
+      <div className="page-scroll-area" data-testid="company-scroll-area">
       {loading ? <div className="p-8 text-center text-sm text-slate-400">Cargando...</div> : (
         <table className="w-full" data-testid="company-table">
           <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
@@ -104,6 +105,7 @@ export const CompanyDirectory = ({ version, canEdit, canDelete, canManageCerts, 
         </table>
       )}
       {filtered.length > limit && <div className="p-3 text-center border-t"><Button variant="outline" size="sm" onClick={() => setLimit(l => l + PAGE)} data-testid="company-load-more">Mostrar más ({filtered.length - limit} restantes)</Button></div>}
+      </div>
       <CompanyFormDialog open={formOpen} onOpenChange={setFormOpen} company={editing} onSaved={load} />
       <MoveAppDialog app={moving} companies={companies} onClose={() => setMoving(null)} onMoved={load} />
       <DeleteAppDialog app={deletingApp} onClose={() => setDeletingApp(null)} onDeleted={load} />

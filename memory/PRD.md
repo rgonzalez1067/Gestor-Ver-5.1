@@ -4868,3 +4868,8 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 ## 2026-06 Cabeceras fijas en Bancos y Categorías Comerciales
 - Banks.jsx: encabezado/botones/selector de vista fijos; solo la lista de bancos hace scroll (banks-scroll-area).
 - CommercialCategories.jsx: thead fijo con page-scroll-area (cc-scroll-area).
+
+## 2026-06 Integradores: cabecera fija + título compacto
+- Eliminado subtítulo bajo "Gestión de Integradores"; título en una línea.
+- Directorio de Empresas (company-scroll-area) y Proyectos de Integración (integrators-bottom-scroll) con thead fijo; barra horizontal superior sincronizada se mantiene.
+- Tabla anidada CompanyAppsPanel: thead !static para no superponerse.
