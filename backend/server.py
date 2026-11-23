@@ -60,6 +60,7 @@ from routes.inbox import router as inbox_router
 from routes.inbox_cleanup import router as inbox_cleanup_router
 from routes.servers import router as servers_router
 from routes.connected_users import router as connected_users_router
+from routes.ui_alerts import router as ui_alerts_router
 from routes.other_actions_config import router as other_actions_router
 from routes.bank_payment_conditions import router as bank_payment_conditions_router
 from routes.economic_groups import router as economic_groups_router
@@ -423,6 +424,7 @@ api_router.include_router(inbox_router)
 api_router.include_router(inbox_cleanup_router)
 api_router.include_router(servers_router)
 api_router.include_router(connected_users_router)
+api_router.include_router(ui_alerts_router)
 api_router.include_router(other_actions_router)
 api_router.include_router(quote_action_customization_router)
 api_router.include_router(new_products_router)

@@ -4,7 +4,7 @@ import { Sidebar } from '../components/Sidebar';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Upload, Trash2, Image, FileText, Check, X, Download, Mail, Save, Building2, Warehouse, FileCode, Key, Eye, EyeOff, CheckCircle, AlertCircle, MapPin, TrendingUp, RefreshCw, Clock, Settings2, ChevronRight, ShieldCheck, ChevronDown, Wifi, DatabaseBackup, PenLine, CalendarDays, Bell, Gauge, Inbox, ScrollText } from 'lucide-react';
+import { Upload, Trash2, Image, FileText, Check, X, Download, Mail, Save, Building2, Warehouse, FileCode, Key, Eye, EyeOff, CheckCircle, AlertCircle, MapPin, TrendingUp, RefreshCw, Clock, Settings2, ChevronRight, ShieldCheck, ChevronDown, Wifi, DatabaseBackup, PenLine, CalendarDays, Bell, Gauge, Inbox, ScrollText, BellRing } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import api from '../utils/api';
 import { toast } from 'sonner';
@@ -640,6 +640,7 @@ export const Settings = () => {
               { key: 'project-sla', icon: Gauge, accent: 'emerald', title: 'Tiempos y SLA de Proyectos', desc: 'Matriz del semáforo y disparadores automáticos por etapa.', route: '/settings/project-sla', testid: 'open-project-sla-btn' },
               { key: 'backup', adminOnly: true, icon: DatabaseBackup, accent: 'indigo', title: 'Centro de Respaldos', desc: 'Exporta e importa datos maestros (12 entidades) en JSON/ZIP.', route: '/settings/backup-center', testid: 'open-backup-center-btn' },
               { key: 'connected', adminOnly: true, icon: Wifi, accent: 'rose', title: 'Usuarios Conectados', desc: 'Sesiones activas en tiempo real (auto-refresh cada 15s).', route: '/settings/connected-users', testid: 'open-connected-users-btn' },
+              { key: 'ui-alerts', adminOnly: true, icon: BellRing, accent: 'rose', title: 'Avisos en Pantalla', desc: 'Enciende o apaga las notificaciones emergentes y el aviso de mensajes pendientes para todos, por departamento o por persona.', route: '/settings/ui-alerts', testid: 'open-ui-alerts-btn' },
               { key: 'inbox-cleanup', adminOnly: true, icon: Inbox, accent: 'rose', title: 'Depuración de Archivos', desc: 'Calcula y depura por periodos registros de Inbox, Notificaciones, Logs de Correo, Bitácora y Sesiones para reducir el peso de la base de datos.', route: '/settings/inbox-cleanup', testid: 'open-inbox-cleanup-btn' },
             ];
 

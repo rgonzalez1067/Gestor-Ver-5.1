@@ -34,6 +34,7 @@ import ProjectSlaConfig from './pages/ProjectSlaConfig';
 import ConnectedUsers from './pages/ConnectedUsers';
 import BackupCenter from './pages/BackupCenter';
 import InboxCleanup from './pages/InboxCleanup';
+import UiAlertsConfig from './pages/UiAlertsConfig';
 import { IntegratorTemplatesConfig, NewProductTemplatesConfig } from './pages/EntityTemplatesConfig';
 import HistoricalQuotes from './pages/HistoricalQuotes';
 import SalesReports from './pages/SalesReports';
@@ -322,6 +323,11 @@ function AppRouter() {
           <BackupCenter />
         </ProtectedRoute>
       } />
+      <Route path="/settings/ui-alerts" element={
+        <ProtectedRoute>
+          <UiAlertsConfig />
+        </ProtectedRoute>
+      } />
       <Route path="/settings/inbox-cleanup" element={
         <ProtectedRoute>
           <InboxCleanup />
@@ -350,8 +356,8 @@ function AppRouter() {
 function AppToaster() {
   // Cuando el banner global está visible, empuja los toasts hacia abajo para
   // que no se solapen con la caja roja fija de la esquina superior derecha.
-  const { unread } = useUnreadMessages();
-  return <Toaster position="top-right" richColors offset={unread > 0 ? { top: 96 } : undefined} />;
+  const { unread, alerts } = useUnreadMessages();
+  return <Toaster position="top-right" richColors offset={unread > 0 && alerts.unread_banner ? { top: 96 } : undefined} />;
 }
 
 function App() {

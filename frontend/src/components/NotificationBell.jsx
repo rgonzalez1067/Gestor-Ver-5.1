@@ -6,6 +6,7 @@ import useNotifications from '../hooks/useNotifications';
 import IntenseAlertToast from './IntenseAlertToast';
 import AlertsCenterModal from './AlertsCenterModal';
 import { playNotifBeep } from '../utils/notificationSound';
+import { useUnreadMessages } from '../context/UnreadMessagesContext';
 
 export const NotificationBell = () => {
   const navigate = useNavigate();
@@ -13,6 +14,9 @@ export const NotificationBell = () => {
   const [centerOpen, setCenterOpen] = useState(false);
   const [pulse, setPulse] = useState(false);
   const seenRef = useRef(new Set());
+  const { alerts } = useUnreadMessages();
+  const pushOnRef = useRef(alerts.push);
+  pushOnRef.current = alerts.push;
 
   // Alerta intensa persistente cuando llega una notificación o mensaje interno.
   // Color por prioridad: rojo=alta, naranja=media, amarillo=baja, morado=mensaje interno.
@@ -63,12 +67,13 @@ export const NotificationBell = () => {
         link = payload?.link || null;
       }
 
-      playNotifBeep();
-
       if (isInternal || isReminder || priority === 'high') {
         setPulse(true);
         setTimeout(() => setPulse(false), 3000);
       }
+      if (!pushOnRef.current) return;
+
+      playNotifBeep();
 
       // Toast intenso persistente (no se auto-cierra). El CTA "Ver mensaje"
       // aplica a mensajes internos (lleva a la conversación) y a recordatorios

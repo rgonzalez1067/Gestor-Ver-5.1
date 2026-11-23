@@ -31,7 +31,7 @@ const readSnoozeCount = () => {
 };
 
 export const GlobalUnreadBanner = () => {
-  const { unread, loaded } = useUnreadMessages();
+  const { unread, loaded, alerts } = useUnreadMessages();
   const location = useLocation();
   const [snoozeCount, setSnoozeCount] = useState(readSnoozeCount);
   const [snoozedHere, setSnoozedHere] = useState(false);
@@ -47,7 +47,7 @@ export const GlobalUnreadBanner = () => {
 
   const hasUnread = unread > 0;
   const locked = lockedSticky;
-  const visible = hasUnread && (locked || !snoozedHere);
+  const visible = alerts.unread_banner && hasUnread && (locked || !snoozedHere);
 
   // Reset total: sin mensajes sin leer (lectura validada por backend) o al
   // cerrar sesión (token fuera → unread 0). Reinicia el ciclo de posposición.
