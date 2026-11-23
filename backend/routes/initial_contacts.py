@@ -237,7 +237,10 @@ async def edit_initial_contact(contact_id: str, data: InitialContactEdit, author
     ref_id = incoming.pop("referente_id", None)
     incoming.pop("nuevo_referente", None)
     referente = await resolve_contact_referente(current_user, ref_id, data.nuevo_referente)
-    if referente and referente["referente_id"] != contact.get("referente_id"):
+    if ref_id == "" and not data.nuevo_referente and contact.get("referente_id"):
+        updates.update({"referente_id": None, "referred_by": ""})
+        changes.append(f"Referido Por: «{contact.get('referred_by') or '—'}» → «—»")
+    elif referente and referente["referente_id"] != contact.get("referente_id"):
         updates["referente_id"] = referente["referente_id"]
         updates["referred_by"] = referente["nombre_referente"]
         changes.append(f"Referido Por: «{contact.get('referred_by') or '—'}» → «{referente['nombre_referente']}»")

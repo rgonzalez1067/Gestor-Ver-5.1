@@ -4885,3 +4885,10 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - /settings/ui-alerts (admin): enciende/apaga "push" (popups+beep de NotificationBell) y "unread_banner" (GlobalUnreadBanner) por global/departamento/persona; basta un nivel apagado.
 - Backend routes/ui_alerts.py: GET/PUT /api/settings/ui-alerts (admin), GET /api/notifications/ui-alerts/me (todos; ruta exenta de RBAC). Doc en db.app_settings key=ui_alerts.
 - Frontend: UnreadMessagesContext expone alerts (polling 20s).
+
+## 2026-06 Catálogo Referentes
+- Colección referentes (routes/referentes.py): GET/POST/PUT/merge (merge = soft, merged_into). Dedupe por nombre_norm (case-insensitive); quick-create reutiliza/reactiva existente.
+- Contacto Inicial: ReferentePicker (buscador + "Otro" con sub-formulario); payload referente_id | nuevo_referente; referred_by se mantiene = nombre para reportes/correos. Edición admin permite cambiar/quitar referente.
+- Permiso especial referentes:crear (módulo Contacto Inicial en Perfiles). Mantenimiento /catalogs/referentes (admin, menú Catálogos).
+- Auditoría automática (COLLECTION_MODULES "Referentes"). Migración startup de referred_by libre -> referentes (CCM). API externa también vincula.
+- Backlog: reporte Embudo por Referente (contactos -> cotizaciones -> proyectos -> cierre).

@@ -1,0 +1,43 @@
+{
+  "summary": "Tested the Referentes master catalog and its use in Contacto Inicial, on both backend and frontend at 1366x768. Backend: 10/10 pytest pass. They cover GET (active only, A-Z, contactos, can_create), include_inactive, POST with the 409 case-insensitive duplicate and 422 validation, PUT (edit, inactivate, rename updating referred_by), merge (reassigns contacts, sources hidden even from include_inactive), POST initial-contacts with nuevo_referente (creates and links, same name reuses without duplicating), invalid referente_id gives 400, audit CREATE in module Referentes, and RBAC 403 for qa.editor. Extra edge script: a non-admin with the special permission referentes:crear (granted temporarily, then reverted) can quick-create, gets can_create=true and still gets 403 on PUT. Frontend: picker search, Otro option, quick form, 2nd contact list, edit picker, the whole catalog page and the AdminProfiles permission all work. One HIGH UI bug: when the quick form is open, the 'Crear Contacto' button cannot be reached at 1366x768.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/initial-contacts (nuevo_referente)", "issue": "create_or_get_referente matches on nombre_norm without checking estatus. If the name belongs to an INACTIVE referente, the contact is silently linked to that inactive referente, which then does not show in the picker. Verified: TEST_Inact_* linked with estatus False. Fix: reactivate it, or return 409 / a clear message."},
+      {"endpoint": "POST/PUT /api/initial-contacts (referente_id)", "issue": "resolve_contact_referente accepts a referente_id of an inactive referente (and of a merged one) and links it (verified 200). It should reject estatus=False or merged_into referentes, or move a merged one to its target."},
+      {"endpoint": "PUT /api/initial-contacts/{id}", "issue": "A referente link cannot be removed. The picker option 'Sin referente' (edit-referred-by-none) sends nothing, because referentePayload returns {}. Sending referente_id:'' is also ignored: the contact keeps its referente (verified)."},
+      {"endpoint": "POST /api/initial-contacts", "issue": "The legacy free-text referred_by is still accepted without linking (referente_id=None). This bypasses the catalog, so free-text referidos can keep being created through the API."},
+      {"endpoint": "POST /api/referentes/merge", "issue": "No check that the target is active and not merged; you can merge into an inactive referente. No unique index on referentes.nombre_norm, so two concurrent creates can make duplicates."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "InitialContacts create modal + ReferentePicker quick form", "issue": "At 1366x768, choosing '+ Otro' makes the 'Nuevo Contacto Inicial' dialog about 1008px tall: top at -120px, submit at y=831. DialogContent has no max-h/overflow-y-auto, so the dialog cannot be scrolled with the mouse wheel and the 'Crear Contacto' button is out of reach. Pressing Enter in a field is the only way to submit. Fix: add className 'max-h-[90vh] overflow-y-auto' to DialogContent (create-contact-modal), and ideally to the edit modal too.", "selector": "[data-testid='create-contact-modal'] [data-testid='submit-contact-btn']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/catalogs/referentes", "issues": ["The route has no admin guard: only the sidebar link is hidden. A non-admin who types the URL loads the page, but the API blocks writes (same pattern as other catalogs).", "There is no delete, so inactive TEST/duplicate referentes pile up under the 'Todos' filter, which is the default. Consider defaulting the filter to 'Activos'."]},
+      {"screen": "Global", "issues": ["The red IntenseAlertToast ('Nuevo Contacto Inicial registrado') sits on top of the 'Nuevo Contacto' button in the top-right and blocks clicks until it is dismissed. This is not new to this feature."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_referentes_catalog.py", "/app/backend/tests/test_referentes_edge.py", "/app/test_reports/pytest/pytest_referentes.xml"],
+  "action_items": [
+    "HIGH: add max-h-[90vh] overflow-y-auto to the create-contact-modal DialogContent (and the edit modal) so 'Crear Contacto' can be reached at 1366x768 when the quick referente form is open.",
+    "Handle a quick-create whose name matches an inactive referente: reactivate it or warn, instead of silently linking to the inactive record.",
+    "Reject an inactive or merged referente_id in POST/PUT initial-contacts.",
+    "Make 'Sin referente' in the edit picker actually remove the link (e.g. send referente_id:null and handle it in edit_initial_contact).",
+    "Optional: stop accepting free-text referred_by without a referente; add a unique index on referentes.nombre_norm (partial, non-null)."
+  ],
+  "critical_code_review_comments": [
+    "referentes.py create_or_get_referente: find_one by nombre_norm ignores estatus; no unique index, so there is a race on concurrent creates.",
+    "initial_contacts.py edit: incoming.pop('referente_id') plus 'if referente and ...' means a falsy referente_id never removes the link.",
+    "Referentes.jsx: the 'all' status filter is the default; the frontend route has no admin guard.",
+    "audit_trail: CREATE and UPDATE for referentes are recorded (verified via GET /api/audit-trails?modules=Referentes)."
+  ],
+  "updated_files": ["/app/backend/tests/test_referentes_catalog.py", "/app/backend/tests/test_referentes_edge.py"],
+  "success_rate": {"backend": "100% (10/10 pytest; 4 minor edge-case defects found)", "frontend": "about 90% (all flows work; HIGH modal overflow at 1366x768)"},
+  "seed_data_creation": "Created TEST_ contacts (all deleted by id) and TEST_ referentes (all inactivated; there is no delete endpoint, so they stay in the DB as inactive). qa.editor special_permissions was temporarily given 'referentes:crear' and restored to [] afterwards. CCM was untouched: still 1 linked contact.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Admin qa.integradores@megasoft.com.ve / QaIntegr2026*Ok. qa.editor has no initial_contacts access (redirected to the dashboard), so the non-admin picker UI was not testable; RBAC was checked through the API. Log in by setting localStorage session_token + user. Run: REACT_APP_BACKEND_URL=... pytest tests/test_referentes_catalog.py -p no:xdist. Retest: the create modal at 1366x768 with Otro open (click submit-contact-btn), the inactive-name quick-create, and clearing a referente in edit."
+}

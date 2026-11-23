@@ -89,4 +89,4 @@ export const ReferentePicker = ({ referentes, canCreate, value, onChange, testId
   );
 };
 
-export const referentePayload = (value) => (value.nuevo ? { nuevo_referente: value.nuevo } : value.referente_id ? { referente_id: value.referente_id } : {});
+export const referentePayload = (value) => (value.nuevo ? { nuevo_referente: value.nuevo } : { referente_id: value.referente_id || '' });

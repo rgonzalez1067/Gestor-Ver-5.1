@@ -494,7 +494,7 @@ export const InitialContacts = () => {
 
         {/* Create Modal */}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogContent className="max-w-md" data-testid="create-contact-modal">
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" data-testid="create-contact-modal">
             <DialogHeader><DialogTitle className="flex items-center gap-2"><Phone size={20} className="text-green-600" /> Nuevo Contacto Inicial</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate} className="space-y-4 pt-2">
               <div>
@@ -564,7 +564,7 @@ export const InitialContacts = () => {
 
         {/* Edit Modal (admin only) */}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
-          <DialogContent className="max-w-md" data-testid="edit-contact-modal">
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" data-testid="edit-contact-modal">
             <DialogHeader><DialogTitle className="flex items-center gap-2"><Pencil size={20} className="text-blue-600" /> Editar Contacto Inicial</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
               <div>

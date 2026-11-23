@@ -67,6 +67,9 @@ async def create_or_get_referente(data: ReferenteIn, user: dict) -> dict:
         raise HTTPException(status_code=400, detail="El nombre del referente es obligatorio")
     existing = await db.referentes.find_one({"nombre_norm": _norm(name)}, {"_id": 0})
     if existing:
+        if not existing.get("estatus"):
+            await db.referentes.update_one({"referente_id": existing["referente_id"]}, {"$set": {"estatus": True}})
+            existing["estatus"] = True
         return existing
     doc = {
         "referente_id": f"ref_{uuid.uuid4().hex[:12]}",
