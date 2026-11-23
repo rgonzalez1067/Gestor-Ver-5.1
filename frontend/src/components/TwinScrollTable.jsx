@@ -19,7 +19,7 @@ import { useEffect, useRef } from 'react';
  *     spacer superior siempre refleje el ancho real del contenido (necesario
  *     cuando filas se agregan/quitan dinámicamente).
  */
-export function TwinScrollTable({ children }) {
+export function TwinScrollTable({ children, fill = false }) {
   const topRef = useRef(null);
   const bottomRef = useRef(null);
   const spacerRef = useRef(null);
@@ -66,7 +66,7 @@ export function TwinScrollTable({ children }) {
   }, []);
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+    <div className={`bg-white rounded-lg border border-slate-200 overflow-hidden ${fill ? 'page-fixed-main' : ''}`}>
       {/* Barra superior: solo es un sleeve de scroll, sin contenido visible. */}
       <div
         ref={topRef}
@@ -77,7 +77,7 @@ export function TwinScrollTable({ children }) {
         <div ref={spacerRef} style={{ height: '1px' }} />
       </div>
       {/* Contenedor real que envuelve la tabla — barra inferior nativa. */}
-      <div ref={bottomRef} className="overflow-x-auto" data-testid="twin-scroll-bottom">
+      <div ref={bottomRef} className={fill ? 'page-scroll-area' : 'overflow-x-auto'} data-testid="twin-scroll-bottom">
         {children}
       </div>
     </div>

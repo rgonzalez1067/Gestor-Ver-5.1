@@ -71,9 +71,9 @@ export default function Brands() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex page-fixed-shell bg-slate-50">
       <Sidebar />
-      <main className="flex-1 overflow-auto p-8" data-testid="brands-page">
+      <main className="flex-1 page-fixed-main p-8" data-testid="brands-page">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2"><Tag className="text-teal-600" size={28} /> Marca o Nombre Fantasía</h1>
@@ -109,7 +109,7 @@ export default function Brands() {
             )}
           </div>
         )}
-        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-lg border border-slate-200 page-scroll-area">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
               <tr>

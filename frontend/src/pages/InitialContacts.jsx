@@ -273,9 +273,9 @@ export const InitialContacts = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex page-fixed-shell bg-slate-50">
       <Sidebar />
-      <main className="flex-1 p-8" data-testid="initial-contacts-page">
+      <main className="flex-1 page-fixed-main p-8" data-testid="initial-contacts-page">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -322,7 +322,7 @@ export const InitialContacts = () => {
         {/* Iter52: Twin Scrollbar — barras superior + inferior sincronizadas
             mediante refs y un sync de scrollLeft 1:1. Útil cuando la grilla
             tiene muchas columnas (Fecha último/próximo contacto añadidas). */}
-        <TwinScrollTable>
+        <TwinScrollTable fill>
             <table className="min-w-[1200px] w-full" data-testid="contacts-table">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>

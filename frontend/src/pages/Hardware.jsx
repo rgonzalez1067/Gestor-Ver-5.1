@@ -370,11 +370,11 @@ export const Hardware = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex page-fixed-shell bg-white">
       <Sidebar />
       
-      <main className="flex-1 p-8" data-testid="hardware-page">
-        <div className="max-w-7xl mx-auto">
+      <main className="flex-1 page-fixed-main p-8" data-testid="hardware-page">
+        <div className="max-w-7xl mx-auto page-fixed-main">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-4xl font-bold text-slate-900 font-manrope mb-2">
@@ -635,7 +635,7 @@ export const Hardware = () => {
           {/* Tabla de Dispositivos - Estilo MediosPago */}
           <div className="flex justify-end mb-4">
           </div>
-          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+          <div className="page-scroll-area"><div className="bg-white rounded-lg border border-slate-200">
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
@@ -761,6 +761,7 @@ export const Hardware = () => {
               })}
             </div>
           )}
+          </div>
         </div>
         
         {/* Modal de confirmación para Eliminar */}

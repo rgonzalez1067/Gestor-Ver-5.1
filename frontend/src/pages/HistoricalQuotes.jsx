@@ -162,9 +162,9 @@ export const HistoricalQuotes = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex page-fixed-shell bg-slate-50">
       <Sidebar />
-      <main className="flex-1 p-6 overflow-auto">
+      <main className="flex-1 p-6 page-fixed-main">
         <div className="flex items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-3">
             <Archive className="w-7 h-7 text-amber-500" />
@@ -224,8 +224,8 @@ export const HistoricalQuotes = () => {
           </div>
         </Card>
 
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
+        <Card className="overflow-hidden page-fixed-main">
+          <div className="page-scroll-area">
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr className="text-xs text-slate-500 uppercase font-semibold">

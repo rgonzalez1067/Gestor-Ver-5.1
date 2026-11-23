@@ -59,10 +59,10 @@ export default function FiscalPrintersCatalog() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex page-fixed-shell bg-slate-50">
       <Sidebar />
-      <main className="flex-1 p-8" data-testid="fiscal-printers-catalog-page">
-        <div className="max-w-4xl mx-auto">
+      <main className="flex-1 page-fixed-main p-8" data-testid="fiscal-printers-catalog-page">
+        <div className="max-w-4xl mx-auto page-fixed-main">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center"><Printer size={26} /></div>
             <div>
@@ -99,7 +99,7 @@ export default function FiscalPrintersCatalog() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden page-fixed-main">
             <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
               <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Registrados ({items.length})</h2>
               <Button variant="outline" size="sm" onClick={load}><RefreshCw size={14} className={loading ? 'animate-spin' : ''} /></Button>
@@ -109,7 +109,7 @@ export default function FiscalPrintersCatalog() {
             ) : items.length === 0 ? (
               <div className="py-10 text-center text-slate-400">Sin impresoras registradas</div>
             ) : (
-              <table className="w-full text-sm" data-testid="fiscal-printers-table">
+              <div className="page-scroll-area"><table className="w-full text-sm" data-testid="fiscal-printers-table">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-2.5 text-left font-medium text-slate-600">Marca</th>
@@ -143,7 +143,7 @@ export default function FiscalPrintersCatalog() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </div>
         </div>

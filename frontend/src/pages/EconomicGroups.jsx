@@ -129,9 +129,9 @@ export default function EconomicGroups() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex page-fixed-shell bg-slate-50">
       <Sidebar />
-      <main className="flex-1 overflow-auto p-8" data-testid="economic-groups-page">
+      <main className="flex-1 page-fixed-main p-8" data-testid="economic-groups-page">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
@@ -152,7 +152,7 @@ export default function EconomicGroups() {
             className="pl-9" data-testid="group-search-input" />
         </div>
 
-        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-lg border border-slate-200 page-scroll-area">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
               <tr>

@@ -1009,10 +1009,10 @@ export const Clients = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex page-fixed-shell bg-white">
       <Sidebar />
-      <main className="flex-1 p-8" data-testid="clients-page">
-        <div className="max-w-7xl mx-auto">
+      <main className="flex-1 page-fixed-main p-8" data-testid="clients-page">
+        <div className="max-w-7xl mx-auto page-fixed-main">
           <div className="flex justify-between items-center mb-4">
             <div>
               <h1 className="text-4xl font-bold text-slate-900 font-manrope mb-2">Razón Social</h1>
@@ -1730,7 +1730,7 @@ export const Clients = () => {
               )}
             </div>
           )}
-          <div className="bg-white rounded-lg border border-slate-200 overflow-x-auto">
+          <div className="bg-white rounded-lg border border-slate-200 page-scroll-area">
             <table className="w-full min-w-[900px]">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
