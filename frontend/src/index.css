@@ -288,7 +288,7 @@
 
 /* Pantallas con encabezado fijo: solo se desplaza el contenido variable (grilla). */
 .page-fixed-shell { height: 100vh; overflow: hidden; }
-.page-fixed-main { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.page-fixed-main { display: flex; flex-direction: column; min-height: 0; overflow-y: hidden; overflow-x: auto; }
 .page-fixed-main > * { flex-shrink: 0; }
 .page-fixed-main > .page-fixed-main,
 .page-fixed-main > .page-scroll-area { flex: 1 1 auto; min-height: 0; width: 100%; }

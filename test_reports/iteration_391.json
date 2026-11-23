@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only test of fixed headers on 9 screens (Contacto Inicial, Grupo Económico, Marcas, Razón Social, Medios de Pago, Bienes y Servicios, Impresoras Fiscales, Servidores, Histórico de Cotizaciones). I logged in as qa.integradores and tested at 1920x800 and 1366x768, in light and dark mode. On all 9 screens main.scrollHeight == main.clientHeight and window.scrollY stays 0. Only .page-scroll-area moves on mouse wheel (scrollTop 400-600). The h1, buttons and filters keep their position. The thead stays at the top edge of the area (within 0-1px) and has a solid background (light rgb(248,250,252), dark rgb(4,9,22)). Regression checks passed: Clients checkbox updates the bulk-actions count; the client '...' menu opens with 6 items; the New Client modal opens and closes with Esc; Marcas row expand, edit modal and bulk checkbox work; Hardware edit modal opens after scrolling and the type filter works; the Historical Quotes view modal opens; Medios de Pago row action opens a dialog; Servers edit opens the inline form. The type summary cards in Bienes y Servicios can be reached by scrolling to the end of the area. The unmodified screens /quotes, /projects and /integrators still scroll the window as before. Found 1 regression in TwinScrollTable (Contacto Inicial) and minor horizontal clipping on Clients and Hardware at 1366.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "TwinScrollTable (fill) - Contacto Inicial at 1366x768", "issue": "Top horizontal bar spacer is stale: spacer width 1200px but table scrollWidth is 1421px. The top bar only scrolls 156px of the 377px range (setting top.scrollLeft=200 gives bottom 156), so the top bar cannot reach the last columns. Cause: with fill, the bottom container has a fixed flex height, so the ResizeObserver on it (bot) never fires when data loads and widens the table. Before this change the container grew in height when rows loaded and fired the observer. At 1920 the table fits, so the bug does not show there. Fix: also observe the child (bot.firstElementChild / table) with the rAF debounce, or recompute the spacer when children change.", "selector": "[data-testid=twin-scroll-top], [data-testid=twin-scroll-bottom]", "priority": "MEDIUM"},
+      {"component": "Clients header at 1366x768", "issue": "The header row (flex justify-between, no wrap) does not fit. 'Nuevo Cliente' [data-testid=add-client-button] ends at x=1356 and gets clipped by the overflow:hidden of .page-fixed-main. The h1 'Razón Social' wraps to 2 lines and the subtitle to 5 lines, which leaves only 366px of grid height. Before, the overflow was not clipped. Suggest flex-wrap gap-2 on the buttons container or a smaller subtitle.", "selector": "[data-testid=add-client-button]", "priority": "LOW"},
+      {"component": "Hardware type filter chips at 1366x768", "issue": "The 'Pieza Mecánica' chip [data-testid=filter-hw-Pieza...] goes past the card (right edge x=1361) and is clipped. 'Punto de Venta (POS)' wraps to 3 lines. Suggest flex-wrap on the chips container.", "selector": "[data-testid^=filter-hw-]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Impresoras Fiscales / Servidores", "issues": ["At 1366x768 the scroll area is only about 307-331px tall because the create/edit form card sits above it. Acceptable, but it could be made collapsible."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "TwinScrollTable: with fill=true, observe the table/child as well (or listen for content changes) so the top bar spacer width tracks the real scrollWidth after data loads (Contacto Inicial at 1366).",
+    "Clients.jsx header: allow wrapping (flex-wrap) of the action buttons so 'Nuevo Cliente' is not clipped at 1366px and the grid keeps more height.",
+    "Hardware.jsx: flex-wrap on the type filter chips so 'Pieza Mecánica' is not clipped at 1366px."
+  ],
+  "critical_code_review_comments": [
+    "index.css: the .page-fixed-main overflow:hidden clips any horizontal overflow in header areas. Previously that overflow was reachable; headers must now be responsive (wrap).",
+    "TwinScrollTable ResizeObserver observes only the container. This is fine for auto height, but stale for fill mode.",
+    "Hardware.jsx: the empty <div className='flex justify-end mb-4'></div> before the grid wastes 16px of vertical space."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "92%"},
+  "seed_data_creation": "None. Read-only. No records were created, edited or deleted. Edit modals were opened and closed without saving. Dark mode was toggled and restored to light.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login: POST /api/auth/login, then set localStorage session_token and user. Measure with JS: main.scrollHeight vs clientHeight, .page-scroll-area scrollTop after mouse.wheel, thead getBoundingClientRect().top vs area top, th background. TwinScroll check: load /initial-contacts directly at 1366x768 and compare twin-scroll-top scrollWidth with twin-scroll-bottom scrollWidth (they should be equal). Use absolute URLs in page.request/goto with the browser tool."
+}

@@ -375,7 +375,7 @@ export const Hardware = () => {
       
       <main className="flex-1 page-fixed-main p-8" data-testid="hardware-page">
         <div className="max-w-7xl mx-auto page-fixed-main">
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex flex-wrap gap-3 justify-between items-center mb-8">
             <div>
               <h1 className="text-4xl font-bold text-slate-900 font-manrope mb-2">
                 Bienes y Servicios

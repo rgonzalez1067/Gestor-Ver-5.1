@@ -1013,7 +1013,7 @@ export const Clients = () => {
       <Sidebar />
       <main className="flex-1 page-fixed-main p-8" data-testid="clients-page">
         <div className="max-w-7xl mx-auto page-fixed-main">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-wrap gap-3 justify-between items-center mb-4">
             <div>
               <h1 className="text-4xl font-bold text-slate-900 font-manrope mb-2">Razón Social</h1>
               <p className="text-slate-600">Fichas fiscales (RIF) con sus sucursales, contactos y seguimiento</p>

@@ -44,7 +44,8 @@ export function TwinScrollTable({ children, fill = false }) {
 
     const updateSpacer = () => {
       if (spacerRef.current && bot) {
-        spacerRef.current.style.width = `${bot.scrollWidth}px`;
+        const w = `${bot.scrollWidth}px`;
+        if (spacerRef.current.style.width !== w) spacerRef.current.style.width = w;
       }
     };
     updateSpacer();
@@ -55,6 +56,9 @@ export function TwinScrollTable({ children, fill = false }) {
       requestAnimationFrame(updateSpacer);
     });
     ro.observe(bot);
+    // Con alto fijo (fill) el contenedor no cambia de tamaño al cargar datos: se observa también la tabla.
+    const mo = fill ? new MutationObserver(() => requestAnimationFrame(updateSpacer)) : null;
+    if (mo) mo.observe(bot, { childList: true, subtree: true });
     // Solo observar el contenedor; observar el child generaba loops cuando
     // el alto/ancho del contenido se recalcula con cada render.
 
@@ -62,8 +66,9 @@ export function TwinScrollTable({ children, fill = false }) {
       top.removeEventListener('scroll', onTop);
       bot.removeEventListener('scroll', onBot);
       ro.disconnect();
+      if (mo) mo.disconnect();
     };
-  }, []);
+  }, [fill]);
 
   return (
     <div className={`bg-white rounded-lg border border-slate-200 overflow-hidden ${fill ? 'page-fixed-main' : ''}`}>
