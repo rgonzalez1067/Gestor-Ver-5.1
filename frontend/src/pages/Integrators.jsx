@@ -560,10 +560,6 @@ export const Integrators = () => {
           <SelectContent>{INTEGRATION_MODALITIES.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
         </Select>
       </div>
-      <div>
-        <Label>Correo de Contacto</Label>
-        <Input value={formData.email || ''} onChange={(e) => setFormData({ ...formData, email: e.target.value })} type="email" placeholder="correo@empresa.com" data-testid="wizard-email" />
-      </div>
     </div>
   );
 

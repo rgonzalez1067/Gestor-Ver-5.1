@@ -79,7 +79,7 @@ OTHER_ACTIONS = [
         "description": "Se dispara al dar de alta un Proyecto de Integración (alta de integrador).",
         "variables": [
             "nombre_integrador", "tipo_integracion", "nombre_aplicativo",
-            "nombre_responsable", "email_responsable", "telefono_responsable",
+            "nombre_responsable", "email_responsable", "telefono_responsable", "contactos_integrador",
             "usuario_creador", "fecha_sistema",
             "Productos_Certificar_Integrador", "Productos_nuevos",
         ],

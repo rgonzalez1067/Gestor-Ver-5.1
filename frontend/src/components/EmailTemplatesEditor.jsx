@@ -402,6 +402,7 @@ const BASE_TEMPLATE_VARIABLES = {
     { key: 'nombre_responsable', label: 'Responsable Técnico (nombre)' },
     { key: 'email_responsable', label: 'Responsable Técnico (email)' },
     { key: 'telefono_responsable', label: 'Responsable Técnico (teléfono)' },
+    { key: 'contactos_integrador', label: 'Reel de Contactos del Integrador (tabla)' },
     { key: 'comentarios_personalizados', label: 'Comentarios Personalizados' },
     { key: 'usuario_creador', label: 'Usuario Creador' },
     { key: 'fecha_sistema', label: 'Fecha del Sistema' },

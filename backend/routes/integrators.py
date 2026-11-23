@@ -2983,9 +2983,17 @@ async def notify_new_integration_project(
     config = await db.config.find_one({"type": "app_settings"}, {"_id": 0})
     impl_manager_email = config.get("implementation_manager_email") if config else None
     
-    # Obtener primer contacto técnico como responsable
-    contacts = integrator.get("contacts", [])
+    # Reel de contactos del proyecto: contacts[0] = Responsable principal.
+    contacts = [c for c in (integrator.get("contacts") or []) if (c.get("name") or "").strip()]
     first_contact = contacts[0] if contacts else {}
+    import html as _h
+    _cell = 'style="padding:6px 10px;border:1px solid #eee;"'
+    contacts_table = (
+        '<table style="border-collapse:collapse;font-size:12px;font-family:Arial,sans-serif;width:100%;">'
+        '<tr style="background:#f1f5f9;">' + "".join(f'<th {_cell} align="left">{h}</th>' for h in ("Nombre", "Rol", "Email", "Teléfono")) + '</tr>'
+        + "".join('<tr>' + "".join(f'<td {_cell}>{_h.escape(str(c.get(k) or "—"))}</td>' for k in ("name", "role", "email", "phone")) + '</tr>' for c in contacts)
+        + '</table>'
+    ) if contacts else "No asignado"
     
     INTEGRATION_TYPE_MAP = {
         'CR': 'CR — Caja Registradora', 'LP': 'LP — Link de Pago',
@@ -3018,6 +3026,7 @@ async def notify_new_integration_project(
         "nombre_responsable": first_contact.get("name", "No asignado"),
         "email_responsable": first_contact.get("email", "No asignado"),
         "telefono_responsable": first_contact.get("phone", "No asignado"),
+        "contactos_integrador": contacts_table,
         "comentarios_personalizados": info_block,
         "usuario_creador": f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip(),
         "Nombre_Ejecutivo": f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip(),

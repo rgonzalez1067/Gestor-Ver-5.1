@@ -4860,3 +4860,4 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 ### Ajuste Nov 2026: Rol "Contacto Comercial" y notificación de Nuevo Proyecto de Integración
 - Rol "Comercial" → "Contacto Comercial" (ContactRoleSelect).
 - POST /integrators/{id}/notify-new-project ya no exige el correo del Gerente de Implementación: los destinatarios salen de Configuración de otras Acciones; el Gerente solo es respaldo si la acción no está configurada (si no hay ninguno → error claro).
+- Nov 2026: eliminado campo "Correo de Contacto" del asistente. Nueva variable {contactos_integrador} (tabla HTML Nombre/Rol/Email/Teléfono con todo el reel; el primero = Responsable) en notify-new-project; plantilla new_integration_project migrada al iniciar (reemplaza las 3 filas de Responsable). {nombre/email/telefono_responsable} siguen = primer contacto.

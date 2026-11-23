@@ -126,6 +126,17 @@ async def _on_startup():
     except Exception as e:
         logging.warning(f"[startup] link_orphan_integrators failed: {e}")
     try:
+        import re as _re
+        _row = _re.compile(r'<tr[^>]*><td[^>]*>Nombre Responsable Tecnico:</td>.*?\{telefono_responsable\}</td></tr>', _re.S)
+        _t = await db.email_templates.find_one({"template_id": "new_integration_project"}, {"_id": 0, "body_html": 1})
+        if _t and _row.search(_t.get("body_html") or ""):
+            await db.email_templates.update_one({"template_id": "new_integration_project"}, {"$set": {"body_html": _row.sub(
+                '<tr style="background:#f8f9fa;"><td style="padding:8px 12px;color:#666;border:1px solid #eee;vertical-align:top;">Contactos del Integrador:</td>'
+                '<td style="padding:8px 12px;border:1px solid #eee;">{contactos_integrador}</td></tr>', _t["body_html"])}})
+            logging.info("[startup] plantilla new_integration_project → {contactos_integrador}")
+    except Exception as e:
+        logging.warning(f"[startup] migración plantilla contactos falló: {e}")
+    try:
         from services.security_policy import ensure_initial_setup
         await ensure_initial_setup()
         from config import ensure_sin_rif_client
