@@ -4892,3 +4892,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Permiso especial referentes:crear (módulo Contacto Inicial en Perfiles). Mantenimiento /catalogs/referentes (admin, menú Catálogos).
 - Auditoría automática (COLLECTION_MODULES "Referentes"). Migración startup de referred_by libre -> referentes (CCM). API externa también vincula.
 - Backlog: reporte Embudo por Referente (contactos -> cotizaciones -> proyectos -> cierre).
+
+- 2026-06: DELETE /api/referentes/{id} (admin) bloqueado con 409 si tiene contactos vinculados; botón papelera + confirmación en /catalogs/referentes.

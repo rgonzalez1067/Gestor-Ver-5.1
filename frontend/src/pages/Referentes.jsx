@@ -3,7 +3,8 @@ import { Sidebar } from '../components/Sidebar';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Switch } from '../components/ui/switch';
-import { Plus, Pencil, Search, UserCheck, GitMerge } from 'lucide-react';
+import { Plus, Pencil, Search, UserCheck, GitMerge, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../components/ui/alert-dialog';
 import { ReferenteFormDialog } from '../components/referentes/ReferenteFormDialog';
 import { MergeReferentesDialog } from '../components/referentes/MergeReferentesDialog';
 import { TIPOS_REFERENTE } from '../components/referentes/ReferentePicker';
@@ -23,6 +24,7 @@ export default function Referentes() {
   const [formOpen, setFormOpen] = useState(false);
   const [checked, setChecked] = useState([]);
   const [mergeOpen, setMergeOpen] = useState(false);
+  const [deleting, setDeleting] = useState(null);
 
   const load = () => api.get('/referentes', { params: { include_inactive: true } })
     .then((r) => setItems(r.data.items)).catch(() => toast.error('Error al cargar referentes')).finally(() => setLoading(false));
@@ -37,6 +39,11 @@ export default function Referentes() {
   const toggleStatus = async (r) => {
     try { await api.put(`/referentes/${r.referente_id}`, { estatus: !r.estatus }); toast.success(r.estatus ? 'Referente inactivado' : 'Referente activado'); load(); }
     catch (e) { toast.error(e.response?.data?.detail || 'Error'); }
+  };
+  const confirmDelete = async () => {
+    try { const { data } = await api.delete(`/referentes/${deleting.referente_id}`); toast.success(data.message); setChecked((c) => c.filter((x) => x !== deleting.referente_id)); load(); }
+    catch (e) { toast.error(e.response?.data?.detail || 'Error al eliminar'); }
+    finally { setDeleting(null); }
   };
   const toggleCheck = (id) => setChecked((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
   const selected = items.filter((r) => checked.includes(r.referente_id));
@@ -65,7 +72,7 @@ export default function Referentes() {
             {loading ? <p className="p-8 text-center text-sm text-slate-400">Cargando...</p> : filtered.length === 0 ? <p className="p-8 text-center text-sm text-slate-400">No hay referentes</p> : (
               <table className="w-full text-sm" data-testid="referentes-table">
                 <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                  <tr><th className="w-10 px-3 py-3" /><th className="px-3 py-3 text-left">Nombre</th><th className="px-3 py-3 text-left">Tipo</th><th className="px-3 py-3 text-left">Empresa</th><th className="px-3 py-3 text-left">Persona</th><th className="px-3 py-3 text-center">Contactos</th><th className="px-3 py-3 text-left">Creado</th><th className="px-3 py-3 text-center">Activo</th><th className="px-3 py-3 w-12" /></tr>
+                  <tr><th className="w-10 px-3 py-3" /><th className="px-3 py-3 text-left">Nombre</th><th className="px-3 py-3 text-left">Tipo</th><th className="px-3 py-3 text-left">Empresa</th><th className="px-3 py-3 text-left">Persona</th><th className="px-3 py-3 text-center">Contactos</th><th className="px-3 py-3 text-left">Creado</th><th className="px-3 py-3 text-center">Activo</th><th className="px-3 py-3 w-20" /></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filtered.map((r) => (
@@ -78,7 +85,10 @@ export default function Referentes() {
                       <td className="px-3 py-2 text-center text-slate-700" data-testid={`referente-contacts-${r.referente_id}`}>{r.contactos}</td>
                       <td className="px-3 py-2 text-slate-500 text-xs">{formatDate(r.fecha_creacion)}</td>
                       <td className="px-3 py-2 text-center"><Switch checked={r.estatus} onCheckedChange={() => toggleStatus(r)} data-testid={`referente-status-${r.referente_id}`} /></td>
-                      <td className="px-3 py-2"><button type="button" onClick={() => { setEditing(r); setFormOpen(true); }} className="text-slate-400 hover:text-brand-blue-600" data-testid={`referente-edit-${r.referente_id}`}><Pencil size={15} /></button></td>
+                      <td className="px-3 py-2"><div className="flex items-center gap-3">
+                        <button type="button" onClick={() => { setEditing(r); setFormOpen(true); }} className="text-slate-400 hover:text-brand-blue-600" title="Editar" data-testid={`referente-edit-${r.referente_id}`}><Pencil size={15} /></button>
+                        <button type="button" disabled={r.contactos > 0} onClick={() => setDeleting(r)} className="text-slate-400 hover:text-red-600 disabled:opacity-30 disabled:hover:text-slate-400 disabled:cursor-not-allowed" title={r.contactos > 0 ? `No se puede eliminar: tiene ${r.contactos} contacto(s) vinculado(s). Fusiónelo o inactívelo.` : 'Eliminar'} data-testid={`referente-delete-${r.referente_id}`}><Trash2 size={15} /></button>
+                      </div></td>
                     </tr>
                   ))}
                 </tbody>
@@ -88,6 +98,18 @@ export default function Referentes() {
         </div>
       </main>
       <ReferenteFormDialog open={formOpen} referente={editing} onClose={() => setFormOpen(false)} onSaved={load} />
+      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent data-testid="referente-delete-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar Referente</AlertDialogTitle>
+            <AlertDialogDescription>Se eliminará «{deleting?.nombre_referente}» del catálogo de forma permanente. Esta acción no se puede deshacer.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="referente-delete-cancel">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700" data-testid="referente-delete-confirm">Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <MergeReferentesDialog open={mergeOpen} selected={selected} onClose={() => setMergeOpen(false)} onMerged={() => { setChecked([]); load(); }} />
     </div>
   );

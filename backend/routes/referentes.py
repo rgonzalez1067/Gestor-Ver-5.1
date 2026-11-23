@@ -178,3 +178,16 @@ async def merge_referentes(data: MergeIn, authorization: Optional[str] = Header(
                   "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
     return {"ok": True, "contactos_reasignados": moved.modified_count, "referentes_fusionados": merged.modified_count}
+
+
+@router.delete("/referentes/{referente_id}")
+async def delete_referente(referente_id: str, authorization: Optional[str] = Header(None)):
+    await _require_admin(authorization)
+    ref = await db.referentes.find_one({"referente_id": referente_id}, {"_id": 0, "nombre_referente": 1})
+    if not ref:
+        raise HTTPException(status_code=404, detail="Referente no encontrado")
+    linked = await db.initial_contacts.count_documents({"referente_id": referente_id})
+    if linked:
+        raise HTTPException(status_code=409, detail=f"No se puede eliminar: tiene {linked} contacto(s) inicial(es) vinculado(s). Fusiónelo o inactívelo.")
+    await db.referentes.delete_one({"referente_id": referente_id})
+    return {"ok": True, "message": f"Referente «{ref['nombre_referente']}» eliminado"}
