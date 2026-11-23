@@ -4873,3 +4873,7 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Eliminado subtítulo bajo "Gestión de Integradores"; título en una línea.
 - Directorio de Empresas (company-scroll-area) y Proyectos de Integración (integrators-bottom-scroll) con thead fijo; barra horizontal superior sincronizada se mantiene.
 - Tabla anidada CompanyAppsPanel: thead !static para no superponerse.
+
+## 2026-06 Ficha del Aplicativo: cambiar Implementador (solo Admin)
+- ImplementerField.jsx en AppDataTab: lápiz junto a Implementador visible solo para admin; usa PUT /integrators/{id}/assign-implementador (envía notificación configurada).
+- Backend: reasignar un implementador ya asignado devuelve 403 si no es admin (asignación inicial sin cambios).

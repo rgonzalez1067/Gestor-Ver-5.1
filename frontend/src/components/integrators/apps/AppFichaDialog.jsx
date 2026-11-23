@@ -23,7 +23,7 @@ const LockBanner = ({ locked, canModifyLocked }) => {
   );
 };
 
-export const AppFichaDialog = ({ integratorId, onClose, canEdit, canModifyLocked, canManageCerts, onChanged }) => {
+export const AppFichaDialog = ({ integratorId, onClose, canEdit, canModifyLocked, canManageCerts, isAdmin, onChanged }) => {
   const [app, setApp] = useState(null);
   const [products, setProducts] = useState([]);
 
@@ -59,7 +59,7 @@ export const AppFichaDialog = ({ integratorId, onClose, canEdit, canModifyLocked
                 <TabsTrigger value="contacts" data-testid="app-tab-contacts">Contactos Técnicos</TabsTrigger>
                 <TabsTrigger value="certs" data-testid="app-tab-certs">Certificados</TabsTrigger>
               </TabsList>
-              <TabsContent value="data" className="pt-3"><AppDataTab app={app} locked={locked} editable={locked ? canModifyLocked : canEdit} onSaved={refresh} /></TabsContent>
+              <TabsContent value="data" className="pt-3"><AppDataTab app={app} locked={locked} editable={locked ? canModifyLocked : canEdit} isAdmin={isAdmin} onSaved={refresh} /></TabsContent>
               <TabsContent value="matrix" className="pt-3"><AppMatrixTab app={app} products={products} locked={matrixLocked} editable={matrixLocked ? canModifyLocked : canEdit} onSaved={refresh} /></TabsContent>
               <TabsContent value="contacts" className="pt-3"><AppContactsTab app={app} /></TabsContent>
               <TabsContent value="certs" className="pt-3"><AppCertificatesTab app={app} canManage={canManageCerts} onChanged={refresh} /></TabsContent>

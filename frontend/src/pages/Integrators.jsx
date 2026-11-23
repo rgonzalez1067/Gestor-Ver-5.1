@@ -2259,7 +2259,7 @@ export const Integrators = () => {
 
         <AppFichaDialog integratorId={fichaAppId} onClose={() => setFichaAppId(null)} canEdit={canEdit}
           canModifyLocked={isAdmin || hasSpecial('integradores:editar_certificados')}
-          canManageCerts={isAdmin || hasSpecial('integradores:gestionar_certificados')} onChanged={fetchData} />
+          canManageCerts={isAdmin || hasSpecial('integradores:gestionar_certificados')} isAdmin={isAdmin} onChanged={fetchData} />
 
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
           <AlertDialogContent>

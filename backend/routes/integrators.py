@@ -1779,6 +1779,8 @@ async def assign_integrator_implementador(integrator_id: str, body: dict, author
     integrator = await db.integrators.find_one({"integrator_id": integrator_id}, {"_id": 0})
     if not integrator:
         raise HTTPException(status_code=404, detail="Proyecto de integración no encontrado")
+    if integrator.get("implementador_user_id") and integrator["implementador_user_id"] != user_id and current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo el Administrador puede cambiar el Implementador asignado")
     
     assignee = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
     if not assignee:

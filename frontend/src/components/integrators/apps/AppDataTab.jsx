@@ -5,6 +5,7 @@ import { Textarea } from '../../ui/textarea';
 import { Label } from '../../ui/label';
 import { Pencil } from 'lucide-react';
 import { ReasonField, reasonError } from './ReasonField';
+import { ImplementerField } from './ImplementerField';
 import { buildPayload, INTEGRATION_TYPES, INTEGRATION_MODALITIES, PHASES } from './appPayload';
 import api from '../../../utils/api';
 import { toast } from 'sonner';
@@ -18,7 +19,7 @@ const FIELDS = [
   ['principal_contact_phone', 'Teléfono Contacto Principal', 'text'], ['principal_contact_email', 'Email Contacto Principal', 'text'],
   ['observations', 'Observaciones', 'area'],
 ];
-const READ_ONLY = [['integrator_type', 'Tipo de Integrador'], ['integrator_status', 'Estatus'], ['implementador', 'Implementador'],
+const READ_ONLY = [['integrator_type', 'Tipo de Integrador'], ['integrator_status', 'Estatus'],
   ['coordinador', 'Coordinador'], ['cert_component', 'Componente Certificado'], ['cert_version', 'Versión Certificada'],
   ['certified_at', 'Fecha de Certificación'], ['certified_by', 'Certificado por']];
 
@@ -35,7 +36,7 @@ const FieldInput = ({ k, kind, value, onChange }) => {
   return <Input className="h-9 text-sm" {...common} />;
 };
 
-export const AppDataTab = ({ app, editable, locked, onSaved }) => {
+export const AppDataTab = ({ app, editable, locked, isAdmin, onSaved }) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
   const [reason, setReason] = useState('');
@@ -69,6 +70,7 @@ export const AppDataTab = ({ app, editable, locked, onSaved }) => {
               : <p className="text-sm text-slate-800 whitespace-pre-wrap break-words" data-testid={`app-value-${k}`}>{app[k] || '—'}</p>}
           </div>
         ))}
+        <ImplementerField app={app} isAdmin={isAdmin} onSaved={onSaved} />
         {READ_ONLY.map(([k, label]) => (
           <div key={k}><Label className="text-[11px] uppercase tracking-wide text-slate-400">{label}</Label>
             <p className="text-sm text-slate-600" data-testid={`app-value-${k}`}>{fmt(k, app[k])}</p></div>
