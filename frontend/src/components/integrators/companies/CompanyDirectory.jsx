@@ -1,3 +1,4 @@
+import { CertFilter, certMatches } from '../CertFilter';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
@@ -41,6 +42,7 @@ export const CompanyDirectory = ({ version, canEdit, canDelete, canManageCerts, 
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
+  const [certFilter, setCertFilter] = useState('all');
   const [expanded, setExpanded] = useState({});
   const [limit, setLimit] = useState(PAGE);
   const [formOpen, setFormOpen] = useState(false);
@@ -57,9 +59,11 @@ export const CompanyDirectory = ({ version, canEdit, canDelete, canManageCerts, 
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
-    return companies.filter(c => (!onlyIncomplete || c.ficha_incompleta) && (!s || c.razon_social.toLowerCase().includes(s)
+    const byCert = certFilter === 'all' ? companies
+      : companies.map(c => ({ ...c, apps: c.apps.filter(a => certMatches(certFilter, !!a.has_certificate)) })).filter(c => c.apps.length);
+    return byCert.filter(c => (!onlyIncomplete || c.ficha_incompleta) && (!s || c.razon_social.toLowerCase().includes(s)
       || (c.rif || '').toLowerCase().includes(s) || c.apps.some(a => (a.app_name || '').toLowerCase().includes(s))));
-  }, [companies, search, onlyIncomplete]);
+  }, [companies, search, onlyIncomplete, certFilter]);
   const incomplete = companies.filter(c => c.ficha_incompleta).length;
   const openFicha = (c) => { setEditing(c); setFormOpen(true); };
   const deleteCompany = async (c) => {
@@ -85,6 +89,8 @@ export const CompanyDirectory = ({ version, canEdit, canDelete, canManageCerts, 
           className={`h-9 px-3 rounded-md border text-xs font-medium inline-flex items-center gap-1.5 transition-colors ${onlyIncomplete ? 'bg-amber-500 text-white border-amber-600' : 'bg-white text-slate-600 border-slate-200 hover:border-amber-400'}`}>
           <AlertTriangle size={13} /> Fichas incompletas
         </button>
+        <CertFilter value={certFilter} onChange={(v) => { setCertFilter(v); setLimit(PAGE); }} testId="company-cert-filter" />
+        {certFilter !== 'all' && <span className="text-xs text-slate-500" data-testid="company-cert-filter-count">{filtered.reduce((n, c) => n + c.apps.length, 0)} aplicativos en {filtered.length} empresas</span>}
       </div>
       <div className="page-scroll-area" data-testid="company-scroll-area">
       {loading ? <div className="p-8 text-center text-sm text-slate-400">Cargando...</div> : (

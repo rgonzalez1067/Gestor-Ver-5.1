@@ -22,6 +22,7 @@ import { BankMassCommunicationDialog } from '../components/BankMassCommunication
 import { IntegratorCertificatesCell } from '../components/IntegratorCertificatesCell';
 import PurgeIntegratorsDialog from '../components/PurgeIntegratorsDialog';
 import { CompanyDirectory } from '../components/integrators/companies/CompanyDirectory';
+import { CertFilter, certMatches } from '../components/integrators/CertFilter';
 import { AppFichaDialog } from '../components/integrators/apps/AppFichaDialog';
 import { isLockedApp } from '../components/integrators/apps/appPayload';
 import { WizardAppPicker } from '../components/integrators/wizard/WizardAppPicker';
@@ -94,7 +95,7 @@ export const Integrators = () => {
   const [expandedRow, setExpandedRow] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const [filterCert, setFilterCert] = useState(false);
+  const [filterCert, setFilterCert] = useState('all');
   const [showAll, setShowAll] = useState(false);
   const [filterType, setFilterType] = useState('');
   const [filterIntType, setFilterIntType] = useState('');
@@ -1116,7 +1117,7 @@ export const Integrators = () => {
       // Los registros legacy (sin project_scope) NO entran en ningún alcance.
       if ((intg.project_scope || '') !== filterScope) return false;
     }
-    if (filterCert && !(certCounts[intg.integrator_id] > 0)) return false;
+    if (!certMatches(filterCert, certCounts[intg.integrator_id] > 0)) return false;
     if (!searchTerm) return true;
     const s = searchTerm.toLowerCase();
     return intg.name?.toLowerCase().includes(s) || intg.app_name?.toLowerCase().includes(s) || intg.integration_modality?.toLowerCase().includes(s) || intg.gestor?.toLowerCase().includes(s);
@@ -1959,12 +1960,9 @@ export const Integrators = () => {
                 {showAll ? <Eye size={14} className="mr-1" /> : <EyeOff size={14} className="mr-1" />}
                 {showAll ? 'Ver Todos' : 'Solo Proyectos'}
               </Button>
-              <button type="button" onClick={() => setFilterCert(v => !v)} aria-pressed={filterCert} data-testid="filter-with-certificate"
-                className={`h-9 px-3 rounded-md border text-xs font-medium inline-flex items-center gap-1.5 transition-colors ${filterCert ? 'bg-green-600 text-white border-green-700' : 'bg-white text-slate-600 border-slate-200 hover:border-green-400'}`}>
-                <Award size={13} /> Con Certificado{filterCert ? ` (${filteredIntegrators.length})` : ''}
-              </button>
-              {(filterCert || filterStatus || filterType || filterIntType || filterModality || filterGestor || filterScope || searchTerm) && (
-                <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={() => { setFilterCert(false); setFilterStatus('all'); setFilterType('all'); setFilterIntType('all'); setFilterModality('all'); setFilterGestor('all'); setFilterScope('all'); setSearchTerm(''); }} data-testid="clear-filters-btn">Limpiar</Button>
+              <CertFilter value={filterCert} onChange={setFilterCert} testId="filter-certificate" />
+              {(filterCert !== 'all' || filterStatus || filterType || filterIntType || filterModality || filterGestor || filterScope || searchTerm) && (
+                <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={() => { setFilterCert('all'); setFilterStatus('all'); setFilterType('all'); setFilterIntType('all'); setFilterModality('all'); setFilterGestor('all'); setFilterScope('all'); setSearchTerm(''); }} data-testid="clear-filters-btn">Limpiar</Button>
               )}
             </div>
           </div>

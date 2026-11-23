@@ -4877,3 +4877,6 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 ## 2026-06 Ficha del Aplicativo: cambiar Implementador (solo Admin)
 - ImplementerField.jsx en AppDataTab: lápiz junto a Implementador visible solo para admin; usa PUT /integrators/{id}/assign-implementador (envía notificación configurada).
 - Backend: reasignar un implementador ya asignado devuelve 403 si no es admin (asignación inicial sin cambios).
+
+## 2026-06 Filtro Con/Sin Certificado
+- components/integrators/CertFilter.jsx (Todos/Con/Sin). Directorio: filtra aplicativos por has_certificate y oculta empresas sin coincidencias (contador). Proyectos: reemplaza el toggle "Con Certificado" (usa certCounts).
