@@ -4900,3 +4900,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Backend routes/initial_contacts_report.py: GET /api/initial-contacts-report y /export?format=xlsx|pdf (Resumen/Contactos/Interacciones; PDF con detalle por contacto).
 
 - 2026-06: Ventanas Nuevo/Editar Contacto Inicial ampliadas a max-w-4xl con secciones (ContactFormParts.jsx).
+
+- 2026-06: Razón Social: drill-down solo lectura de sucursales al hacer clic en el nombre (BranchesDrilldown.jsx); gestión sigue en «Gestionar Sucursales».

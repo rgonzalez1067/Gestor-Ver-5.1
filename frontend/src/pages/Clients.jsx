@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { formatDateTime, formatDate, formatTime } from '../utils/dateFormat';
 import { useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
@@ -17,6 +17,8 @@ import DebouncedInput from '../components/DebouncedInput';
 import { Plus, Pencil, Trash2, Upload, FileSpreadsheet, FileText, BookOpen, UserPlus, X, CheckCircle, Circle, Search, FileDown, AlertCircle, CheckCircle2, ScanLine, FileUp, Download, ArrowRight, RefreshCw, MoreHorizontal, Copy, Mail, Layout, Check, ChevronsUpDown, Briefcase, Users, Building2, GitBranch } from 'lucide-react';
 import api from '../utils/api';
 import { BranchesSection } from '../components/clients/branches/BranchesSection';
+import { BranchesDrilldown } from '../components/clients/branches/BranchesDrilldown';
+import { ChevronRight as DrillClosed, ChevronDown as DrillOpen } from 'lucide-react';
 import { formatRif } from '../utils/rifFormatter';
 import { CONTACT_PURPOSES } from '../utils/contactPurposes';
 import { toast } from 'sonner';
@@ -990,6 +992,7 @@ export const Clients = () => {
     if (!searchTerm) return true;
     return searchHit(c) || branchHitParents.has(c.client_id);
   });
+  const [drillOpen, setDrillOpen] = useState({});
   const filterSig = `${segmentFilter}|${searchTerm}|${ejecutivoFilter.join(',')}|${implementerFilter.join(',')}`;
   useEffect(() => {
     const ids = new Set(filtered.map(c => c.client_id));
@@ -1754,9 +1757,12 @@ export const Clients = () => {
                 {filtered.map((client) => {
                   const mainContact = client.contacts?.[0] || null;
                   const legacyContact = client.contact1;
-                  const branchCount = clients.filter(c => c.parent_client_id === client.client_id).length;
+                  const branches = clients.filter(c => c.parent_client_id === client.client_id);
+                  const branchCount = branches.length;
+                  const isOpen = branchCount > 0 && !!drillOpen[client.client_id];
                   return (
-                    <tr key={client.client_id} className="hover:bg-slate-50 transition-colors">
+                    <Fragment key={client.client_id}>
+                    <tr className={`hover:bg-slate-50 transition-colors ${isOpen ? 'bg-amber-50/40' : ''}`}>
                       {canMass && (
                         <td className="px-3 py-3">
                           <input type="checkbox" className="accent-indigo-600" data-testid={`mass-select-${client.client_id}`}
@@ -1787,7 +1793,16 @@ export const Clients = () => {
                         )}
                       </td>
                       <td className="px-4 py-2.5 max-w-[280px]" data-testid={`client-names-${client.client_id}`}>
-                        <span className="block text-sm font-semibold text-slate-900 truncate" title={client.legal_name}>{client.legal_name}</span>
+                        {branchCount > 0 ? (
+                          <button type="button" onClick={() => setDrillOpen(o => ({ ...o, [client.client_id]: !o[client.client_id] }))}
+                            className="flex items-center gap-1 max-w-full text-left text-sm font-semibold text-slate-900 hover:text-amber-700"
+                            title={`${client.legal_name} — clic para ${isOpen ? 'ocultar' : 'ver'} sus ${branchCount} sucursal(es)`} data-testid={`drilldown-toggle-${client.client_id}`}>
+                            {isOpen ? <DrillOpen size={14} className="shrink-0 text-amber-600" /> : <DrillClosed size={14} className="shrink-0 text-amber-600" />}
+                            <span className="truncate">{client.legal_name}</span>
+                          </button>
+                        ) : (
+                          <span className="block text-sm font-semibold text-slate-900 truncate" title={client.legal_name}>{client.legal_name}</span>
+                        )}
                         {client.fantasy_name
                           ? <span className="inline-block max-w-full mt-0.5 px-1.5 py-0.5 rounded bg-sky-100 text-xs text-sky-900 truncate align-top" title={client.fantasy_name} data-testid={`client-fantasy-${client.client_id}`}>{client.fantasy_name}</span>
                           : <span className="block text-xs text-slate-400" data-testid={`client-fantasy-${client.client_id}`}>—</span>}
@@ -1859,6 +1874,12 @@ export const Clients = () => {
                         </div>
                       </td>
                     </tr>
+                    {isOpen && (
+                      <tr className="bg-amber-50/30"><td colSpan={canMass ? 8 : 7} className="px-4 py-2">
+                        <BranchesDrilldown parent={client} branches={branches} />
+                      </td></tr>
+                    )}
+                    </Fragment>
                   );
                 })}
               </tbody>
