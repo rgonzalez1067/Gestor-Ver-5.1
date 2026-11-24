@@ -640,7 +640,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                 {isScopeFlow && <QuoteScopeSelector value={quoteData} onChange={handleScopeChange} clients={clients} />}
 
                 {/* Parámetros dinámicos VPOS: PinPads y VPN */}
-                {!isPaymentGateway && (
+                {!isPaymentGateway && showRest && (
                   <div className={`grid grid-cols-1 ${isMPOS ? 'md:grid-cols-1' : 'md:grid-cols-2'} gap-4 mt-4 pt-4 border-t border-slate-200`}>
                     <div>
                       <Label className="text-sm font-semibold text-slate-800 mb-2 block">
