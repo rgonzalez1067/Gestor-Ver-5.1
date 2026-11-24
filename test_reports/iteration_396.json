@@ -1,0 +1,17 @@
+{
+  "summary": "Frontend-only retest (1366x768, qa.integradores admin) of Quotes > Nueva Implementación (Pyme), checking where the PinPads/Comunicación block shows up (!isPaymentGateway && showRest). All 6 checks pass: (1) With no quote type chosen, only select-quote-type is visible. requires-pinpad-*, communication-type-*, select-pricing-model and sponsored-impl-block are not shown. (2) After picking VPOS (Cajas) with no model chosen, these all show on the same page: Modelo de Precios, Nro de Cajas, Bancos/Entes, nivel de la Cotización, PinPads Sí/No, SSL/VPN/No aplica, Tipo de Patrocinio, IVA, Servicio Express and Detalles de Integración y Hardware. (3) With no model, choosing PinPads=No and VPN, then picking Modelo Outsourcing, keeps both choices. setup_items = [Suscripción PDV/Banco, Configuración PDV en MServer, Configuración Medio de Pago / Banco en MServer, por PDV] with no Pinpad item, and the hint reads 'Comunicación Backend usa tarifa Convencional'. Switching to Sí afterwards adds the Pinpad item once at index 1. Switching back to No removes it. (4) With defaults (Sí / No aplica) and Modelo Convencional, Setup has the Pinpad item exactly once. (5) Payment Gateway shows no PinPads/Comunicación block. (6) MPOS shows '¿Requiere Configuración de POS?' and hides Tipo de Comunicación. No quotes were saved.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "The Setup table (SECCIÓN 3) only appears once the header is complete (client, integrator, sponsorship and scope). So Setup contents were checked by reading the React quoteData.setup_items state, not the rendered table.",
+    "QuoteWizardDialog.jsx is 2720 lines and Quotes.jsx is 4933 lines. Both are well past the 700-line guideline. The inline PinPads onClick logic could move into a handler."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "seed_data_creation": "None. No quotes saved.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Login: input[type=email]/[type=password] + Enter. Flow: /quotes -> create-quote-button -> new-impl-pyme. Selects: select-quote-type, select-pricing-model (options by role=option and exact name). Read the wizard state by walking the React fiber up from [data-testid=select-quote-type] and checking hook memoizedState for an object with setup_items + quote_type. Reload /quotes before each case."
+}

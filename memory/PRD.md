@@ -4908,3 +4908,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06: Importación masiva ZIP en segundo plano (import-zip-job + polling con reintentos + barra de progreso) para evitar timeout 120s del proxy.
 
 - 2026-06: Wizard Cotización: preguntas PinPads/POS y Tipo de Comunicación visibles al elegir Tipo de Cotización (antes requerían Modelo de Precios); sin modelo solo guardan la respuesta y el Setup se arma al elegir modelo.
+
+- 2026-06: Ajuste: PinPads/Comunicación se muestran solo tras elegir Tipo de Cotización (junto a todos los parámetros, antes del Modelo).
