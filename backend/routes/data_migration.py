@@ -116,6 +116,31 @@ MODULES = {
         "key": "model_id",
         "label": "Impresoras Fiscales",
     },
+    "economic-groups": {
+        "collection": "economic_groups",
+        "key": "group_id",
+        "label": "Grupos Económicos",
+    },
+    "brands": {
+        "collection": "brands",
+        "key": "brand_id",
+        "label": "Marcas o Nombre Fantasía",
+    },
+    "integrator-companies": {
+        "collection": "empresas_integradoras",
+        "key": "empresa_id",
+        "label": "Empresas Integradoras",
+    },
+    "integrator-certificates": {
+        "collection": "integrator_certificates",
+        "key": "certificate_id",
+        "label": "Certificados de Integradores",
+    },
+    "referentes": {
+        "collection": "referentes",
+        "key": "referente_id",
+        "label": "Referentes",
+    },
 }
 
 # Módulo virtual multi-colección: respalda Usuarios + Perfiles/Roles de forma relacional.
@@ -531,7 +556,12 @@ BACKUP_CENTER_ENTITIES = [
     {"module": "inventory-movement-audits", "label": "Auditoría de Movimientos (Inventario)"},
     {"module": "taller-equipos", "label": "Equipos en Reparación"},
     {"module": USER_PERMISSIONS_MODULE, "label": "Permisos de Usuarios"},
+    {"module": "economic-groups", "label": "Grupos Económicos"},
+    {"module": "brands", "label": "Marcas o Nombre Fantasía"},
+    {"module": "integrator-companies", "label": "Empresas Integradoras"},
     {"module": "integrators", "label": "Integradores"},
+    {"module": "integrator-certificates", "label": "Certificados de Integradores"},
+    {"module": "referentes", "label": "Referentes"},
     {"module": "servers", "label": "Servidores"},
     {"module": "fiscal-printers", "label": "Impresoras Fiscales"},
 ]

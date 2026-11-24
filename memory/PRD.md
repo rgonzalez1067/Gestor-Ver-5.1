@@ -4902,3 +4902,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06: Ventanas Nuevo/Editar Contacto Inicial ampliadas a max-w-4xl con secciones (ContactFormParts.jsx).
 
 - 2026-06: Razón Social: drill-down solo lectura de sucursales al hacer clic en el nombre (BranchesDrilldown.jsx); gestión sigue en «Gestionar Sucursales».
+
+- 2026-06: Centro de Respaldos "Respaldo Total (1 clic)" ampliado de 14 a 19 entidades: + Grupos Económicos, Marcas, Empresas Integradoras, Certificados de Integradores, Referentes (MODULES + BACKUP_CENTER_ENTITIES en data_migration.py). Restore replace probado (roundtrip).

@@ -661,7 +661,7 @@ export default function BackupCenter() {
                 lo respaldas y restauras por separado (menos memoria, menos tiempo, menos contención). Si uno falla, reintentas solo ese.
               </p>
               <p className="text-[11px] text-emerald-700/80 mt-1">
-                Las 12 colecciones maestras van por su rutina propia (arriba). Para restaurar cada grupo usa "Restaurar desde archivo" con su .zip.
+                Las colecciones maestras van por su rutina propia (Respaldo Total 1 clic). Para restaurar cada grupo usa "Restaurar desde archivo" con su .zip.
               </p>
             </div>
           </div>
