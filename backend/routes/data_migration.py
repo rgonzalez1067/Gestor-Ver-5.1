@@ -725,24 +725,11 @@ async def backup_center_import_preview_zip(
     return {"entities": entities, "skipped_files": skipped_files, "total_entities": len(entities)}
 
 
-@router.post("/admin/backup-center/import-zip")
-async def backup_center_import_zip(
-    file: UploadFile = File(...),
-    mode: str = Form("upsert"),
-    authorization: Optional[str] = Header(None),
-):
-    """Importación masiva: restaura TODAS las entidades contenidas en un ZIP de
-    respaldo. mode='upsert' agrega/actualiza; mode='replace' deja cada entidad
-    idéntica al respaldo (réplica exacta, borra lo que no está en el backup)."""
-    user = await _require_admin(authorization)
-    if not file.filename or not file.filename.lower().endswith(".zip"):
-        raise HTTPException(status_code=400, detail="Debe subir un archivo .zip de respaldo")
-
-    raw = await file.read()
+async def _run_import_zip(raw: bytes, mode: str, user: dict, on_progress=None) -> dict:
+    """Núcleo de la importación masiva desde ZIP (compartido por la vía síncrona y por jobs)."""
     valid_modules = {e["module"] for e in BACKUP_CENTER_ENTITIES}
     results = []
     errors = []
-    # user-permissions de último para que perfiles/usuarios se restauren al final
     try:
         with zipfile.ZipFile(io.BytesIO(raw)) as zf:
             entries = []
@@ -751,9 +738,14 @@ async def backup_center_import_zip(
                 if module is None or module not in valid_modules:
                     continue
                 entries.append((module, name))
+            # user-permissions de último para que perfiles/usuarios se restauren al final
             entries.sort(key=lambda x: (x[0] == USER_PERMISSIONS_MODULE, x[0]))
+            if not entries:
+                raise HTTPException(status_code=400, detail="El ZIP no contiene archivos de respaldo válidos de las entidades soportadas")
 
-            for module, name in entries:
+            for idx, (module, name) in enumerate(entries):
+                if on_progress:
+                    await on_progress(idx, len(entries), module)
                 try:
                     payload = json.loads(zf.read(name).decode("utf-8"))
                     res = await _apply_import_payload(module, payload, user, mode=mode)
@@ -768,11 +760,10 @@ async def backup_center_import_zip(
                     errors.append({"module": module, "error": he.detail})
                 except Exception as e:  # noqa: BLE001
                     errors.append({"module": module, "error": str(e)})
+            if on_progress:
+                await on_progress(len(entries), len(entries), None)
     except zipfile.BadZipFile:
         raise HTTPException(status_code=400, detail="El archivo no es un ZIP válido")
-
-    if not results and not errors:
-        raise HTTPException(status_code=400, detail="El ZIP no contiene archivos de respaldo válidos de las entidades soportadas")
 
     total_inserted = sum(r["inserted"] for r in results)
     total_updated = sum(r["updated"] for r in results)
@@ -806,6 +797,76 @@ async def backup_center_import_zip(
             + (f" {len(errors)} con error." if errors else "")
         ),
     }
+
+
+@router.post("/admin/backup-center/import-zip")
+async def backup_center_import_zip(
+    file: UploadFile = File(...),
+    mode: str = Form("upsert"),
+    authorization: Optional[str] = Header(None),
+):
+    """Importación masiva síncrona (solo para ZIPs pequeños; la UI usa import-zip-job)."""
+    user = await _require_admin(authorization)
+    if not file.filename or not file.filename.lower().endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Debe subir un archivo .zip de respaldo")
+    return await _run_import_zip(await file.read(), mode, user)
+
+
+async def _import_zip_job_worker(job_id: str, raw: bytes, mode: str, user: dict):
+    async def progress(done, total, module):
+        await db.backup_import_jobs.update_one({"job_id": job_id}, {"$set": {
+            "done": done, "total": total, "current_module": module,
+            "updated_at": datetime.now(timezone.utc).isoformat()}})
+    try:
+        result = await _run_import_zip(raw, mode, user, progress)
+        await db.backup_import_jobs.update_one({"job_id": job_id}, {"$set": {
+            "status": "done", "result": result, "finished_at": datetime.now(timezone.utc).isoformat()}})
+    except HTTPException as he:
+        await db.backup_import_jobs.update_one({"job_id": job_id}, {"$set": {"status": "error", "error": he.detail}})
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"[import-zip-job] {job_id} fallo: {e}")
+        await db.backup_import_jobs.update_one({"job_id": job_id}, {"$set": {"status": "error", "error": str(e)}})
+
+
+@router.post("/admin/backup-center/import-zip-job")
+async def backup_center_import_zip_job(
+    file: UploadFile = File(...),
+    mode: str = Form("upsert"),
+    authorization: Optional[str] = Header(None),
+):
+    """Importación masiva en segundo plano: responde al instante con job_id (evita el
+    timeout de 120 s del proxy en respaldos grandes). Sondear GET import-zip-job/{job_id}."""
+    user = await _require_admin(authorization)
+    if not file.filename or not file.filename.lower().endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Debe subir un archivo .zip de respaldo")
+    raw = await file.read()
+    try:
+        zipfile.ZipFile(io.BytesIO(raw)).close()
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="El archivo no es un ZIP válido")
+    stale = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+    await db.backup_import_jobs.update_many({"status": "running", "started_at": {"$lt": stale}},
+                                            {"$set": {"status": "error", "error": "Interrumpida (servidor reiniciado o tiempo excedido)"}})
+    running = await db.backup_import_jobs.find_one({"status": "running"}, {"_id": 0, "job_id": 1})
+    if running:
+        raise HTTPException(status_code=409, detail="Ya hay una importación masiva en curso. Espere a que termine.")
+    job_id = uuid.uuid4().hex
+    await db.backup_import_jobs.insert_one({
+        "job_id": job_id, "status": "running", "mode": mode, "done": 0, "total": 0, "current_module": None,
+        "filename": file.filename, "started_by": user.get("email"), "started_at": datetime.now(timezone.utc).isoformat(),
+    })
+    user_min = {k: user.get(k) for k in ("user_id", "email", "role", "first_name", "last_name")}
+    asyncio.create_task(_import_zip_job_worker(job_id, raw, mode, user_min))
+    return {"job_id": job_id, "status": "running"}
+
+
+@router.get("/admin/backup-center/import-zip-job/{job_id}")
+async def backup_center_import_zip_job_status(job_id: str, authorization: Optional[str] = Header(None)):
+    await _require_admin(authorization)
+    job = await db.backup_import_jobs.find_one({"job_id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Importación no encontrada")
+    return job
 
 
 # =====================================================================
@@ -1981,6 +2042,7 @@ _BACKUP_EXCLUDE = {
     "backup_jobs",
     "download_tickets",
     "restore_jobs",
+    "backup_import_jobs",
     "fb_uploads",
     "fb_upload_chunks",
 }

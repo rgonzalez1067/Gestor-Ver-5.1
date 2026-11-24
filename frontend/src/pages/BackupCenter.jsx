@@ -1498,6 +1498,7 @@ function BulkImportDialog({ open, onClose, onDone, zipRef }) {
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
   const [replaceMode, setReplaceMode] = useState(false);
+  const [progress, setProgress] = useState(null);
 
   useEffect(() => { if (!open) { setFile(null); setPreview(null); setBusy(false); setReplaceMode(false); } }, [open]);
 
@@ -1530,9 +1531,17 @@ function BulkImportDialog({ open, onClose, onDone, zipRef }) {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('mode', replaceMode ? 'replace' : 'upsert');
-      const { data } = await api.post('/admin/backup-center/import-zip', fd, {
+      const { data: job } = await api.post('/admin/backup-center/import-zip-job', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+      let data = null;
+      while (!data) {
+        await new Promise((r) => setTimeout(r, 2500));
+        const { data: st } = await api.get(`/admin/backup-center/import-zip-job/${job.job_id}`);
+        setProgress(st);
+        if (st.status === 'error') throw new Error(st.error || 'La importación falló');
+        if (st.status === 'done') data = st.result;
+      }
       toast.success(data.message || 'Importación masiva completada');
       if (data.errors?.length) {
         toast.error(`${data.errors.length} entidad(es) con error: ${data.errors.map((e) => e.module).join(', ')}`);
@@ -1543,6 +1552,7 @@ function BulkImportDialog({ open, onClose, onDone, zipRef }) {
       toast.error(`Error en importación masiva: ${err.response?.data?.detail || err.message}`);
     } finally {
       setBusy(false);
+      setProgress(null);
     }
   };
 
@@ -1599,6 +1609,18 @@ function BulkImportDialog({ open, onClose, onDone, zipRef }) {
               Deja cada entidad idéntica al respaldo: además de crear/actualizar, <strong className="text-red-600">elimina</strong> los registros que no estén en el archivo. Úsalo para clonar exactamente el entorno de origen.
             </span>
           </label>
+          {busy && progress && (
+            <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-800" data-testid="bulk-import-progress">
+              <div className="flex justify-between mb-1.5">
+                <span>Restaurando {progress.current_module ? <strong>{progress.current_module}</strong> : '…'}</span>
+                <span>{progress.done}/{progress.total || '?'} entidades</span>
+              </div>
+              <div className="h-2 rounded bg-indigo-100 overflow-hidden">
+                <div className="h-full bg-indigo-600 transition-[width] duration-500" style={{ width: `${progress.total ? Math.round((progress.done * 100) / progress.total) : 3}%` }} />
+              </div>
+              <p className="mt-1.5 text-indigo-600">Proceso en segundo plano: no cierre esta ventana hasta que termine.</p>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={busy} data-testid="bulk-import-cancel-btn">Cancelar</Button>
