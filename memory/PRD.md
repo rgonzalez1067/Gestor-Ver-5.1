@@ -4898,3 +4898,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 ## 2026-06 Análisis de la Gestión de Contactos (admin)
 - Botón "Análisis de Gestión" en /initial-contacts abre ContactAnalysisDialog: filtros Referente, Desde/Hasta (fecha registro), Asignado, Segmento (sede), Estatus; KPIs; filas expandibles con interacciones (bitácora embebida + initial_contact_logs).
 - Backend routes/initial_contacts_report.py: GET /api/initial-contacts-report y /export?format=xlsx|pdf (Resumen/Contactos/Interacciones; PDF con detalle por contacto).
+
+- 2026-06: Ventanas Nuevo/Editar Contacto Inicial ampliadas a max-w-4xl con secciones (ContactFormParts.jsx).

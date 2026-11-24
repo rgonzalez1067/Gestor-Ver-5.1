@@ -18,6 +18,7 @@ import { TwinScrollTable } from '../components/TwinScrollTable';
 import { ReferentePicker, referentePayload } from '../components/referentes/ReferentePicker';
 import { ContactAnalysisDialog } from '../components/initialContacts/ContactAnalysisDialog';
 import { BarChart3 } from 'lucide-react';
+import { ContactModalHeader, FormSection } from '../components/initialContacts/ContactFormParts';
 
 export const InitialContacts = () => {
   const [contacts, setContacts] = useState([]);
@@ -505,69 +506,71 @@ export const InitialContacts = () => {
 
         {/* Create Modal */}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" data-testid="create-contact-modal">
-            <DialogHeader><DialogTitle className="flex items-center gap-2"><Phone size={20} className="text-green-600" /> Nuevo Contacto Inicial</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4 pt-2">
-              <div>
-                <Label>Nombre del Contacto *</Label>
-                <Input value={formData.contact_name} onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })} placeholder="Persona que atiende" required data-testid="input-contact-name" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Telefono</Label>
-                  <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+58 412 1234567" data-testid="input-phone" />
+          <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-0 gap-0" data-testid="create-contact-modal">
+            <ContactModalHeader icon={Phone} tone="green" title="Nuevo Contacto Inicial" subtitle="Registre el prospecto, su origen comercial y a quién se le asigna la atención." />
+            <form onSubmit={handleCreate} className="px-6 py-5 space-y-4">
+              <FormSection title="Datos del Contacto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Nombre del Contacto *</Label>
+                    <Input value={formData.contact_name} onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })} placeholder="Persona que atiende" required data-testid="input-contact-name" />
+                  </div>
+                  <div>
+                    <Label>Nombre Jurídico (Razón Social) *</Label>
+                    <Input value={formData.legal_name} onChange={(e) => setFormData({ ...formData, legal_name: e.target.value })} placeholder="Razón social tentativa" required data-testid="input-legal-name" />
+                  </div>
+                  <div>
+                    <Label>Teléfono</Label>
+                    <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+58 412 1234567" data-testid="input-phone" />
+                  </div>
+                  <div>
+                    <Label>Email</Label>
+                    <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="correo@empresa.com" data-testid="input-email" />
+                  </div>
                 </div>
-                <div>
-                  <Label>Email</Label>
-                  <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="correo@empresa.com" data-testid="input-email" />
-                </div>
+                <p className="text-[11px] text-slate-400 mt-2">Indique al menos uno: Teléfono o Email</p>
+              </FormSection>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormSection title="Origen Comercial">
+                  <Label className="text-xs font-semibold text-blue-600">Referido Por</Label>
+                  <ReferentePicker referentes={referentes.items} canCreate={referentes.can_create} value={createRef} onChange={setCreateRef} testId="input-referred-by" />
+                </FormSection>
+                <FormSection title="Asignación y Compromiso">
+                  <div className="space-y-3">
+                    <div>
+                      <Label>Asignar a</Label>
+                      <Select value={formData.assigned_to_user_id} onValueChange={(v) => setFormData({ ...formData, assigned_to_user_id: v })}>
+                        <SelectTrigger data-testid="create-assign-select"><SelectValue placeholder="Yo mismo (por defecto)" /></SelectTrigger>
+                        <SelectContent>
+                          {assignableUsers.map(u => (
+                            <SelectItem key={u.user_id} value={u.user_id}>
+                              {u.first_name} {u.last_name} ({u.cargo})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Fecha Máxima de Atención</Label>
+                      <Input type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} data-testid="input-due-date" />
+                    </div>
+                  </div>
+                </FormSection>
               </div>
-              <p className="text-[11px] text-slate-400 -mt-2">Indique al menos uno: Teléfono o Email</p>
-              <div>
-                <Label>Nombre Juridico (Razon Social) *</Label>
-                <Input value={formData.legal_name} onChange={(e) => setFormData({ ...formData, legal_name: e.target.value })} placeholder="Razon social tentativa" required data-testid="input-legal-name" />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold text-blue-600">Referido Por</Label>
-                <ReferentePicker referentes={referentes.items} canCreate={referentes.can_create} value={createRef} onChange={setCreateRef} testId="input-referred-by" />
-              </div>
-              <div>
-                <Label>Aspectos de Interes para el Contacto</Label>
+              <FormSection title="Aspectos de Interés para el Contacto">
                 <Textarea
                   value={formData.interest_notes}
                   onChange={(e) => setFormData({ ...formData, interest_notes: e.target.value.slice(0, 300) })}
-                  placeholder="Escriba los aspectos relevantes del contacto, productos de interes, notas importantes..."
-                  rows={4}
-                  className="resize-y"
+                  placeholder="Escriba los aspectos relevantes del contacto, productos de interés, notas importantes..."
+                  rows={3}
+                  className="resize-y bg-white"
                   data-testid="input-interest-notes"
                 />
                 <p className="text-xs text-slate-400 mt-1 text-right">{(formData.interest_notes || '').length}/300</p>
-              </div>
-              <div className="border-t border-slate-200 pt-3">
-                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Asignacion y Compromiso</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>Asignar a</Label>
-                    <Select value={formData.assigned_to_user_id} onValueChange={(v) => setFormData({ ...formData, assigned_to_user_id: v })}>
-                      <SelectTrigger data-testid="create-assign-select"><SelectValue placeholder="Yo mismo (por defecto)" /></SelectTrigger>
-                      <SelectContent>
-                        {assignableUsers.map(u => (
-                          <SelectItem key={u.user_id} value={u.user_id}>
-                            {u.first_name} {u.last_name} ({u.cargo})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Fecha Maxima de Atencion</Label>
-                    <Input type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} data-testid="input-due-date" />
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
+              </FormSection>
+              <div className="flex justify-end gap-2 pt-1">
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-                <Button type="submit" className="bg-green-600 hover:bg-green-700" data-testid="submit-contact-btn">Crear Contacto</Button>
+                <Button type="submit" className="bg-green-600 hover:bg-green-700 px-6" data-testid="submit-contact-btn">Crear Contacto</Button>
               </div>
             </form>
           </DialogContent>
@@ -575,56 +578,59 @@ export const InitialContacts = () => {
 
         {/* Edit Modal (admin only) */}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
-          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" data-testid="edit-contact-modal">
-            <DialogHeader><DialogTitle className="flex items-center gap-2"><Pencil size={20} className="text-blue-600" /> Editar Contacto Inicial</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div>
-                <Label>Nombre del Contacto *</Label>
-                <Input value={editForm.contact_name} onChange={(e) => setEditForm({ ...editForm, contact_name: e.target.value })} placeholder="Persona que atiende" data-testid="edit-contact-name" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Telefono</Label>
-                  <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="+58 412 1234567" data-testid="edit-phone" />
+          <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-0 gap-0" data-testid="edit-contact-modal">
+            <ContactModalHeader icon={Pencil} tone="blue" title="Editar Contacto Inicial" subtitle={editContact?.legal_name || 'Actualice los datos del prospecto.'} />
+            <div className="px-6 py-5 space-y-4">
+              <FormSection title="Datos del Contacto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Nombre del Contacto *</Label>
+                    <Input value={editForm.contact_name} onChange={(e) => setEditForm({ ...editForm, contact_name: e.target.value })} placeholder="Persona que atiende" data-testid="edit-contact-name" />
+                  </div>
+                  <div>
+                    <Label>Nombre Jurídico (Razón Social) *</Label>
+                    <Input value={editForm.legal_name} onChange={(e) => setEditForm({ ...editForm, legal_name: e.target.value })} placeholder="Razón social" data-testid="edit-legal-name" />
+                  </div>
+                  <div>
+                    <Label>Teléfono</Label>
+                    <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="+58 412 1234567" data-testid="edit-phone" />
+                  </div>
+                  <div>
+                    <Label>Email</Label>
+                    <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="correo@empresa.com" data-testid="edit-email" />
+                  </div>
                 </div>
-                <div>
-                  <Label>Email</Label>
-                  <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="correo@empresa.com" data-testid="edit-email" />
-                </div>
+              </FormSection>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormSection title="Origen Comercial">
+                  <Label className="text-xs font-semibold text-blue-600">Referido Por</Label>
+                  <ReferentePicker referentes={referentes.items} canCreate={referentes.can_create} value={editRef} onChange={setEditRef} testId="edit-referred-by" />
+                </FormSection>
+                <FormSection title="Segmento">
+                  <Label>Sede</Label>
+                  <Select value={editForm.sede} onValueChange={(v) => setEditForm({ ...editForm, sede: v })}>
+                    <SelectTrigger data-testid="edit-sede-select"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PYME">PYME</SelectItem>
+                      <SelectItem value="CORP">CORP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormSection>
               </div>
-              <div>
-                <Label>Nombre Juridico (Razon Social) *</Label>
-                <Input value={editForm.legal_name} onChange={(e) => setEditForm({ ...editForm, legal_name: e.target.value })} placeholder="Razon social" data-testid="edit-legal-name" />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold text-blue-600">Referido Por</Label>
-                <ReferentePicker referentes={referentes.items} canCreate={referentes.can_create} value={editRef} onChange={setEditRef} testId="edit-referred-by" />
-              </div>
-              <div>
-                <Label>Sede</Label>
-                <Select value={editForm.sede} onValueChange={(v) => setEditForm({ ...editForm, sede: v })}>
-                  <SelectTrigger data-testid="edit-sede-select"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PYME">PYME</SelectItem>
-                    <SelectItem value="CORP">CORP</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Aspectos de Interes para el Contacto</Label>
+              <FormSection title="Aspectos de Interés para el Contacto">
                 <Textarea
                   value={editForm.interest_notes}
                   onChange={(e) => setEditForm({ ...editForm, interest_notes: e.target.value.slice(0, 300) })}
                   placeholder="Notas relevantes del contacto..."
-                  rows={4}
-                  className="resize-y"
+                  rows={3}
+                  className="resize-y bg-white"
                   data-testid="edit-interest-notes"
                 />
                 <p className="text-xs text-slate-400 mt-1 text-right">{(editForm.interest_notes || '').length}/300</p>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
+              </FormSection>
+              <div className="flex justify-end gap-2 pt-1">
                 <Button type="button" variant="outline" onClick={() => setEditOpen(false)} disabled={editing}>Cancelar</Button>
-                <Button type="button" onClick={handleEdit} disabled={editing} className="bg-blue-600 hover:bg-blue-700" data-testid="submit-edit-btn">{editing ? 'Guardando…' : 'Guardar Cambios'}</Button>
+                <Button type="button" onClick={handleEdit} disabled={editing} className="bg-blue-600 hover:bg-blue-700 px-6" data-testid="submit-edit-btn">{editing ? 'Guardando…' : 'Guardar Cambios'}</Button>
               </div>
             </div>
           </DialogContent>
