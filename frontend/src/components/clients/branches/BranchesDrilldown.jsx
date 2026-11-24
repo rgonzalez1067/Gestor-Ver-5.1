@@ -8,7 +8,7 @@ const contactOf = (b) => {
 };
 
 export const BranchesDrilldown = ({ parent, branches }) => (
-  <div className="ml-6 my-1 border-l-2 border-amber-300 pl-4" data-testid={`branches-drilldown-${parent.client_id}`}>
+  <div className="my-1" data-testid={`branches-drilldown-${parent.client_id}`}>
     <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700 mb-1.5 flex items-center gap-1.5">
       <GitBranch size={12} /> {branches.length} sucursal(es) de {parent.legal_name}
       <span className="ml-2 inline-flex items-center gap-1 font-normal normal-case text-slate-400"><Eye size={11} />Solo consulta — gestiónelas desde «Gestionar Sucursales»</span>
@@ -29,8 +29,12 @@ export const BranchesDrilldown = ({ parent, branches }) => (
               <tr key={b.client_id} data-testid={`drilldown-branch-${b.client_id}`}>
                 <td className="px-3 py-1.5 font-medium text-amber-800 whitespace-nowrap">{b.sucursal || 'Sucursal'}</td>
                 <td className="px-3 py-1.5 text-slate-700">{b.fantasy_name || b.marca_name || '—'}</td>
-                <td className="px-3 py-1.5 text-slate-600 max-w-[260px]">
-                  {b.branch_address || b.address ? <span className="inline-flex gap-1"><MapPin size={11} className="mt-0.5 shrink-0 text-slate-400" />{b.branch_address || b.address}</span> : '—'}
+                <td className="px-3 py-1.5 text-slate-600 max-w-[240px]">
+                  {b.branch_address || b.address ? (
+                    <span className="flex items-center gap-1 cursor-help max-w-[240px] min-w-0" title={b.branch_address || b.address} data-testid={`drilldown-address-${b.client_id}`}>
+                      <MapPin size={11} className="shrink-0 text-slate-400" /><span className="truncate">{b.branch_address || b.address}</span>
+                    </span>
+                  ) : '—'}
                 </td>
                 <td className="px-3 py-1.5 text-slate-600">{b.segment || '—'}</td>
                 <td className="px-3 py-1.5 text-slate-600">{b.categoria_comercial || '—'}</td>
