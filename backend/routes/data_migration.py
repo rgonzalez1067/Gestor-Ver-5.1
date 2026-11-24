@@ -812,6 +812,9 @@ async def backup_center_import_zip(
     return await _run_import_zip(await file.read(), mode, user)
 
 
+_IMPORT_TASKS: set = set()
+
+
 async def _import_zip_job_worker(job_id: str, raw: bytes, mode: str, user: dict):
     async def progress(done, total, module):
         await db.backup_import_jobs.update_one({"job_id": job_id}, {"$set": {
@@ -856,7 +859,9 @@ async def backup_center_import_zip_job(
         "filename": file.filename, "started_by": user.get("email"), "started_at": datetime.now(timezone.utc).isoformat(),
     })
     user_min = {k: user.get(k) for k in ("user_id", "email", "role", "first_name", "last_name")}
-    asyncio.create_task(_import_zip_job_worker(job_id, raw, mode, user_min))
+    task = asyncio.create_task(_import_zip_job_worker(job_id, raw, mode, user_min))
+    _IMPORT_TASKS.add(task)
+    task.add_done_callback(_IMPORT_TASKS.discard)
     return {"job_id": job_id, "status": "running"}
 
 

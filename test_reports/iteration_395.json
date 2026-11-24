@@ -1,0 +1,36 @@
+{
+  "summary": "Validated the background bulk import job (POST/GET /api/admin/backup-center/import-zip-job) that fixes the 120s proxy timeout. Exported a fresh 19-entity ZIP (10.51 MB) from this preview and restored that same ZIP with mode=replace via job: POST answered in 0.48s with job_id, second concurrent POST -> 409, polling reached status=done in ~36s, done=total=19, result.errors=[], 19 results, entity counts identical before/after. Invalid ZIP -> 400 immediate, non-.zip -> 400, unknown job -> 404, no auth -> 401/403. UI: import-zip-btn opens bulk-import-dialog, file pick shows preview '19 entidad(es)', replace checkbox checked, Restaurar Todo shows bulk-import-progress advancing 1/19 -> 18/19 with progress bar, then success toast 'Importación masiva completada: 19 entidad(es), 0 creado(s), 4958 actualizado(s), 0 omitido(s), 0 eliminado(s).' with no timeout error; dialog closes. History (/api/admin/backup-center/history) records action backup_center_import_zip mode=replace by qa.integradores.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/admin/backup-center/import-zip-job", "issue": "The single-job lock is a find_one followed by insert_one, so it is not atomic. Two POSTs at almost the same moment could both start. A unique partial index or find_one_and_update would fix this."},
+      {"endpoint": "POST /api/admin/backup-center/import-zip-job", "issue": "The code calls asyncio.create_task(...) without keeping a reference to the task, so it could be garbage-collected. Keep it in a module-level set. If the backend restarts or hot-reloads mid-job, the job stays 'running' and blocks new imports for 30 minutes until the stale check marks it as error."},
+      {"endpoint": "GET import-zip-job (non-admin 403)", "issue": "Not verified. Logging in as the non-admin kherrera@megasoft.com.ve / Kherrera2026*Qa did not return 200, so the test was skipped. The code does call _require_admin."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "BulkImportDialog polling", "issue": "The polling loop has no retry. One failed GET (a transient 502 or network blip) throws and shows 'Error en importación masiva' while the job keeps running on the server. There is also no overall timeout, and the dialog can still be closed with X or Esc while busy, so polling goes on after unmount.", "affected_selectors": ["bulk-import-dialog", "bulk-import-progress"]}
+    ],
+    "design_issues": [
+      {"screen": "bulk-import-progress", "issues": ["Shows the raw module slug (e.g. 'brands') instead of the Spanish label (e.g. 'Marcas o Nombre Fantasía')", "The progress box only appears after the first 2.5s poll"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_backup_center_import_zip_job.py", "/app/test_reports/pytest/iter395_import_job.xml"],
+  "action_items": [
+    "Optional: make the job lock atomic and keep a reference to the asyncio task",
+    "Optional: retry transient polling errors in the UI, block closing the dialog while busy, and show the entity label instead of the slug in the progress box"
+  ],
+  "critical_code_review_comments": [
+    "data_migration.py is over 3300 lines and should be split (backup center into its own module)",
+    "backup_import_jobs documents are never cleaned up (they store the full result)",
+    "The progress callback writes to the DB on every module, which is fine for 19 modules"
+  ],
+  "updated_files": ["/app/backend/tests/test_backup_center_import_zip_job.py"],
+  "success_rate": {"backend": "100% (6/6 passed, 1 skipped: non-admin 403)", "frontend": "100%"},
+  "seed_data_creation": "None. Only the freshly exported ZIP from this same preview was restored (replace mode, twice: once via API, once via UI). Counts were identical afterwards.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run with: cd /app/backend && python -m pytest tests/test_backup_center_import_zip_job.py -v -p no:xdist -o addopts=''. The job takes about 36s in preview. The tests rely on running in order (shared STATE), so do not run them in parallel. The ZIP is saved to /tmp/respaldo_total_iter395.zip for UI tests."
+}

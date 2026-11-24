@@ -1535,9 +1535,18 @@ function BulkImportDialog({ open, onClose, onDone, zipRef }) {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       let data = null;
+      let fails = 0;
+      setProgress({ done: 0, total: 0 });
       while (!data) {
         await new Promise((r) => setTimeout(r, 2500));
-        const { data: st } = await api.get(`/admin/backup-center/import-zip-job/${job.job_id}`);
+        let st;
+        try {
+          st = (await api.get(`/admin/backup-center/import-zip-job/${job.job_id}`)).data;
+          fails = 0;
+        } catch (pollErr) {
+          if (pollErr.response?.status === 404 || ++fails > 12) throw pollErr;
+          continue;
+        }
         setProgress(st);
         if (st.status === 'error') throw new Error(st.error || 'La importación falló');
         if (st.status === 'done') data = st.result;
