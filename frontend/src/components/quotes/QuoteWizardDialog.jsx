@@ -640,7 +640,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                 {isScopeFlow && <QuoteScopeSelector value={quoteData} onChange={handleScopeChange} clients={clients} />}
 
                 {/* Parámetros dinámicos VPOS: PinPads y VPN */}
-                {!isPaymentGateway && quoteData.pricing_model && (
+                {!isPaymentGateway && (
                   <div className={`grid grid-cols-1 ${isMPOS ? 'md:grid-cols-1' : 'md:grid-cols-2'} gap-4 mt-4 pt-4 border-t border-slate-200`}>
                     <div>
                       <Label className="text-sm font-semibold text-slate-800 mb-2 block">
@@ -654,6 +654,8 @@ export const QuoteWizardDialog = ({ ctx }) => {
                           data-testid="requires-pinpad-yes"
                           onClick={() => {
                             if (quoteData.requires_pinpad_config) return;
+                            // Sin modelo aún: solo guarda la respuesta; el Setup se arma al elegir el modelo.
+                            if (!quoteData.pricing_model) { setQuoteData({ ...quoteData, requires_pinpad_config: true }); return; }
                             const cajas = quoteData.cantidad_cajas || 1;
                             const pinpadConcept = SETUP_CONCEPTS.find(c => c.name === 'Configuración dispositivo (Pinpad o POS)');
                             if (pinpadConcept) {
