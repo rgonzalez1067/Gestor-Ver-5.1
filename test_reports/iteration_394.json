@@ -1,0 +1,20 @@
+{
+  "summary": "Tested the fix that adds 5 entities to the Backup Center 'Respaldo Total (1 clic)' (now 19). Backend: 7/7 pytest pass. The entities list has 19 items, including economic-groups(46), brands(779), integrator-companies(379), integrator-certificates(36) and referentes(5); these counts match MongoDB. export-zip with all 19 modules returns 19 json files + _manifest.json, and each new file's documents equal its count. import-preview-zip recognizes 19 entities with skipped_files=[]. A TEST_ brand was created AFTER the export, then import-zip mode=replace was run with the SAME freshly exported ZIP: 0 errors, 19 results, brands deleted>=1, the TEST_ brand returns 404 afterwards and every entity count is identical to before. Before the destructive test, a DB check confirmed no docs in any of the 20 underlying collections lack their key field and there are no duplicate keys, so replace could not wipe keyless docs. UI (/settings/backup-center): 19 rows show, including the 5 new ones with correct labels and counts. Clicking export-all-btn downloads respaldo_total_*.zip with 20 files (19 + _manifest.json), and the toast reads 'Respaldo TOTAL generado: 19 entidad(es) en un ZIP'. History shows the masivo replica restore.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_backup_center_total_19_entities.py", "/app/test_reports/pytest/iter394_backup_total.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "_apply_upsert_docs replace mode: delete_many({key: {$nin: keep}}) also deletes any doc missing the key field. These docs are exported but skipped on import (missing_key), so a roundtrip would silently lose them. Today no collection has such docs. Consider filtering with {key: {$exists: true, $nin: keep}} or reporting them.",
+    "Replace/upsert stamps updated_at/updated_by on every existing doc, so the restore is not byte-exact (it overwrites the backup's updated_at). Minor.",
+    "import-zip is not transactional and applies modules in alphabetical order. A failure mid-way leaves a partial restore; only errors[] reports it.",
+    "Any records created by other users between the export and a replace restore are deleted. This is expected for a replica, but the UI warning should state it clearly.",
+    "data_migration.py is over 3200 lines; it should be split (backup-center, quotes-bundle, full-backup)."
+  ],
+  "updated_files": ["/app/backend/tests/test_backup_center_total_19_entities.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "One TEST_brand_* created via POST /api/marcas after the export; the replace restore removed it (verified 404). No residual data.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Login qa.integradores@megasoft.com.ve / QaIntegr2026*Ok (session_token). Run the regression file sequentially; it replace-restores with its own freshly exported ZIP. Pre-test counts: clients 1198, banks 38, payment-methods 57, hardware 67, commercial-categories 58, inventory-movements 367, warehouses 3, serial-assignments 124, movement-audits 20, taller 1160, profiles 12 + users 57, economic-groups 46, brands 779, empresas_integradoras 379, integrators 503, certificates 36, referentes 5, servers 24, fiscal-printers 25. All were unchanged after testing."
+}
