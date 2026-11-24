@@ -4906,3 +4906,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06: Centro de Respaldos "Respaldo Total (1 clic)" ampliado de 14 a 19 entidades: + Grupos Económicos, Marcas, Empresas Integradoras, Certificados de Integradores, Referentes (MODULES + BACKUP_CENTER_ENTITIES en data_migration.py). Restore replace probado (roundtrip).
 
 - 2026-06: Importación masiva ZIP en segundo plano (import-zip-job + polling con reintentos + barra de progreso) para evitar timeout 120s del proxy.
+
+- 2026-06: Wizard Cotización: preguntas PinPads/POS y Tipo de Comunicación visibles al elegir Tipo de Cotización (antes requerían Modelo de Precios); sin modelo solo guardan la respuesta y el Setup se arma al elegir modelo.
