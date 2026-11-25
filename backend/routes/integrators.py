@@ -71,12 +71,42 @@ async def migrate_integrator_certifications_if_needed():
 # ==================== INTEGRATORS ENDPOINTS ====================
 
 
+async def _refresh_products():
+    from routes.productos_integracion import refresh_products
+    await refresh_products()
+
+
+def _cert_delta_ids(intg: dict, baseline_doc: dict = None) -> list:
+    """Productos marcados 'C' que no están en la línea base certificada (Delta de Certificación)."""
+    certs = intg.get("certifications") or {}
+    base = set((baseline_doc or intg).get("cert_baseline") or [])
+    from routes.productos_integracion import ALL_PRODUCT_NAMES
+    order = INTEGRATOR_PRODUCT_IDS + [k for k in ALL_PRODUCT_NAMES if k not in INTEGRATOR_PRODUCT_IDS]
+    return [pid for pid in order if str(certs.get(pid, "")).strip().upper() == "C" and pid not in base]
+
+
+def _names_for(ids: list) -> list:
+    from routes.productos_integracion import ALL_PRODUCT_NAMES
+    return [ALL_PRODUCT_NAMES.get(pid, pid) for pid in ids]
+
+
+async def _prune_cert_baseline(integrator_id: str):
+    """Al desmarcar un producto certificado se retira de la línea base (volverá a certificarse si se re-marca)."""
+    doc = await db.integrators.find_one({"integrator_id": integrator_id}, {"_id": 0, "certifications": 1, "cert_baseline": 1})
+    if not doc or not doc.get("cert_baseline"):
+        return
+    certs = doc.get("certifications") or {}
+    keep = [p for p in doc["cert_baseline"] if str(certs.get(p, "")).strip().upper() == "C"]
+    if keep != doc["cert_baseline"]:
+        await db.integrators.update_one({"integrator_id": integrator_id}, {"$set": {"cert_baseline": keep}})
+
+
 @router.get("/integrators/products")
 async def list_integrator_products(authorization: Optional[str] = Header(None)):
-    """Devuelve la lista maestra de 19 productos de Integradores (iter 183d).
-    Formato compatible con el consumidor legacy (`service_id`/`name`/flags) para
-    que el frontend lo use como drop-in replacement de `/services`."""
+    """Productos activos del catálogo 'Productos para Integración' (orden_despliegue, nombre).
+    Formato compatible con el consumidor legacy (`service_id`/`name`)."""
     await get_current_user(authorization)
+    await _refresh_products()
     return [
         {
             "service_id": p["id"],
@@ -332,16 +362,17 @@ async def update_integrator(integrator_id: str, integrator: IntegratorCreate, au
     )
     if _locked_change:
         await register_locked_change(existing, _changes, change_reason, current_user)
+    await _prune_cert_baseline(integrator_id)
     
     updated = await db.integrators.find_one({"integrator_id": integrator_id}, {"_id": 0})
     return updated
 
 
 def _certified_products_names(intg: dict) -> list:
-    """Lista de nombres de Medios de Pago / Productos con certificación 'C' (Certificado),
-    en el orden de la lista maestra. (Regla del Valor 'C')."""
-    certs = intg.get("certifications") or {}
-    return [p["name"] for p in INTEGRATOR_PRODUCTS if str(certs.get(p["id"], "")).strip().upper() == "C"]
+    """Nombres de los productos NUEVOS a certificar (Delta: marcados 'C' fuera de la línea base),
+    en el orden del catálogo. Si el dict trae '_delta_ids' precalculado, se usa ese."""
+    ids = intg.get("_delta_ids")
+    return _names_for(ids if ids is not None else _cert_delta_ids(intg))
 
 
 def _certified_products_string(intg: dict) -> str:
@@ -704,7 +735,8 @@ async def _resolve_implementer_cert_template(intg: dict) -> bytes:
 
 
 async def _store_integrator_certificate(integrator_id: str, filename: str, content: bytes,
-                                        origin: str, origin_label: str, user: dict = None) -> str:
+                                        origin: str, origin_label: str, user: dict = None,
+                                        product_ids: list = None) -> str:
     """Inserta un Certificado como NUEVA versión (INSERT acumulativo, nunca UPDATE/UPSERT).
     Persiste el contenido en Mongo (el FS del contenedor es efímero)."""
     cert_id = f"cert_{uuid.uuid4().hex[:12]}"
@@ -723,8 +755,18 @@ async def _store_integrator_certificate(integrator_id: str, filename: str, conte
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": (user or {}).get("email", "sistema"),
         "created_by_name": uname or "Sistema",
+        "status": "vigente",
     }
+    if product_ids is not None:
+        doc["products_included_ids"] = product_ids
+        doc["products_included"] = _names_for(product_ids)
+    # Solo la última emisión queda Vigente; las anteriores pasan a 'Versión anterior'.
+    await db.integrator_certificates.update_many(
+        {"integrator_id": integrator_id, "status": {"$nin": ["anulado", "reemplazado"]}},
+        {"$set": {"status": "reemplazado", "status_updated_at": doc["created_at"]}})
     await db.integrator_certificates.insert_one(doc)
+    if product_ids:
+        await db.integrators.update_one({"integrator_id": integrator_id}, {"$addToSet": {"cert_baseline": {"$each": product_ids}}})
     return cert_id
 
 
@@ -820,6 +862,16 @@ async def close_integrator_project(
                     "Integración y complete el correo del Responsable."),
         )
 
+    await _refresh_products()
+    _base_doc = existing
+    if scope == "expansion":
+        _base_doc = await db.integrators.find_one({
+            "name": existing.get("name"), "integration_type": existing.get("integration_type"),
+            "integrator_status": "Certificado", "integrator_id": {"$ne": integrator_id}}, {"_id": 0, "cert_baseline": 1}) or existing
+    _delta_ids = _cert_delta_ids(existing, _base_doc)
+    if not _delta_ids and any(str(v).strip().upper() == "C" for v in (existing.get("certifications") or {}).values()):
+        raise HTTPException(status_code=400, detail="No hay productos nuevos marcados como Certificados (C) desde la última emisión: no se puede emitir un certificado sin productos nuevos.")
+    existing["_delta_ids"] = _delta_ids
     productos_str = _certified_products_string(existing)
     medios_bullets = _certified_products_bullets_html(existing)
 
@@ -900,7 +952,7 @@ async def close_integrator_project(
         try:
             await _store_integrator_certificate(
                 target_id, f"Certificado_{existing.get('name', 'Integracion')}.pdf",
-                cert_bytes, "system", "Sistema - Cierre Automático", current_user,
+                cert_bytes, "system", "Sistema - Cierre Automático", current_user, product_ids=_delta_ids,
             )
         except Exception as e:
             logger.warning(f"[cert] no se pudo persistir el certificado del cierre: {e}")
@@ -974,6 +1026,7 @@ async def preview_integration_certificate(
     version_componente = (version_componente or "").strip()
     if not componente or not version_componente:
         raise HTTPException(status_code=400, detail="Componente y Versión del Componente son obligatorios")
+    await _refresh_products()
     productos_str = _certified_products_string(existing)
     _impl_tpl_bytes = await _resolve_implementer_cert_template(existing)
     cert_bytes = await _generate_integration_certificate_pdf(existing, componente, version_componente, productos_str, base_pdf_bytes=_impl_tpl_bytes)
@@ -998,7 +1051,7 @@ async def integrator_certificate_counts(authorization: Optional[str] = Header(No
 
 
 @router.get("/integrators/certificates/{certificate_id}/download")
-async def download_integrator_certificate(certificate_id: str, authorization: Optional[str] = Header(None)):
+async def download_integrator_certificate(certificate_id: str, inline: bool = False, authorization: Optional[str] = Header(None)):
     await get_current_user(authorization)
     doc = await db.integrator_certificates.find_one({"certificate_id": certificate_id}, {"_id": 0})
     if not doc or not doc.get("content_b64"):
@@ -1006,7 +1059,7 @@ async def download_integrator_certificate(certificate_id: str, authorization: Op
     data = base64.b64decode(doc["content_b64"])
     return StreamingResponse(
         io.BytesIO(data), media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{doc.get("original_name", "certificado.pdf")}"'},
+        headers={"Content-Disposition": f'{"inline" if inline else "attachment"}; filename="{doc.get("original_name", "certificado.pdf")}"'},
     )
 
 
@@ -1071,6 +1124,11 @@ async def reissue_integrator_certificate(
     version_componente = (version_componente or existing.get("cert_version") or "").strip()
     if not componente or not version_componente:
         raise HTTPException(status_code=400, detail="Componente y Versión del Componente son obligatorios")
+    await _refresh_products()
+    delta_ids = _cert_delta_ids(existing)
+    if not delta_ids:
+        raise HTTPException(status_code=400, detail="No hay productos nuevos marcados como Certificados (C) desde la última emisión: no se puede emitir un certificado sin productos nuevos.")
+    existing["_delta_ids"] = delta_ids
     productos_str = _certified_products_string(existing)
     try:
         tpl = await _resolve_implementer_cert_template(existing)
@@ -1086,8 +1144,7 @@ async def reissue_integrator_certificate(
     uname = f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip() or current_user.get("email", "")
     cert_id = await _store_integrator_certificate(
         integrator_id, f"Certificado_{existing.get('name', 'Integracion')}_reemision.pdf", cert_bytes,
-        "reissue", f"Re-emisión - {uname}", current_user)
-    await db.integrator_certificates.update_one({"certificate_id": cert_id}, {"$set": {"status": "vigente"}})
+        "reissue", f"Re-emisión - {uname}", current_user, product_ids=delta_ids)
     await db.integrators.update_one({"integrator_id": integrator_id}, {
         "$set": {"cert_component": componente, "cert_version": version_componente, "cert_products": productos_str,
                  "cert_reissued_at": now_iso, "cert_reissued_by": current_user.get("email"), "cert_outdated": False},
@@ -2858,6 +2915,7 @@ async def import_integrators(
                         {"integrator_id": existing["integrator_id"]},
                         {"$set": update_data}
                     )
+                    await _prune_cert_baseline(existing["integrator_id"])
                     updated_count += 1
                 else:
                     # CREATE new integrator with full certifications

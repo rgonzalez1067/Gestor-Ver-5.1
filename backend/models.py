@@ -568,6 +568,7 @@ class Integrator(BaseModel):
     cert_version: Optional[str] = None
     cert_products: Optional[str] = None
     cert_outdated: Optional[bool] = None
+    cert_baseline: Optional[List[str]] = None
     cert_outdated_reason: Optional[str] = None
     cert_outdated_at: Optional[str] = None
     certified_at: Optional[str] = None

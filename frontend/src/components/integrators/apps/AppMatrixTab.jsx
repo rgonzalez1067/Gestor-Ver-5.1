@@ -53,7 +53,9 @@ export const AppMatrixTab = ({ app, products, editable, locked, onSaved }) => {
           const dirty = editing && val !== ((app.certifications || {})[p.service_id] || 'N/A');
           return (
             <div key={p.service_id} className={`flex items-center justify-between gap-2 rounded-md border px-3 py-2 bg-white transition-colors ${dirty ? 'border-amber-400 ring-1 ring-amber-200' : 'border-slate-200'}`}>
-              <span className="text-xs text-slate-700 leading-tight">{p.name}</span>
+              <span className="text-xs text-slate-700 leading-tight">{p.name}
+                {(app.cert_baseline || []).includes(p.service_id) && val === 'C' && <span className="block text-[10px] text-emerald-600" data-testid={`matrix-certified-${p.service_id}`}>Ya certificado</span>}
+              </span>
               <button type="button" disabled={!editing} onClick={() => cycle(p.service_id)} data-testid={`matrix-cell-${p.service_id}`}
                 className={`min-w-[44px] px-2 py-1 rounded border text-xs font-bold transition-transform ${st.color} ${editing ? 'cursor-pointer hover:scale-105' : 'cursor-default'}`}>{st.label}</button>
             </div>

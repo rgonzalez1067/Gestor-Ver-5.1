@@ -136,6 +136,11 @@ MODULES = {
         "key": "certificate_id",
         "label": "Certificados de Integradores",
     },
+    "productos-integracion": {
+        "collection": "productos_integracion",
+        "key": "producto_id",
+        "label": "Productos para Integración",
+    },
     "referentes": {
         "collection": "referentes",
         "key": "referente_id",
@@ -561,6 +566,7 @@ BACKUP_CENTER_ENTITIES = [
     {"module": "integrator-companies", "label": "Empresas Integradoras"},
     {"module": "integrators", "label": "Integradores"},
     {"module": "integrator-certificates", "label": "Certificados de Integradores"},
+    {"module": "productos-integracion", "label": "Productos para Integración"},
     {"module": "referentes", "label": "Referentes"},
     {"module": "servers", "label": "Servidores"},
     {"module": "fiscal-printers", "label": "Impresoras Fiscales"},

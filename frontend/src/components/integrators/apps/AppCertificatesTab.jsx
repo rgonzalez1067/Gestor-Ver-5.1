@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
-import { Download, RefreshCw, Ban, CheckCircle2, AlertTriangle, Upload } from 'lucide-react';
+import { Download, RefreshCw, Ban, CheckCircle2, AlertTriangle, Upload, Eye } from 'lucide-react';
+import { CertificateViewer } from './CertificateViewer';
 import api from '../../../utils/api';
 import { toast } from 'sonner';
 
@@ -9,6 +10,7 @@ const STATUS = {
   vigente: 'bg-emerald-100 text-emerald-700', desactualizado: 'bg-amber-100 text-amber-700',
   reemplazado: 'bg-slate-200 text-slate-600', anulado: 'bg-red-100 text-red-700',
 };
+const STATUS_LABEL = { vigente: 'Vigente', desactualizado: 'Desactualizado', reemplazado: 'Versión anterior', anulado: 'Anulado' };
 
 const ReissueForm = ({ app, onDone, onCancel }) => {
   const [comp, setComp] = useState(app.cert_component || '');
@@ -39,6 +41,7 @@ const ReissueForm = ({ app, onDone, onCancel }) => {
 export const AppCertificatesTab = ({ app, canManage, onChanged }) => {
   const [items, setItems] = useState([]);
   const [reissuing, setReissuing] = useState(false);
+  const [viewing, setViewing] = useState(null);
   const fileRef = useRef(null);
   const uploadPdf = async (e) => {
     const f = e.target.files?.[0]; e.target.value = '';
@@ -84,17 +87,22 @@ export const AppCertificatesTab = ({ app, canManage, onChanged }) => {
       {items.length === 0 ? <p className="text-xs text-slate-400">Este aplicativo no tiene certificados emitidos.</p> : (
         <table className="w-full text-xs border border-slate-200 rounded-md overflow-hidden">
           <thead className="bg-slate-100 text-slate-500 text-[11px] uppercase"><tr>
-            <th className="text-left px-3 py-2">Fecha</th><th className="text-left px-3 py-2">Archivo</th><th className="text-left px-3 py-2">Origen</th>
+            <th className="text-left px-3 py-2">Versión</th><th className="text-left px-3 py-2">Fecha</th><th className="text-left px-3 py-2">Productos incluidos</th><th className="text-left px-3 py-2">Origen</th>
             <th className="text-left px-3 py-2">Estado</th><th className="px-3 py-2" /></tr></thead>
           <tbody>
-            {items.map((c) => (
-              <tr key={c.certificate_id} className="border-t border-slate-100" data-testid={`cert-row-${c.certificate_id}`}>
+            {items.map((c, idx) => (
+              <tr key={c.certificate_id} className="border-t border-slate-100 align-top" data-testid={`cert-row-${c.certificate_id}`}>
+                <td className="px-3 py-2 whitespace-nowrap font-semibold text-slate-700">Cert. #{String(items.length - idx).padStart(3, '0')}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{new Date(c.created_at).toLocaleString('es-VE')}</td>
-                <td className="px-3 py-2 break-all">{c.original_name}</td>
+                <td className="px-3 py-2" data-testid={`cert-products-${c.certificate_id}`}>
+                  {c.products_included?.length ? <ul className="list-disc pl-4 space-y-0.5">{c.products_included.map((n) => <li key={n}>{n}</li>)}</ul>
+                    : <span className="text-slate-400 break-all" title={c.original_name}>{c.origin === 'manual' ? 'Carga manual (PDF)' : 'Emisión previa al histórico por producto'}</span>}
+                </td>
                 <td className="px-3 py-2">{c.origin_label}<div className="text-[10px] text-slate-400">{c.created_by_name}</div></td>
-                <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize ${STATUS[c.status] || STATUS.vigente}`} data-testid={`cert-status-${c.certificate_id}`}>{c.status}</span>
+                <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${STATUS[c.status] || STATUS.vigente}`} data-testid={`cert-status-${c.certificate_id}`}>{STATUS_LABEL[c.status] || 'Vigente'}</span>
                   {c.status_note && <div className="text-[10px] text-slate-400 mt-0.5">{c.status_note}</div>}</td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
+                  <button className="p-1 text-slate-400 hover:text-brand-blue-600" title="Ver certificado" onClick={() => setViewing(c)} data-testid={`cert-view-${c.certificate_id}`}><Eye size={13} /></button>
                   <button className="p-1 text-slate-400 hover:text-brand-blue-600" title="Descargar" onClick={() => download(c)} data-testid={`cert-download-${c.certificate_id}`}><Download size={13} /></button>
                   {canManage && c.status !== 'vigente' && <button className="p-1 text-slate-400 hover:text-emerald-600" title="Marcar vigente" onClick={() => setStatus(c, 'vigente')} data-testid={`cert-set-vigente-${c.certificate_id}`}><CheckCircle2 size={13} /></button>}
                   {canManage && c.status !== 'anulado' && <button className="p-1 text-slate-400 hover:text-red-600" title="Anular" onClick={() => setStatus(c, 'anulado')} data-testid={`cert-set-anulado-${c.certificate_id}`}><Ban size={13} /></button>}
@@ -104,6 +112,7 @@ export const AppCertificatesTab = ({ app, canManage, onChanged }) => {
           </tbody>
         </table>
       )}
+      <CertificateViewer cert={viewing} onClose={() => setViewing(null)} onDownload={download} />
     </div>
   );
 };

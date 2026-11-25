@@ -40,6 +40,7 @@ from routes.inventory import router as inventory_router
 from routes.inventory_temporary import router as inventory_temporary_router
 from routes.initial_contacts import router as initial_contacts_router
 from routes.referentes import router as referentes_router
+from routes.productos_integracion import router as productos_integracion_router
 from routes.initial_contacts_report import router as initial_contacts_report_router
 from routes.initial_contact_communications import router as initial_contact_comms_router
 from routes.client_communications import router as client_comms_router
@@ -434,6 +435,7 @@ api_router.include_router(inventory_router)
 api_router.include_router(inventory_temporary_router)
 api_router.include_router(initial_contacts_router)
 api_router.include_router(referentes_router)
+api_router.include_router(productos_integracion_router)
 api_router.include_router(initial_contacts_report_router)
 api_router.include_router(initial_contact_comms_router)
 api_router.include_router(client_comms_router)
@@ -698,6 +700,12 @@ async def create_indexes():
                 logging.info("[iter55] initial_contact_dates_backfill_v1 done")
         except Exception as e:
             logging.warning(f"Iter55 backfill failed: {e}")
+
+        try:
+            from routes.productos_integracion import seed_products_and_baselines
+            await seed_products_and_baselines()
+        except Exception as e:
+            logging.warning(f"Productos integracion seed failed: {e}")
 
         try:
             from routes.referentes import migrate_free_text_referidos

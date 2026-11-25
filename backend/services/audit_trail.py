@@ -28,6 +28,7 @@ COLLECTION_MODULES = {
     "fiscal_printer_models": "Bienes y Servicios", "servers": "Bienes y Servicios",
     "commercial_categories": "Categorías Comerciales",
     "referentes": "Referentes",
+    "productos_integracion": "Productos para Integración",
     "integrators": "Integradores", "empresas_integradoras": "Integradores", "integrator_cert_templates": "Integradores", "integrator_certificates": "Integradores",
     "users": "Usuarios y Seguridad", "profiles": "Usuarios y Seguridad", "security_policies": "Usuarios y Seguridad",
     "config": "Configuración General", "email_templates": "Configuración General",
@@ -72,6 +73,7 @@ ID_FIELDS = {
     "services": ("name", "service_id"), "integrators": ("rif", "name", "integrator_id"),
     "empresas_integradoras": ("rif", "razon_social", "empresa_id"),
     "referentes": ("nombre_referente", "referente_id"),
+    "productos_integracion": ("nombre", "producto_id"),
     "security_policies": ("policy_id",), "hardware": ("name", "hardware_id"),
 }
 GENERIC_ID_FIELDS = ("quote_number", "rif", "email", "code", "name", "nombre", "key", "id")
