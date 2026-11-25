@@ -384,7 +384,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                           medios_pago_items: [], 
                           pricing_model: isPGLike ? 'conventional' : (isMposLike ? 'outsourcing' : ''),
                           requires_vpn: false,
-                          communication_type: 'NO_APLICA',
+                          communication_type: isMposLike ? 'SSL' : 'NO_APLICA',
                           requires_pinpad_config: quoteData.client_segment !== 'CORP',
                           integrator_id: newIntegratorId,
                           integrator_name: newIntegratorName,
@@ -423,7 +423,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                           const bancos = quoteData.cantidad_bancos || 1;
                           const setupItems = initializeSetupConcepts('outsourcing', cajas, bancos, quoteData.requires_pinpad_config);
                           const recurringBasicItems = initializeRecurringBasicConcepts('outsourcing', cajas, bancos);
-                          const recurringOtherItems = initializeRecurringOtherConcepts('outsourcing', cajas, bancos, true);
+                          const recurringOtherItems = initializeRecurringOtherConcepts('outsourcing', cajas, bancos, false);
                           setQuoteData(prev => ({
                             ...prev,
                             quote_type: value,
