@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
-import { Lock, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Lock, ShieldCheck, AlertTriangle, Folder } from 'lucide-react';
 import { AppDataTab } from './AppDataTab';
 import { AppMatrixTab } from './AppMatrixTab';
 import { AppContactsTab } from './AppContactsTab';
 import { AppCertificatesTab } from './AppCertificatesTab';
+import { AppCertDocsTab } from './AppCertDocsTab';
 import { isActiveApp, isLockedApp } from './appPayload';
 import api from '../../../utils/api';
 import { toast } from 'sonner';
@@ -58,11 +59,13 @@ export const AppFichaDialog = ({ integratorId, onClose, canEdit, canModifyLocked
                 <TabsTrigger value="matrix" data-testid="app-tab-matrix">Matriz de Productos</TabsTrigger>
                 <TabsTrigger value="contacts" data-testid="app-tab-contacts">Contactos Técnicos</TabsTrigger>
                 <TabsTrigger value="certs" data-testid="app-tab-certs">Certificados</TabsTrigger>
+                <TabsTrigger value="cert-docs" data-testid="app-tab-cert-docs"><Folder size={13} className="mr-1 text-amber-500" />Documentos de la Certificación</TabsTrigger>
               </TabsList>
               <TabsContent value="data" className="pt-3"><AppDataTab app={app} locked={locked} editable={locked ? canModifyLocked : canEdit} isAdmin={isAdmin} onSaved={refresh} /></TabsContent>
               <TabsContent value="matrix" className="pt-3"><AppMatrixTab app={app} products={products} locked={matrixLocked} editable={matrixLocked ? canModifyLocked : canEdit} onSaved={refresh} /></TabsContent>
               <TabsContent value="contacts" className="pt-3"><AppContactsTab app={app} /></TabsContent>
               <TabsContent value="certs" className="pt-3"><AppCertificatesTab app={app} canManage={canManageCerts} onChanged={refresh} /></TabsContent>
+              <TabsContent value="cert-docs" className="pt-3"><AppCertDocsTab app={app} /></TabsContent>
             </Tabs>
           </div>
         )}

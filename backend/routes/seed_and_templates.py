@@ -1,3 +1,4 @@
+import re
 """Route module: seed_and_templates.py"""
 # ruff: noqa: F403, F405
 from fastapi import APIRouter, HTTPException, Header, Response, status, UploadFile, File, Form
@@ -107,8 +108,9 @@ class EmailTemplate(BaseModel):
     """Modelo para plantillas de correo"""
     template_id: str
     name: str
-    subject: str
+    subject: Optional[str] = None
     body_html: str
+    tipo_plantilla: str = "COMUNICACION"  # "COMUNICACION" | "FUSION" (documental, sin asunto)
     description: Optional[str] = None
     is_active: bool = True
     context: Optional[str] = None  # "COTIZACIONES" | "IMPLEMENTACION" | "ADMINISTRACION" | "CLIENTES"
@@ -923,10 +925,25 @@ async def get_email_template(template_id: str, authorization: Optional[str] = He
     
     return template
 
+def _validate_template(t: EmailTemplate):
+    t.tipo_plantilla = (t.tipo_plantilla or "COMUNICACION").upper()
+    if t.tipo_plantilla not in ("COMUNICACION", "FUSION"):
+        raise HTTPException(status_code=400, detail="Tipo de plantilla inválido")
+    if not (t.name or "").strip():
+        raise HTTPException(status_code=400, detail="El título es obligatorio")
+    if t.tipo_plantilla == "FUSION":
+        t.subject = None
+        if not re.sub(r"<[^>]+>|&nbsp;|\s", "", t.body_html or ""):
+            raise HTTPException(status_code=400, detail="El cuerpo del documento es obligatorio")
+    elif (t.context or "").upper() == "INTEGRADORES" and not (t.subject or "").strip():
+        raise HTTPException(status_code=400, detail="El asunto es obligatorio para plantillas de comunicación")
+
+
 @router.post("/email-templates")
 async def create_email_template(template: EmailTemplate, authorization: Optional[str] = Header(None)):
     """Crea una nueva plantilla de correo"""
     await get_current_user(authorization)
+    _validate_template(template)
     
     existing = await db.email_templates.find_one({"template_id": template.template_id}, {"_id": 0})
     if existing:
@@ -951,6 +968,7 @@ async def update_email_template(template_id: str, template: EmailTemplate, autho
     # Validar que el template_id coincida
     if template.template_id != template_id:
         raise HTTPException(status_code=400, detail="El ID de la plantilla no coincide")
+    _validate_template(template)
     
     template_data = template.model_dump()
     template_data["updated_at"] = datetime.now(timezone.utc).isoformat()

@@ -256,7 +256,33 @@ async def download_entity_document(
 
 # ==================== VARIABLES DE RENDERIZADO ====================
 
-def _build_integrator_vars(integrator: dict) -> dict:
+async def _build_integrator_vars(integrator: dict) -> dict:
+    v = _base_integrator_vars(integrator)
+    emp = {}
+    if integrator.get("empresa_integradora_id"):
+        emp = await db.empresas_integradoras.find_one({"empresa_id": integrator["empresa_integradora_id"]}, {"_id": 0}) or {}
+    cert_ids = [k for k, x in (integrator.get("certifications") or {}).items() if str(x).strip().upper() == "C"]
+    prods = {p["producto_id"]: p async for p in db.productos_integracion.find({"producto_id": {"$in": cert_ids}}, {"_id": 0})}
+    ordered = sorted((prods[i] for i in cert_ids if i in prods), key=lambda p: (p.get("orden_despliegue") or 10**6, p.get("nombre", "")))
+    mp_ids = [p["medio_pago_id"] for p in ordered if p.get("medio_pago_id")]
+    mp_names = {m["service_id"]: m.get("name", "") async for m in db.services.find({"service_id": {"$in": mp_ids}}, {"_id": 0, "service_id": 1, "name": 1})}
+    medios = list(dict.fromkeys(mp_names.get(p.get("medio_pago_id")) or p.get("nombre", "") for p in ordered))
+    contactos = [f"{c.get('full_name', '')}{' (' + c['role'] + ')' if c.get('role') else ''}" for c in (emp.get("contacts") or []) if c.get("full_name")]
+    v.update({
+        "empresa_integradora": emp.get("razon_social") or integrator.get("name", ""),
+        "rif_integrador": emp.get("rif") or integrator.get("rif", ""),
+        "direccion_fiscal": emp.get("direccion_fiscal", ""),
+        "nombre_aplicativo": integrator.get("app_name", ""),
+        "tipo_integracion": integrator.get("integration_type", ""),
+        "productos_certificados": " / ".join(p.get("nombre", "") for p in ordered),
+        "medios_pago_certificados": " / ".join(medios),
+        "contactos_integrador": "; ".join(contactos),
+        "fecha_actual": datetime.now(timezone.utc).strftime("%d/%m/%Y"),
+    })
+    return v
+
+
+def _base_integrator_vars(integrator: dict) -> dict:
     contacts = integrator.get("contacts") or []
     primary = contacts[0] if contacts else {}
     contact_name = primary.get("name") or primary.get("full_name") or primary.get("first_name", "")
@@ -454,7 +480,7 @@ async def send_integrator_email(
         raise HTTPException(status_code=400, detail="Destinatarios inválidos")
     to_list = [t for t in to_list if t and "@" in t]
 
-    variables = _build_integrator_vars(integrator)
+    variables = await _build_integrator_vars(integrator)
     meta = await _send_and_log(
         to_list, subject, message, variables, files, internal_doc_ids,
         current_user, folder=f"integrators/{integrator_id}", action_key="integrator_notification",
@@ -880,7 +906,7 @@ async def preview_integrator_email(integrator_id: str, body: dict, authorization
     integrator = await db.integrators.find_one({"integrator_id": integrator_id}, {"_id": 0})
     if not integrator:
         raise HTTPException(status_code=404, detail="Integrador no encontrado")
-    variables = _build_integrator_vars(integrator)
+    variables = await _build_integrator_vars(integrator)
     variables["Firma_Notificacion_Global"] = await build_signature_html(current_user)
     return {
         "subject": _render_vars(body.get("subject", ""), variables),

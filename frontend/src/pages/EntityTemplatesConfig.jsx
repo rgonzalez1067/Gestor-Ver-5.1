@@ -4,7 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../components/ui/dialog';
-import { ArrowLeft, FileText, Upload, Trash2, Plus, Save, Pencil, FileUp, Eye, Download } from 'lucide-react';
+import { ArrowLeft, FileText, Upload, Trash2, Plus, Save, Pencil, FileUp, Eye, Download, Mail, FileStack } from 'lucide-react';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { DocumentViewerModal, downloadEntityDocument } from '../components/DocumentViewerModal';
 import api from '../utils/api';
@@ -27,6 +27,7 @@ export const EntityTemplatesConfig = ({
   templateIdPrefix = 'tpl',
   variablesHint = '',
   variableGroups = null,
+  allowFusion = false,
 }) => {
   const navigate = useNavigate();
   const editorRef = useRef(null);
@@ -38,7 +39,9 @@ export const EntityTemplatesConfig = ({
   const [templates, setTemplates] = useState([]);
   const [tplDialogOpen, setTplDialogOpen] = useState(false);
   const [editingTpl, setEditingTpl] = useState(null);
-  const [tplForm, setTplForm] = useState({ name: '', subject: '', body_html: '' });
+  const [tplForm, setTplForm] = useState({ name: '', subject: '', body_html: '', tipo_plantilla: 'COMUNICACION' });
+  const [typePickerOpen, setTypePickerOpen] = useState(false);
+  const isFusion = tplForm.tipo_plantilla === 'FUSION';
 
   const [documents, setDocuments] = useState([]);
   const [docDialogOpen, setDocDialogOpen] = useState(false);
@@ -53,29 +56,34 @@ export const EntityTemplatesConfig = ({
 
   useEffect(() => { fetchTemplates(); fetchDocuments(); /* eslint-disable-next-line */ }, [context]);
 
-  const openNewTemplate = () => {
+  const startNewTemplate = (tipo) => {
+    setTypePickerOpen(false);
     setEditingTpl(null);
-    setTplForm({ name: '', subject: '', body_html: '' });
+    setTplForm({ name: '', subject: '', body_html: '', tipo_plantilla: tipo });
     setTplDialogOpen(true);
   };
+  const openNewTemplate = () => (allowFusion ? setTypePickerOpen(true) : startNewTemplate('COMUNICACION'));
   const openEditTemplate = (tpl) => {
     setEditingTpl(tpl);
-    setTplForm({ name: tpl.name, subject: tpl.subject || '', body_html: tpl.body_html || tpl.body || '' });
+    setTplForm({ name: tpl.name, subject: tpl.subject || '', body_html: tpl.body_html || tpl.body || '', tipo_plantilla: tpl.tipo_plantilla || 'COMUNICACION' });
     setTplDialogOpen(true);
   };
   const saveTemplate = async () => {
-    if (!tplForm.name.trim()) { toast.error('El nombre es obligatorio'); return; }
+    if (!tplForm.name.trim()) { toast.error(isFusion ? 'El título es obligatorio' : 'El nombre es obligatorio'); return; }
+    if (isFusion && !tplForm.body_html.replace(/<[^>]+>|&nbsp;|\s/g, '')) { toast.error('El cuerpo del documento es obligatorio'); return; }
+    if (allowFusion && !isFusion && !tplForm.subject.trim()) { toast.error('El asunto es obligatorio para plantillas de comunicación'); return; }
+    const payload = { ...tplForm, subject: isFusion ? null : tplForm.subject };
     try {
       if (editingTpl) {
         await api.put(`/email-templates/${editingTpl.template_id}`, {
           template_id: editingTpl.template_id,
-          ...tplForm, context, is_active: true,
+          ...payload, context, is_active: true,
         });
         toast.success('Plantilla actualizada');
       } else {
         const newId = `${templateIdPrefix}_${Date.now().toString(36)}`;
         await api.post('/email-templates', {
-          template_id: newId, ...tplForm, context, is_active: true,
+          template_id: newId, ...payload, context, is_active: true,
         });
         toast.success('Plantilla creada');
       }
@@ -166,7 +174,10 @@ export const EntityTemplatesConfig = ({
                       </Button>
                     </div>
                   </div>
-                  <p className="text-xs text-blue-600 font-medium mb-1">Asunto: {tpl.subject || '—'}</p>
+                  {allowFusion && (tpl.tipo_plantilla === 'FUSION'
+                    ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 mb-1.5" data-testid={`tpl-badge-fusion-${tpl.template_id}`}><FileStack className="w-3 h-3" />Plantilla de Fusión</span>
+                    : <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200 mb-1.5" data-testid={`tpl-badge-comunicacion-${tpl.template_id}`}><Mail className="w-3 h-3" />Comunicación</span>)}
+                  {tpl.tipo_plantilla !== 'FUSION' && <p className="text-xs text-blue-600 font-medium mb-1">Asunto: {tpl.subject || '—'}</p>}
                   <p className="text-xs text-slate-500 line-clamp-3">{(tpl.body_html || tpl.body || '—').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() || '—'}</p>
                 </div>
               ))}
@@ -181,14 +192,16 @@ export const EntityTemplatesConfig = ({
             <Dialog open={tplDialogOpen} onOpenChange={setTplDialogOpen}>
               <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden" data-testid="entity-template-dialog">
                 <DialogHeader className="px-6 pt-6 pb-3 shrink-0 border-b border-slate-100">
-                  <DialogTitle>{editingTpl ? 'Editar' : 'Nueva'} Plantilla</DialogTitle>
-                  <DialogDescription>Estas plantillas son específicas del módulo y no interfieren con otros.</DialogDescription>
+                  <DialogTitle className="flex items-center gap-2 flex-wrap">{editingTpl ? 'Editar' : 'Nueva'} {isFusion ? 'Plantilla de Fusión' : 'Plantilla'}
+                    {allowFusion && <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${isFusion ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`} data-testid="entity-tpl-type-badge">{isFusion ? 'Plantilla de Fusión' : 'Comunicación'}</span>}
+                  </DialogTitle>
+                  <DialogDescription>{isFusion ? 'Plantilla documental para ensamblaje y generación de documentos de certificación. No se envía por correo.' : 'Estas plantillas son específicas del módulo y no interfieren con otros.'}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3 flex-1 min-h-0 overflow-y-auto px-6 py-4" data-testid="entity-template-body">
-                  <div><Label className="text-xs">Nombre</Label><Input value={tplForm.name} onChange={e => setTplForm({...tplForm, name: e.target.value})} /></div>
-                  <div><Label className="text-xs">Asunto</Label><Input value={tplForm.subject}
+                  <div><Label className="text-xs">{isFusion ? <>Título Identificativo <span className="text-red-500">*</span></> : <>Nombre</>}</Label><Input value={tplForm.name} maxLength={isFusion ? 150 : undefined} onChange={e => setTplForm({...tplForm, name: e.target.value})} data-testid="entity-tpl-name" /></div>
+                  {!isFusion && <div><Label className="text-xs">Asunto{allowFusion && <span className="text-red-500"> *</span>}</Label><Input value={tplForm.subject}
                     onFocus={() => { subjectFocusRef.current = true; }}
-                    onChange={e => setTplForm({...tplForm, subject: e.target.value})} data-testid="entity-tpl-subject" /></div>
+                    onChange={e => setTplForm({...tplForm, subject: e.target.value})} data-testid="entity-tpl-subject" /></div>}
                   {variableGroups && (
                     <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50 space-y-2" data-testid="entity-tpl-variables">
                       <p className="text-[11px] text-slate-500">Clic en una variable para insertarla en el cuerpo (o en el asunto si es el último campo editado).</p>
@@ -202,7 +215,7 @@ export const EntityTemplatesConfig = ({
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => {
                                   const token = `{{${v.key}}}`;
-                                  if (subjectFocusRef.current) setTplForm(f => ({ ...f, subject: `${f.subject}${token}` }));
+                                  if (subjectFocusRef.current && !isFusion) setTplForm(f => ({ ...f, subject: `${f.subject}${token}` }));
                                   else editorRef.current?.insertText(token);
                                 }}
                                 data-testid={`entity-tpl-var-${v.key}`}>
@@ -215,7 +228,7 @@ export const EntityTemplatesConfig = ({
                     </div>
                   )}
                   <div>
-                    <Label className="text-xs">Cuerpo del Mensaje</Label>
+                    <Label className="text-xs">{isFusion ? <>Cuerpo / Estructura del Documento <span className="text-red-500">*</span></> : 'Cuerpo del Mensaje'}</Label>
                     <div onMouseDown={() => { subjectFocusRef.current = false; }}>
                     <RichTextEditor
                       ref={editorRef}
@@ -223,7 +236,7 @@ export const EntityTemplatesConfig = ({
                       onChange={(html) => { subjectFocusRef.current = false; setTplForm({ ...tplForm, body_html: html }); }}
                       maxChars={20000}
                       hardLimit={false}
-                      placeholder="Redacte aquí el cuerpo del correo..."
+                      placeholder={isFusion ? 'Redacte aquí la estructura del documento...' : 'Redacte aquí el cuerpo del correo...'}
                       testid={`entity-tpl-editor-${context}`}
                       showPreview
                       minHeight={240}
@@ -235,10 +248,11 @@ export const EntityTemplatesConfig = ({
                 </div>
                 <DialogFooter className="px-6 py-4 border-t border-slate-100 bg-white shrink-0">
                   <Button variant="outline" onClick={() => setTplDialogOpen(false)}>Cancelar</Button>
-                  <Button onClick={saveTemplate} data-testid="entity-template-save-btn"><Save className="w-4 h-4 mr-1" /> Guardar</Button>
+                  <Button onClick={saveTemplate} data-testid="entity-template-save-btn"><Save className="w-4 h-4 mr-1" /> {isFusion ? 'Guardar Plantilla' : 'Guardar'}</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            <TemplateTypePicker open={typePickerOpen} onOpenChange={setTypePickerOpen} onPick={startNewTemplate} />
           </div>
         )}
 
@@ -310,6 +324,31 @@ export const EntityTemplatesConfig = ({
   );
 };
 
+const TemplateTypePicker = ({ open, onOpenChange, onPick }) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="max-w-lg" data-testid="tpl-type-picker">
+      <DialogHeader>
+        <DialogTitle>Nueva Plantilla</DialogTitle>
+        <DialogDescription>Seleccione el tipo de plantilla a crear.</DialogDescription>
+      </DialogHeader>
+      <div className="grid grid-cols-2 gap-3">
+        <button type="button" onClick={() => onPick('COMUNICACION')} data-testid="tpl-type-comunicacion"
+          className="text-left p-4 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-colors">
+          <Mail className="w-5 h-5 text-blue-600 mb-2" />
+          <p className="text-sm font-semibold text-slate-800">Comunicación</p>
+          <p className="text-[11px] text-slate-500 mt-1">Envío de correos y notificaciones. Requiere Asunto.</p>
+        </button>
+        <button type="button" onClick={() => onPick('FUSION')} data-testid="tpl-type-fusion"
+          className="text-left p-4 rounded-lg border border-slate-200 hover:border-amber-400 hover:bg-amber-50 transition-colors">
+          <FileStack className="w-5 h-5 text-amber-600 mb-2" />
+          <p className="text-sm font-semibold text-slate-800">Plantilla de Fusión</p>
+          <p className="text-[11px] text-slate-500 mt-1">Ensamblaje de documentos técnicos/legales de certificación. Sin Asunto.</p>
+        </button>
+      </div>
+    </DialogContent>
+  </Dialog>
+);
+
 // Wrappers específicos por módulo
 const INTEGRATOR_VARIABLE_GROUPS = [
   { title: 'Integradores', vars: [
@@ -317,6 +356,13 @@ const INTEGRATOR_VARIABLE_GROUPS = [
     { key: 'rif', label: 'RIF' }, { key: 'email', label: 'Correo' }, { key: 'telefono', label: 'Teléfono' },
     { key: 'contacto', label: 'Contacto' }, { key: 'estado', label: 'Estatus' },
     { key: 'aplicativo', label: 'Aplicativo' }, { key: 'fase', label: 'Fase' },
+  ] },
+  { title: 'Empresa Integradora y Certificación', tone: 'bg-white border-violet-200 text-violet-700 hover:bg-violet-50', vars: [
+    { key: 'empresa_integradora', label: 'Empresa Integradora (Razón Social)' }, { key: 'rif_integrador', label: 'RIF de la Empresa Integradora' },
+    { key: 'direccion_fiscal', label: 'Dirección Fiscal' }, { key: 'contactos_integrador', label: 'Contactos de la Empresa Integradora' },
+    { key: 'nombre_aplicativo', label: 'Nombre del Aplicativo' }, { key: 'tipo_integracion', label: 'Tipo de Integración' },
+    { key: 'productos_certificados', label: 'Productos certificados (lineal)' }, { key: 'medios_pago_certificados', label: 'Medios de Pago certificados (lineal)' },
+    { key: 'fecha_actual', label: 'Fecha actual (dd/mm/aaaa)' },
   ] },
   { title: 'Bancos y Entes', note: 'un correo por Banco/Ente (BCC)', tone: 'bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50', vars: [
     { key: 'banco_nombre', label: 'Nombre del Banco/Ente' }, { key: 'banco_razon_social', label: 'Nombre Jurídico' }, { key: 'banco_rif', label: 'RIF del Banco/Ente' },
@@ -342,6 +388,7 @@ export const IntegratorTemplatesConfig = () => (
     templateIdPrefix="int_tpl"
     variablesHint="{{nombre_integrador}}, {{razon_social}}, {{rif}}, {{email}}, {{telefono}}, {{contacto}}, {{estado}}, {{aplicativo}}, {{fase}} · Bancos/Entes: {{banco_nombre}}, {{banco_rif}}, {{banco_codigo}}, {{banco_tipo}}, {{banco_pais}}, {{banco_procesador}}, {{contacto_nombre}}, {{contacto_cargo}}, {{contacto_email}}, {{contacto_telefono}}"
     variableGroups={INTEGRATOR_VARIABLE_GROUPS}
+    allowFusion
   />
 );
 

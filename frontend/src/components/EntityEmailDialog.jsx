@@ -56,7 +56,7 @@ export const EntityEmailDialog = ({
     setActiveRecipientIdx(-1);
     setAutocompleteQuery('');
 
-    api.get(`/email-templates?context=${context}`).then(r => setTemplates(r.data || [])).catch(() => setTemplates([]));
+    api.get(`/email-templates?context=${context}`).then(r => setTemplates((r.data || []).filter(t => t.tipo_plantilla !== 'FUSION'))).catch(() => setTemplates([]));
     api.get(`/entity-documents?context=${context}`).then(r => setInternalDocs(r.data || [])).catch(() => setInternalDocs([]));
     api.get('/users/internal-emails').then(r => setInternalUsers(r.data || [])).catch(() => setInternalUsers([]));
   // eslint-disable-next-line react-hooks/exhaustive-deps

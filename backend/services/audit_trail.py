@@ -74,6 +74,7 @@ ID_FIELDS = {
     "empresas_integradoras": ("rif", "razon_social", "empresa_id"),
     "referentes": ("nombre_referente", "referente_id"),
     "productos_integracion": ("nombre", "producto_id"),
+    "email_templates": ("name", "template_id"),
     "security_policies": ("policy_id",), "hardware": ("name", "hardware_id"),
 }
 GENERIC_ID_FIELDS = ("quote_number", "rif", "email", "code", "name", "nombre", "key", "id")

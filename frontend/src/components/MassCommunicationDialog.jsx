@@ -38,7 +38,7 @@ export const MassCommunicationDialog = ({ open, onOpenChange }) => {
   useEffect(() => {
     if (!open) return;
     setSelectedIds(new Set()); setTemplateId(''); setSelectedDocs(new Set()); setLocalFiles([]); setSearch(''); setFilterType('ALL'); setCopyEmails('');
-    api.get('/email-templates?context=INTEGRADORES').then(r => setTemplates(r.data || [])).catch(() => setTemplates([]));
+    api.get('/email-templates?context=INTEGRADORES').then(r => setTemplates((r.data || []).filter(t => t.tipo_plantilla !== 'FUSION'))).catch(() => setTemplates([]));
     api.get('/entity-documents?context=INTEGRADORES').then(r => setDocs(r.data || [])).catch(() => setDocs([]));
   }, [open]);
 
