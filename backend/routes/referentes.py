@@ -49,8 +49,14 @@ def _is_admin(user: dict) -> bool:
     return (user.get("role") or "").lower() == "admin"
 
 
+def _maint(user: dict) -> bool:
+    from permissions_catalog import has_module_level
+    return has_module_level(user, "referentes", "edit")
+
+
 async def can_create_referente(user: dict) -> bool:
-    return _is_admin(user) or CREATE_FLAG in await _effective_special_permissions(user)
+    from permissions_catalog import has_module_level
+    return has_module_level(user, "referentes", "edit") or CREATE_FLAG in await _effective_special_permissions(user)
 
 
 async def _require_admin(authorization):
@@ -118,7 +124,7 @@ async def migrate_free_text_referidos():
 @router.get("/referentes")
 async def list_referentes(include_inactive: bool = False, authorization: Optional[str] = Header(None)):
     user = await get_current_user(authorization)
-    query = {"merged_into": {"$exists": False}} if include_inactive and _is_admin(user) else {"estatus": True}
+    query = {"merged_into": {"$exists": False}} if include_inactive and _maint(user) else {"estatus": True}
     refs = await db.referentes.find(query, {"_id": 0, "nombre_norm": 0}).sort("nombre_referente", 1).to_list(5000)
     counts = {r["_id"]: r["n"] async for r in db.initial_contacts.aggregate([
         {"$match": {"referente_id": {"$nin": [None, ""]}}},

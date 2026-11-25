@@ -1,0 +1,38 @@
+{
+  "summary": "Tested RBAC for 4 new Catálogos modules (Impresoras Fiscales, Servidores, Referentes, Productos para Integración). Backend: 9/10 pass. Catalog, migration (all profiles/users = none), Inactivo/Consulta 403s, profile ceiling, admin full access, quick-add fiscal printer by name and GET /referentes for non-admin all work. UI: /admin/profiles and /admin/users list the 4 new modules under Catálogos with Inactivo selected. Non-admin sidebar/redirect works at Inactivo. Consulta: page loads, no CRUD buttons, Servers save disabled, switches disabled. Edición Total Referentes: Nuevo/Editar/Eliminar/Fusionar visible, Edit and Delete work. FAIL: creating a referente (Nuevo Referente) returns 403 for an Edición Total user who lacks the special flag referentes:crear.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/referentes", "issue": "A user with referentes=edit (Edición Total) gets 403 'No tiene permiso para registrar nuevos referentes'. can_create_referente() only accepts admin or the special flag referentes:crear and ignores the module level. The UI shows 'Nuevo Referente' (canEdit) and then fails with an error toast.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "GET /api/referentes?include_inactive=true", "issue": "include_inactive is honored only for role admin. A non-admin with Edición Total who inactivates a referente sees it disappear from the Referentes page and cannot reactivate it. The 'Todos'/inactive filter is useless for non-admins. Use has_module_level(user,'referentes','edit') instead of _is_admin."},
+      {"endpoint": "GET /api/servers, GET /api/referentes, GET /api/fiscal-printers", "issue": "Any authenticated user can still read these even at Inactivo. This is intentional so pickers keep working, but note there is no read gate (only productos-integracion has a read gate)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Referentes.jsx / ReferenteFormDialog", "issue": "'Nuevo Referente' is shown to Edición Total users, but saving fails with 403 (see backend critical).", "selector": "[data-testid='referentes-new-btn']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Sidebar vs Perfiles grid", "issues": ["The sidebar puts the 4 new items between 'Bienes y Servicios' and 'Categoría Comercial'. The Perfiles/Usuarios grids list them after 'Tasa de Cambio'. Consider matching the order of MODULES to the sidebar."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_catalog_new_modules_permissions.py", "/app/test_reports/pytest/catalog_new_modules.xml"],
+  "action_items": [
+    "backend/routes/referentes.py: in can_create_referente (or the POST /referentes handler), also allow has_module_level(user,'referentes','edit'), so Edición Total can create from the catalog page. Keep the referentes:crear flag for the Contacto Inicial 'Otro' path.",
+    "backend/routes/referentes.py list_referentes: honor include_inactive for users with referentes edit level, not only admin."
+  ],
+  "critical_code_review_comments": [
+    "productos_integracion._require_admin checks role != admin again, which is redundant because has_module_level already handles admin. Harmless.",
+    "ProtectedRoute uses only localStorage permissions. Fine, the backend enforces too.",
+    "Migration in server.py skips users whose permissions field is not an object (3 legacy users with null permissions). They fall back to 'none', which is OK."
+  ],
+  "updated_files": ["/app/backend/tests/test_catalog_new_modules_permissions.py"],
+  "success_rate": {"backend": "90% (9/10)", "frontend": "~92% (all checks pass except Referente create)"},
+  "test_credentials": "kherrera@megasoft.com.ve: NEITHER Kherrera2026*Qa NOR Test1234! matches the stored hash (checked with verify_password). The account was already LOCKED before testing (failed_login_attempts=5, lockout 2026-11-24). The test session for kherrera came from a temporary TEST_sess_ token inserted into user_sessions and deleted afterwards. The 3 failed login attempts were reverted: lock fields were restored to their exact pre-test values. Update /app/memory/test_credentials.md with kherrera's real password.",
+  "seed_data_creation": "Temporary only: TEST_ referentes (3), TEST_ fiscal printer (1), TEST_ server (1), 1 TEST_sess_ session. All deleted by id. kherrera's user doc, profile prof_bacef16026 (Analista de Operaciones) and its 4 linked users were restored exactly from a Mongo snapshot (verified field by field).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: pytest tests/test_catalog_new_modules_permissions.py -p no:xdist. It needs /tmp/kh_token holding a valid kherrera session (create one with a script like /tmp/sess.py, since kherrera's password is unknown or locked). The fixture snapshots and restores the kherrera user and profile. test_08 fails until POST /referentes accepts edit level."
+}
