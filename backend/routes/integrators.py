@@ -80,9 +80,8 @@ def _cert_delta_ids(intg: dict, baseline_doc: dict = None) -> list:
     """Productos marcados 'C' que no están en la línea base certificada (Delta de Certificación)."""
     certs = intg.get("certifications") or {}
     base = set((baseline_doc or intg).get("cert_baseline") or [])
-    from routes.productos_integracion import ALL_PRODUCT_NAMES
-    order = INTEGRATOR_PRODUCT_IDS + [k for k in ALL_PRODUCT_NAMES if k not in INTEGRATOR_PRODUCT_IDS]
-    return [pid for pid in order if str(certs.get(pid, "")).strip().upper() == "C" and pid not in base]
+    # Solo productos activos del catálogo (los inactivos no se muestran en la Matriz ni se certifican).
+    return [pid for pid in INTEGRATOR_PRODUCT_IDS if str(certs.get(pid, "")).strip().upper() == "C" and pid not in base]
 
 
 def _names_for(ids: list) -> list:
@@ -764,9 +763,11 @@ async def _store_integrator_certificate(integrator_id: str, filename: str, conte
     await db.integrator_certificates.update_many(
         {"integrator_id": integrator_id, "status": {"$nin": ["anulado", "reemplazado"]}},
         {"$set": {"status": "reemplazado", "status_updated_at": doc["created_at"]}})
-    await db.integrator_certificates.insert_one(doc)
     if product_ids:
+        # cert_baseline puede venir null (POST /integrators persiste el default None del modelo).
+        await db.integrators.update_one({"integrator_id": integrator_id, "cert_baseline": None}, {"$set": {"cert_baseline": []}})
         await db.integrators.update_one({"integrator_id": integrator_id}, {"$addToSet": {"cert_baseline": {"$each": product_ids}}})
+    await db.integrator_certificates.insert_one(doc)
     return cert_id
 
 

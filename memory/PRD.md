@@ -4910,3 +4910,9 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06: Wizard Cotización: preguntas PinPads/POS y Tipo de Comunicación visibles al elegir Tipo de Cotización (antes requerían Modelo de Precios); sin modelo solo guardan la respuesta y el Setup se arma al elegir modelo.
 
 - 2026-06: Ajuste: PinPads/Comunicación se muestran solo tras elegir Tipo de Cotización (junto a todos los parámetros, antes del Modelo).
+
+## 2026-06 Productos para Integración + Certificado Delta + Visor
+- Catálogo productos_integracion (/catalogs/productos-integracion, admin; routes/productos_integracion.py). Sembrados 21 productos con sus ids históricos; refresh_products() actualiza en caliente INTEGRATOR_PRODUCTS (activos).
+- Delta: integrators.cert_baseline; emisión (reissue/close) solo productos C activos fuera de baseline; desmarcar retira de baseline (_prune_cert_baseline); sin productos nuevos -> 400. Migración cert_baseline_v1 (apps con certificado: baseline = C actuales).
+- Certificados: products_included por emisión, última Vigente, anteriores "Versión anterior"; visor inline (download?inline=true + CertificateViewer iframe).
+- Backup Total 1 clic incluye productos-integracion. Auditoría productos_integracion.

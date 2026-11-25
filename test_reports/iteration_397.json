@@ -1,0 +1,42 @@
+{
+  "summary": "Tested both backend and UI at 1366x768 as qa.integradores admin: the Productos para Integración catalog, the incremental (Delta) certificate, the history labels, the inline viewer and the regression checks. Found one CRITICAL bug and fixed it: POST /api/integrators saved cert_baseline=null, so the first emission for any newly created app returned 500. After the fix, all 15 tests in the pytest suite pass, and the catalog UI, Matriz, Certificados tab, viewer and Proyectos grid work. /close was not called.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/integrators/{id}/certificates/reissue (and /close, via _store_integrator_certificate)", "issue": "FIXED BY TESTER. Returned 500 with pymongo WriteError 'Cannot apply $addToSet to non-array field cert_baseline (null)'. POST /api/integrators does Integrator(**).model_dump(), which writes the model default cert_baseline=None. Because the certificate is inserted BEFORE the failing $addToSet, every attempt also left a 'vigente' orphan certificate behind and moved the earlier ones to 'reemplazado', even though the response was 500. The delta then never worked, because the baseline stayed null.", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/integrators", "issue": "Root cause is still in place: new apps are saved with cert_baseline: null. Recommend doc.pop('cert_baseline') or [] at creation. My guard covers the null case."},
+      {"endpoint": "_store_integrator_certificate", "issue": "Not atomic. It inserts the certificate and changes statuses before updating the baseline, so a failure leaves partial state. reissue also runs the same update_many to 'reemplazado' twice (once in reissue, once in _store)."},
+      {"endpoint": "_cert_delta_ids", "issue": "The order includes inactive products (ALL_PRODUCT_NAMES holds every doc). An inactive product still marked C on an app, and not in its baseline, gets certified in the next delta even though the Matriz hides it. Decide whether that is intended."},
+      {"endpoint": "PUT /api/productos-integracion/{id}", "issue": "DELETE refuses to remove the last active product, but inactivating (activo=false) the last active one is not guarded."},
+      {"endpoint": "/close with scope=expansion", "issue": "The delta is computed against the parent app's cert_baseline, but the products are added to the expansion's own cert_baseline. The parent's baseline is never updated. Not exercised; found by reading the code."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Sidebar Catálogos", "issues": ["The label 'Productos para Integración' is cut off to 'Productos para Integ' at 1366px."]},
+      {"screen": "CertificateViewer", "issues": ["The iframe uses a blob PDF. Headless Chromium has no PDF viewer (pdfViewerEnabled=false), so there it shows blank and starts a download. Desktop Chrome/Edge render it inline. Browsers without a PDF viewer (some mobile browsers) will download instead; consider a fallback message or link."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter397_productos_integracion_delta.py", "/app/test_reports/pytest/iter397.xml"],
+  "action_items": [
+    "Review the tester fix in routes/integrators.py _store_integrator_certificate (sets cert_baseline=[] when null before $addToSet) and also stop POST /api/integrators from saving cert_baseline=null.",
+    "Consider making the certificate emission atomic: compute and update the baseline before inserting, or roll back on error.",
+    "Decide how inactive products marked C should count in the delta.",
+    "Optional: guard against inactivating the last active product; fix the expansion baseline update on /close."
+  ],
+  "critical_code_review_comments": [
+    "integrators.py is over 3000 lines and should be split.",
+    "GET /integrators/products calls refresh_products(), a full collection scan, on every request.",
+    "Audit for productos_integracion works through AuditedCollection; CREATE, UPDATE and DELETE entries were confirmed under module 'Productos para Integración'."
+  ],
+  "updated_files": ["/app/backend/routes/integrators.py (null cert_baseline guard in _store_integrator_certificate)", "/app/backend/tests/test_iter397_productos_integracion_delta.py"],
+  "success_rate": {"backend": "100% after fix (6/15 failed before fix)", "frontend": "100%"},
+  "seed_data_creation": "Created TEST_BiopagoBDV, TEST_ProdB(_Ren), TEST_ProdC, TEST_Inactivo and TEST_UI_Producto, plus app TEST_DeltaApp (empresa emp_f0f1b1416e09) with its certificates. All removed by id. Catalog is back to 21 products and there are 0 TEST_ apps. Audit-trail entries for the TEST products remain as history.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: KEEP_TEST_DATA=1 pytest tests/test_iter397_productos_integracion_delta.py -p no:xdist -s. With the flag, state is kept in /tmp/iter397_state.json for UI checks; without it the suite cleans up after itself. Safe-delete of an app returns 409 while it has certificates, so cleanup deletes this app's certificates by id first. Admin reissue needs no special flag. UI path: /integrators -> integrators-view-companies -> company-search -> company-toggle-{empresa_id} -> company-app-view-{id} -> app-tab-matrix / app-tab-certs. The Proyectos grid shows products in the expanded row (detail-{id}).",
+  "rca of the issue": "Integrator.model_dump() writes cert_baseline=None at creation. The $addToSet on a null field fails with WriteError code 2, and that happens after insert_one of the certificate, so the request returns 500 with partial writes. Repro: POST /integrators, then PUT with two products in C, then reissue -> 500. Fix: set cert_baseline=[] when it is null before $addToSet."
+}
