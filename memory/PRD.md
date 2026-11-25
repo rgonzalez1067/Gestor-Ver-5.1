@@ -4916,3 +4916,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Delta: integrators.cert_baseline; emisión (reissue/close) solo productos C activos fuera de baseline; desmarcar retira de baseline (_prune_cert_baseline); sin productos nuevos -> 400. Migración cert_baseline_v1 (apps con certificado: baseline = C actuales).
 - Certificados: products_included por emisión, última Vigente, anteriores "Versión anterior"; visor inline (download?inline=true + CertificateViewer iframe).
 - Backup Total 1 clic incluye productos-integracion. Auditoría productos_integracion.
+
+- 2026-06: Catálogo Productos para Integración: columna Aplicativos reemplazada por "En Proceso (P)" y "Certificados (C)", ordenables.

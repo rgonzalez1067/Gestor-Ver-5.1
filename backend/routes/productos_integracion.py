@@ -77,13 +77,16 @@ async def _require_admin(authorization):
 async def list_productos(authorization: Optional[str] = Header(None)):
     await _require_admin(authorization)
     docs = await db.productos_integracion.find({}, {"_id": 0}).to_list(2000)
-    usage = {}
+    usage = {"C": {}, "P": {}}
     async for i in db.integrators.find({}, {"_id": 0, "certifications": 1}):
         for k, v in (i.get("certifications") or {}).items():
-            if str(v).strip().upper() in ("C", "P"):
-                usage[k] = usage.get(k, 0) + 1
+            st = str(v).strip().upper()
+            if st in usage:
+                usage[st][k] = usage[st].get(k, 0) + 1
     for d in docs:
-        d["aplicativos"] = usage.get(d["producto_id"], 0)
+        d["certificados"] = usage["C"].get(d["producto_id"], 0)
+        d["en_proceso"] = usage["P"].get(d["producto_id"], 0)
+        d["aplicativos"] = d["certificados"] + d["en_proceso"]
     docs.sort(key=lambda d: (d.get("orden_despliegue") if d.get("orden_despliegue") is not None else 10**6, d["nombre"].casefold()))
     return docs
 
