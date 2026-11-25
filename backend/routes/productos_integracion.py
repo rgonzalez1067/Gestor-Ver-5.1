@@ -68,16 +68,17 @@ async def seed_products_and_baselines():
     await refresh_products()
 
 
-async def _require_admin(authorization):
+async def _require_admin(authorization, need: str = "edit"):
+    from permissions_catalog import has_module_level
     user = await get_current_user(authorization)
-    if (user.get("role") or "").lower() != "admin":
-        raise HTTPException(status_code=403, detail="Solo el Administrador puede mantener este catálogo")
+    if (user.get("role") or "").lower() != "admin" and not has_module_level(user, "productos_integracion", need):
+        raise HTTPException(status_code=403, detail="No tiene acceso al catálogo de Productos para Integración")
     return user
 
 
 @router.get("/productos-integracion")
 async def list_productos(authorization: Optional[str] = Header(None)):
-    await _require_admin(authorization)
+    await _require_admin(authorization, "read")
     docs = await db.productos_integracion.find({}, {"_id": 0}).to_list(2000)
     usage = {"C": {}, "P": {}}
     async for i in db.integrators.find({}, {"_id": 0, "certifications": 1}):
@@ -184,7 +185,7 @@ async def _apps_with_product(producto_id: str) -> list:
 
 @router.get("/productos-integracion/{producto_id}/certificados")
 async def productos_certificados(producto_id: str, authorization: Optional[str] = Header(None)):
-    await _require_admin(authorization)
+    await _require_admin(authorization, "read")
     return await _apps_with_product(producto_id)
 
 
@@ -192,7 +193,7 @@ async def productos_certificados(producto_id: str, authorization: Optional[str] 
 async def productos_certificados_pdf(producto_id: str, authorization: Optional[str] = Header(None)):
     from fastapi.responses import StreamingResponse
     from services.pdf_report import build_corporate_pdf
-    await _require_admin(authorization)
+    await _require_admin(authorization, "read")
     prod = await db.productos_integracion.find_one({"producto_id": producto_id}, {"_id": 0, "nombre": 1, "codigo": 1})
     if not prod:
         raise HTTPException(status_code=404, detail="Producto no encontrado")

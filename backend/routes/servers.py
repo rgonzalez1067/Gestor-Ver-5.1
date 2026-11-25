@@ -36,6 +36,14 @@ def _validate(payload: ServerCreate):
     return tipo, desc
 
 
+async def _require_edit(authorization):
+    from permissions_catalog import has_module_level
+    user = await get_current_user(authorization)
+    if not has_module_level(user, "servidores", "edit"):
+        raise HTTPException(status_code=403, detail="No tiene permisos de Edición Total en el catálogo de Servidores")
+    return user
+
+
 @router.get("/servers")
 async def list_servers(authorization: Optional[str] = Header(None)):
     await get_current_user(authorization)
@@ -44,7 +52,7 @@ async def list_servers(authorization: Optional[str] = Header(None)):
 
 @router.post("/servers")
 async def create_server(payload: ServerCreate, authorization: Optional[str] = Header(None)):
-    await get_current_user(authorization)
+    await _require_edit(authorization)
     tipo, desc = _validate(payload)
     existing = await db.servers.find_one(
         {"tipo": tipo, "descripcion": {"$regex": f"^{re.escape(desc)}$", "$options": "i"}}, {"_id": 0}
@@ -63,7 +71,7 @@ async def create_server(payload: ServerCreate, authorization: Optional[str] = He
 
 @router.put("/servers/{server_id}")
 async def update_server(server_id: str, payload: ServerCreate, authorization: Optional[str] = Header(None)):
-    await get_current_user(authorization)
+    await _require_edit(authorization)
     tipo, desc = _validate(payload)
     res = await db.servers.update_one({"server_id": server_id}, {"$set": {"tipo": tipo, "descripcion": desc}})
     if res.matched_count == 0:
@@ -73,9 +81,7 @@ async def update_server(server_id: str, payload: ServerCreate, authorization: Op
 
 @router.delete("/servers/{server_id}")
 async def delete_server(server_id: str, authorization: Optional[str] = Header(None)):
-    user = await get_current_user(authorization)
-    if (user or {}).get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Solo el Administrador puede eliminar del catálogo")
+    await _require_edit(authorization)
     res = await db.servers.delete_one({"server_id": server_id})
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Servidor no encontrado")

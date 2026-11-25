@@ -483,6 +483,14 @@ async def create_indexes():
 
     async def _bg_init():
         try:
+            from permissions_catalog import NEW_MODULES_DEFAULT_NONE
+            for coll in (db.profiles, db.users):
+                for mid in NEW_MODULES_DEFAULT_NONE:
+                    await coll.update_many({f"permissions.{mid}": {"$exists": False}, "permissions": {"$type": "object"}},
+                                           {"$set": {f"permissions.{mid}": "none"}})
+        except Exception as e:  # noqa: BLE001
+            logging.getLogger(__name__).warning(f"[startup] permisos de catálogos nuevos falló: {e}")
+        try:
             from routes.quote_taller import backfill_repair_paid_serials
             n = await backfill_repair_paid_serials()
             if n:

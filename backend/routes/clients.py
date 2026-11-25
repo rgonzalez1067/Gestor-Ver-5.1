@@ -1186,6 +1186,14 @@ async def get_fiscal_printers(authorization: Optional[str] = Header(None)):
     return models
 
 
+async def _require_fiscal_edit(authorization):
+    from permissions_catalog import has_module_level
+    user = await get_current_user(authorization)
+    if not has_module_level(user, "impresoras_fiscales", "edit"):
+        raise HTTPException(status_code=403, detail="No tiene permisos de Edición Total en el catálogo de Impresoras Fiscales")
+    return user
+
+
 @router.post("/fiscal-printers")
 async def create_fiscal_printer(data: dict, authorization: Optional[str] = Header(None)):
     """Registrar modelo de impresora fiscal (Marca + Modelo + válida vouchers VPOS).
@@ -1199,6 +1207,7 @@ async def create_fiscal_printer(data: dict, authorization: Optional[str] = Heade
     modelo = (data.get("modelo") or "").strip()
     valida = bool(data.get("valida_voucher_vpos", False))
     if marca or modelo:
+        await _require_fiscal_edit(authorization)
         if not marca or not modelo:
             raise HTTPException(status_code=400, detail="Marca y Modelo son obligatorios")
         name = f"{marca} — {modelo}"
@@ -1224,7 +1233,7 @@ async def create_fiscal_printer(data: dict, authorization: Optional[str] = Heade
 @router.put("/fiscal-printers/{model_id}")
 async def update_fiscal_printer(model_id: str, data: dict, authorization: Optional[str] = Header(None)):
     """Modificar un modelo de impresora fiscal (Marca + Modelo + válida vouchers VPOS)."""
-    await get_current_user(authorization)
+    await _require_fiscal_edit(authorization)
     marca = (data.get("marca") or "").strip()
     modelo = (data.get("modelo") or "").strip()
     if not marca or not modelo:
@@ -1253,9 +1262,7 @@ async def update_fiscal_printer(model_id: str, data: dict, authorization: Option
 @router.delete("/fiscal-printers/{model_id}")
 async def delete_fiscal_printer(model_id: str, authorization: Optional[str] = Header(None)):
     """Eliminar un modelo de impresora fiscal (solo Administrador)."""
-    user = await get_current_user(authorization)
-    if (user or {}).get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Solo el Administrador puede eliminar del catálogo")
+    await _require_fiscal_edit(authorization)
     res = await db.fiscal_printer_models.delete_one({"model_id": model_id})
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Modelo no encontrado")

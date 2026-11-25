@@ -54,9 +54,10 @@ async def can_create_referente(user: dict) -> bool:
 
 
 async def _require_admin(authorization):
+    from permissions_catalog import has_module_level
     user = await get_current_user(authorization)
-    if not _is_admin(user):
-        raise HTTPException(status_code=403, detail="Solo el Administrador puede mantener el catálogo de Referentes")
+    if not has_module_level(user, "referentes", "edit"):
+        raise HTTPException(status_code=403, detail="No tiene permisos de Edición Total en el catálogo de Referentes")
     return user
 
 

@@ -52,6 +52,10 @@ MODULES = [
     {"id": "dispositivos",          "name": "Bienes y Servicios",   "group": "catalogos"},
     {"id": "commercial_categories", "name": "Categoría Comercial",  "group": "catalogos"},
     {"id": "exchange_rate",         "name": "Tasa de Cambio",       "group": "catalogos"},
+    {"id": "impresoras_fiscales",   "name": "Impresoras Fiscales",  "group": "catalogos"},
+    {"id": "servidores",            "name": "Servidores",           "group": "catalogos"},
+    {"id": "referentes",            "name": "Referentes",           "group": "catalogos"},
+    {"id": "productos_integracion", "name": "Productos para Integración", "group": "catalogos"},
     # Implementación
     {"id": "proyectos",         "name": "Proyectos",          "group": "gestion_implementacion"},
     {"id": "proyectos_directos","name": "Proyectos Directos", "group": "gestion_implementacion"},
@@ -173,6 +177,18 @@ def get_default_menu_groups(active: bool = True) -> dict:
 def get_default_permissions(level: str = "read") -> dict:
     """Devuelve dict {module_id: level} con el nivel por default para todos los módulos."""
     return {m["id"]: level for m in MODULES}
+
+
+# Módulos incorporados después de la creación de perfiles: nacen Inactivos.
+NEW_MODULES_DEFAULT_NONE = ["impresoras_fiscales", "servidores", "referentes", "productos_integracion"]
+
+
+def has_module_level(user: dict, module_id: str, need: str = "read") -> bool:
+    """Admin siempre; resto: nivel del módulo >= need y grupo padre activo."""
+    if (user or {}).get("role") == "admin":
+        return True
+    lv = (user.get("permissions") or {}).get(module_id, "none")
+    return is_module_enabled(user, module_id) and LEVEL_RANK.get(lv, 0) >= LEVEL_RANK[need]
 
 
 def module_to_group(module_id: str) -> Optional[str]:

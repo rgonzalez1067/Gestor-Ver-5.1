@@ -28,7 +28,7 @@ export const ProtectedRoute = ({ children }) => {
 
   // Determinar módulo según la ruta actual
   const pathBase = '/' + (location.pathname.split('/')[1] || '');
-  const module = ROUTE_MODULE_MAP[pathBase];
+  const module = ROUTE_MODULE_MAP[location.pathname] || ROUTE_MODULE_MAP[pathBase];
 
   // Validar permiso sin hook (lectura directa de localStorage)
   if (module) {

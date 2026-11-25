@@ -7,6 +7,7 @@ import { Badge } from '../components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 import { Server, Plus, Trash2, RefreshCw, Pencil } from 'lucide-react';
 import api from '../utils/api';
+import { usePermission } from '../hooks/usePermission';
 import { toast } from 'sonner';
 
 const TIPOS = ['Monocomercio', 'Multicomercio'];
@@ -17,7 +18,7 @@ export default function ServersCatalog() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ tipo: 'Monocomercio', descripcion: '' });
-  const isAdmin = (() => { try { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u?.role === 'admin'; } catch { return false; } })();
+  const { canEdit: isAdmin } = usePermission('servidores');
 
   const load = async () => {
     try { const { data } = await api.get('/servers'); setItems(data || []); }
@@ -93,7 +94,7 @@ export default function ServersCatalog() {
               {editingId && (
                 <Button variant="outline" onClick={resetForm} data-testid="server-cancel-btn">Cancelar</Button>
               )}
-              <Button onClick={save} disabled={saving} className="bg-indigo-600 hover:bg-indigo-700 text-white" data-testid="server-save-btn">
+              <Button onClick={save} disabled={saving || !isAdmin} className="bg-indigo-600 hover:bg-indigo-700 text-white" data-testid="server-save-btn">
                 {saving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Agregar al catálogo'}
               </Button>
             </div>
@@ -126,9 +127,9 @@ export default function ServersCatalog() {
                       <td className="px-4 py-2.5 text-slate-700">{s.descripcion}</td>
                       <td className="px-4 py-2.5 text-right">
                         <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => startEdit(s)} data-testid={`server-edit-${s.server_id}`} className="text-slate-500 hover:text-indigo-700">
+                          {isAdmin && <Button size="sm" variant="ghost" onClick={() => startEdit(s)} data-testid={`server-edit-${s.server_id}`} className="text-slate-500 hover:text-indigo-700">
                             <Pencil size={14} />
-                          </Button>
+                          </Button>}
                           {isAdmin && (
                             <Button size="sm" variant="ghost" onClick={() => remove(s)} data-testid={`server-delete-${s.server_id}`} className="text-rose-500 hover:text-rose-700">
                               <Trash2 size={14} />

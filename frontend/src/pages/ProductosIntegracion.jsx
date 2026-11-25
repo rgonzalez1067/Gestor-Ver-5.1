@@ -9,8 +9,10 @@ import { ProductoFormDialog } from '../components/productosIntegracion/ProductoF
 import { CertifiedAppsHover } from '../components/productosIntegracion/CertifiedAppsHover';
 import { toast } from 'sonner';
 import api from '../utils/api';
+import { usePermission } from '../hooks/usePermission';
 
 export default function ProductosIntegracion() {
+  const { canEdit } = usePermission('productos_integracion');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -49,7 +51,7 @@ export default function ProductosIntegracion() {
         <div className="max-w-6xl mx-auto p-6 lg:p-8 page-fixed-main w-full">
           <div className="flex items-center justify-between gap-4 mb-5">
             <h1 className="text-3xl font-bold text-slate-900 font-manrope flex items-center gap-3"><Boxes className="text-brand-blue-600" size={28} />Productos para Integración</h1>
-            <Button onClick={() => { setEditing(null); setFormOpen(true); }} className="bg-brand-green-600 hover:bg-brand-green-700" data-testid="productos-new-btn"><Plus size={16} className="mr-2" />Nuevo Producto</Button>
+            {canEdit && <Button onClick={() => { setEditing(null); setFormOpen(true); }} className="bg-brand-green-600 hover:bg-brand-green-700" data-testid="productos-new-btn"><Plus size={16} className="mr-2" />Nuevo Producto</Button>}
           </div>
           <div className="flex items-center gap-3 mb-4">
             <div className="relative w-72"><Search size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
@@ -73,10 +75,10 @@ export default function ProductosIntegracion() {
                       <td className="px-3 py-2 text-slate-600 text-xs max-w-[220px] truncate" title={p.descripcion || ''} data-testid={`producto-medio-pago-${p.producto_id}`}>{p.medio_pago_name || <span className="text-slate-300">—</span>}</td>
                       <td className="px-3 py-2 text-center"><CertifiedAppsHover producto={p} /></td>
                       <td className="px-3 py-2 text-center text-amber-700" data-testid={`producto-pendientes-${p.producto_id}`}>{p.en_proceso}</td>
-                      <td className="px-3 py-2 text-center"><Switch checked={p.activo} onCheckedChange={() => toggle(p)} data-testid={`producto-status-${p.producto_id}`} /></td>
+                      <td className="px-3 py-2 text-center"><Switch disabled={!canEdit} checked={p.activo} onCheckedChange={() => toggle(p)} data-testid={`producto-status-${p.producto_id}`} /></td>
                       <td className="px-3 py-2"><div className="flex items-center gap-3">
-                        <button type="button" onClick={() => { setEditing(p); setFormOpen(true); }} className="text-slate-400 hover:text-brand-blue-600" title="Editar" data-testid={`producto-edit-${p.producto_id}`}><Pencil size={15} /></button>
-                        <button type="button" onClick={() => setDeleting(p)} className="text-slate-400 hover:text-red-600" title="Eliminar" data-testid={`producto-delete-${p.producto_id}`}><Trash2 size={15} /></button>
+                        {canEdit && <><button type="button" onClick={() => { setEditing(p); setFormOpen(true); }} className="text-slate-400 hover:text-brand-blue-600" title="Editar" data-testid={`producto-edit-${p.producto_id}`}><Pencil size={15} /></button>
+                        <button type="button" onClick={() => setDeleting(p)} className="text-slate-400 hover:text-red-600" title="Eliminar" data-testid={`producto-delete-${p.producto_id}`}><Trash2 size={15} /></button></>}
                       </div></td>
                     </tr>
                   ))}

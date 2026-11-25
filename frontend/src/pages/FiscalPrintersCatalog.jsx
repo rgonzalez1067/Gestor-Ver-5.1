@@ -7,6 +7,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Badge } from '../components/ui/badge';
 import { Printer, Plus, Trash2, RefreshCw, Check, X, Pencil } from 'lucide-react';
 import api from '../utils/api';
+import { usePermission } from '../hooks/usePermission';
 import { toast } from 'sonner';
 
 export default function FiscalPrintersCatalog() {
@@ -15,7 +16,7 @@ export default function FiscalPrintersCatalog() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ marca: '', modelo: '', valida_voucher_vpos: false });
-  const isAdmin = (() => { try { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u?.role === 'admin'; } catch { return false; } })();
+  const { canEdit: isAdmin } = usePermission('impresoras_fiscales');
 
   const load = async () => {
     try {
@@ -93,7 +94,7 @@ export default function FiscalPrintersCatalog() {
               {editingId && (
                 <Button variant="outline" onClick={resetForm} data-testid="fp-cancel-btn">Cancelar</Button>
               )}
-              <Button onClick={save} disabled={saving} className="bg-purple-600 hover:bg-purple-700 text-white" data-testid="fp-save-btn">
+              <Button onClick={save} disabled={saving || !isAdmin} className="bg-purple-600 hover:bg-purple-700 text-white" data-testid="fp-save-btn">
                 {saving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Agregar al catálogo'}
               </Button>
             </div>
@@ -130,9 +131,9 @@ export default function FiscalPrintersCatalog() {
                       </td>
                       <td className="px-4 py-2.5 text-right">
                         <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => startEdit(m)} data-testid={`fp-edit-${m.model_id}`} className="text-slate-500 hover:text-purple-700">
+                          {isAdmin && <Button size="sm" variant="ghost" onClick={() => startEdit(m)} data-testid={`fp-edit-${m.model_id}`} className="text-slate-500 hover:text-purple-700">
                             <Pencil size={14} />
-                          </Button>
+                          </Button>}
                           {isAdmin && (
                             <Button size="sm" variant="ghost" onClick={() => remove(m)} data-testid={`fp-delete-${m.model_id}`} className="text-rose-500 hover:text-rose-700">
                               <Trash2 size={14} />

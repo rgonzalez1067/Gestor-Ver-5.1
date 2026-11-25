@@ -11,11 +11,13 @@ import { TIPOS_REFERENTE } from '../components/referentes/ReferentePicker';
 import { formatDate } from '../utils/dateFormat';
 import { toast } from 'sonner';
 import api from '../utils/api';
+import { usePermission } from '../hooks/usePermission';
 
 const TIPO_LABEL = Object.fromEntries(TIPOS_REFERENTE);
 const TIPO_STYLE = { PERSONA: 'bg-sky-50 text-sky-700', AREA: 'bg-amber-50 text-amber-700', EMPRESA: 'bg-violet-50 text-violet-700' };
 
 export default function Referentes() {
+  const { canEdit } = usePermission('referentes');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -55,10 +57,10 @@ export default function Referentes() {
         <div className="max-w-6xl mx-auto p-6 lg:p-8 page-fixed-main w-full">
           <div className="flex items-center justify-between gap-4 mb-5">
             <h1 className="text-3xl font-bold text-slate-900 font-manrope flex items-center gap-3"><UserCheck className="text-brand-blue-600" size={28} />Referentes</h1>
-            <div className="flex gap-2">
+            {canEdit && <div className="flex gap-2">
               <Button variant="outline" disabled={checked.length < 2} onClick={() => setMergeOpen(true)} data-testid="referentes-merge-btn"><GitMerge size={16} className="mr-2" />Fusionar ({checked.length})</Button>
               <Button onClick={() => { setEditing(null); setFormOpen(true); }} className="bg-brand-green-600 hover:bg-brand-green-700" data-testid="referentes-new-btn"><Plus size={16} className="mr-2" />Nuevo Referente</Button>
-            </div>
+            </div>}
           </div>
           <div className="flex flex-wrap items-center gap-3 mb-4">
             <div className="relative w-72"><Search size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
@@ -84,10 +86,10 @@ export default function Referentes() {
                       <td className="px-3 py-2 text-slate-600">{r.persona || '—'}</td>
                       <td className="px-3 py-2 text-center text-slate-700" data-testid={`referente-contacts-${r.referente_id}`}>{r.contactos}</td>
                       <td className="px-3 py-2 text-slate-500 text-xs">{formatDate(r.fecha_creacion)}</td>
-                      <td className="px-3 py-2 text-center"><Switch checked={r.estatus} onCheckedChange={() => toggleStatus(r)} data-testid={`referente-status-${r.referente_id}`} /></td>
+                      <td className="px-3 py-2 text-center"><Switch disabled={!canEdit} checked={r.estatus} onCheckedChange={() => toggleStatus(r)} data-testid={`referente-status-${r.referente_id}`} /></td>
                       <td className="px-3 py-2"><div className="flex items-center gap-3">
-                        <button type="button" onClick={() => { setEditing(r); setFormOpen(true); }} className="text-slate-400 hover:text-brand-blue-600" title="Editar" data-testid={`referente-edit-${r.referente_id}`}><Pencil size={15} /></button>
-                        <button type="button" disabled={r.contactos > 0} onClick={() => setDeleting(r)} className="text-slate-400 hover:text-red-600 disabled:opacity-30 disabled:hover:text-slate-400 disabled:cursor-not-allowed" title={r.contactos > 0 ? `No se puede eliminar: tiene ${r.contactos} contacto(s) vinculado(s). Fusiónelo o inactívelo.` : 'Eliminar'} data-testid={`referente-delete-${r.referente_id}`}><Trash2 size={15} /></button>
+                        {canEdit && <><button type="button" onClick={() => { setEditing(r); setFormOpen(true); }} className="text-slate-400 hover:text-brand-blue-600" title="Editar" data-testid={`referente-edit-${r.referente_id}`}><Pencil size={15} /></button>
+                        <button type="button" disabled={r.contactos > 0} onClick={() => setDeleting(r)} className="text-slate-400 hover:text-red-600 disabled:opacity-30 disabled:hover:text-slate-400 disabled:cursor-not-allowed" title={r.contactos > 0 ? `No se puede eliminar: tiene ${r.contactos} contacto(s) vinculado(s). Fusiónelo o inactívelo.` : 'Eliminar'} data-testid={`referente-delete-${r.referente_id}`}><Trash2 size={15} /></button></>}
                       </div></td>
                     </tr>
                   ))}
