@@ -59,7 +59,9 @@ async def migrate_integrator_certifications_if_needed():
     if flag:
         return 0
     default_certs = {pid: "N/A" for pid in INTEGRATOR_PRODUCT_IDS}
-    result = await db.integrators.update_many({}, {"$set": {"certifications": default_certs}})
+    # Solo integradores sin ninguna key vigente: nunca borra matrices ya cargadas (p. ej. al migrar otra BD).
+    legacy = {"$nor": [{f"certifications.{pid}": {"$exists": True}} for pid in INTEGRATOR_PRODUCT_IDS]}
+    result = await db.integrators.update_many(legacy, {"$set": {"certifications": default_certs}})
     await db["_migrations"].insert_one({
         "_id": "integrator_cert_reset_v1",
         "ran_at": datetime.now(timezone.utc).isoformat(),
