@@ -4920,3 +4920,8 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-06: Catálogo Productos para Integración: columna Aplicativos reemplazada por "En Proceso (P)" y "Certificados (C)", ordenables.
 
 - 2026-06: Hover sobre Certificados (C) en Productos para Integración lista integradores/aplicativos con el producto en C + PDF por producto (GET /productos-integracion/{id}/certificados[/pdf]).
+
+## 2026-06 Medio de Pago en Productos para Integración + Warning en Cotizador
+- productos_integracion.medio_pago_id (FK services); GET /api/productos-integracion/links.
+- Cotizador addMultipleMediosPago: findUncertified (por nombre) -> CertWarningDialog; Aceptar => pendiente_certificacion=true + badge; PDF concepto "<Medio> — (Pendiente por certificación del Integrador)" (frontend pendLabel + backend quotes.py additional). QuoteService.pendiente_certificacion.
+- Pendientes menores: PDF inicial fila Set-Up sin leyenda (regenerar sí), endpoint legacy /quotes/{id}/pdf sin leyenda, links cargados al abrir Cotizaciones.

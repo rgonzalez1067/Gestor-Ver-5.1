@@ -24,8 +24,8 @@ export const PendingCertBadge = ({ testId }) => (
 );
 
 export const CertWarningDialog = ({ warn, onCancel, onAccept }) => (
-  <AlertDialog open={!!warn} onOpenChange={(o) => !o && onCancel()}>
-    <AlertDialogContent className="max-w-xl" data-testid="cert-warning-dialog">
+  <AlertDialog open={!!warn}>
+    <AlertDialogContent className="max-w-xl" onEscapeKeyDown={onCancel} data-testid="cert-warning-dialog">
       <AlertDialogHeader>
         <AlertDialogTitle className="flex items-center gap-2 text-amber-700"><AlertTriangle size={20} />Advertencia: producto no certificado con el aplicativo</AlertDialogTitle>
         <AlertDialogDescription asChild>
