@@ -30,7 +30,7 @@ def _fmt(d: Optional[str]) -> str:
     return "—" if not d else "/".join(reversed(str(d)[:10].split("-")))
 
 
-async def _rows(user: dict, implementador: str, generador: str, desde: str, hasta: str, tipo: str, estatus: str):
+async def _rows(user: dict, implementador: str, generador: str, desde: str, hasta: str, tipo: str, estatus: str, nivel: str = ""):
     from routes.projects import _build_project_visibility_query
     from services.business_calendar import business_days_between, get_holiday_sets
     from services.project_sla_engine import DEFAULT_THRESHOLDS, sla_reference_date
@@ -70,6 +70,8 @@ async def _rows(user: dict, implementador: str, generador: str, desde: str, hast
                      "estado": p.get("status", ""), "responsable": MOTIVO_LABEL.get((p.get("motivo_avance") or "").upper(), "Sin responsable"),
                      "ultimo_seguimiento": seguim or None,
                      "dias_retraso": 0 if p.get("status") in FINISHED else days, "nivel": level, "nivel_label": LEVEL_LABEL[level]})
+    if nivel:
+        rows = [r for r in rows if r["nivel"] == nivel]
     order = {"critico": 0, "medio": 1, "al_dia": 2}
     rows.sort(key=lambda r: (order[r["nivel"]], -r["dias_retraso"], r["implementador"], r["project_number"]))
     kpis = {"total": len(rows), **{k: sum(r["nivel"] == k for r in rows) for k in order},
@@ -155,19 +157,19 @@ def _pdf(rows, kpis, ftext):
 
 @router.get("/projects-report/followup")
 async def followup_report(implementador: str = "", generador: str = "", desde: str = "", hasta: str = "", tipo: str = "",
-                          estatus: str = "", authorization: Optional[str] = Header(None)):
+                          estatus: str = "", nivel: str = "", authorization: Optional[str] = Header(None)):
     user = await get_current_user(authorization)
-    rows, kpis, opts = await _rows(user, implementador, generador, desde, hasta, tipo, estatus)
+    rows, kpis, opts = await _rows(user, implementador, generador, desde, hasta, tipo, estatus, nivel)
     return {"rows": rows, "kpis": kpis, "options": opts}
 
 
 @router.get("/projects-report/followup/export")
 async def followup_export(format: str = "pdf", implementador: str = "", generador: str = "", desde: str = "", hasta: str = "",
-                          tipo: str = "", estatus: str = "", filters_label: str = "", authorization: Optional[str] = Header(None)):
+                          tipo: str = "", estatus: str = "", nivel: str = "", filters_label: str = "", authorization: Optional[str] = Header(None)):
     user = await get_current_user(authorization)
     if format not in ("pdf", "xlsx"):
         raise HTTPException(400, "Formato inválido")
-    rows, kpis, _ = await _rows(user, implementador, generador, desde, hasta, tipo, estatus)
+    rows, kpis, _ = await _rows(user, implementador, generador, desde, hasta, tipo, estatus, nivel)
     ftext = filters_label or "Sin filtros (todos los proyectos visibles)"
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
     if format == "xlsx":

@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const TIPOS = [['VPOS', 'VPOS'], ['MPOS', 'MPOS'], ['GATEWAY', 'Payment Gateway'], ['LINK', 'Link de Pago']];
-const EMPTY = { implementador: '', generador: '', desde: '', hasta: '', tipo: '', estatus: '' };
+const EMPTY = { implementador: '', generador: '', desde: '', hasta: '', tipo: '', estatus: '', nivel: '' };
+const NIVELES = [['critico', 'Retraso Crítico'], ['medio', 'Retraso Medio'], ['al_dia', 'Al Día']];
 const LEVEL_CLS = { critico: 'bg-rose-100 text-rose-700', medio: 'bg-amber-100 text-amber-700', al_dia: 'bg-emerald-100 text-emerald-700' };
 const fmt = (d) => (d ? String(d).slice(0, 10).split('-').reverse().join('/') : '—');
 
@@ -24,7 +25,7 @@ const Pick = ({ label, value, onChange, options, testid }) => (
 
 const label = (f) => [f.implementador && `Implementador: ${f.implementador}`, f.generador && `Generador: ${f.generador}`,
   (f.desde || f.hasta) && `Envío: ${fmt(f.desde) || '…'} a ${fmt(f.hasta) || '…'}`,
-  f.tipo && `Tipo: ${TIPOS.find((t) => t[0] === f.tipo)?.[1]}`, f.estatus && `Estatus: ${f.estatus}`].filter(Boolean).join(' · ');
+  f.tipo && `Tipo: ${TIPOS.find((t) => t[0] === f.tipo)?.[1]}`, f.estatus && `Estatus: ${f.estatus}`, f.nivel && `Tipo de Retraso: ${NIVELES.find((n) => n[0] === f.nivel)?.[1]}`].filter(Boolean).join(' · ');
 
 export const ProjectFollowupReportDialog = ({ open, onOpenChange }) => {
   const [f, setF] = useState(EMPTY);
@@ -63,13 +64,14 @@ export const ProjectFollowupReportDialog = ({ open, onOpenChange }) => {
           <DialogTitle>Reporte de Seguimiento de Proyectos</DialogTitle>
           <DialogDescription>Seleccione los filtros y genere el informe en PDF o Excel.</DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
+        <div className="grid grid-cols-2 md:grid-cols-7 gap-3 items-end">
           <Pick label="Implementador" value={f.implementador} onChange={set('implementador')} options={o.implementadores.map((x) => [x, x])} testid="followup-filter-implementador" />
           <Pick label="Generador" value={f.generador} onChange={set('generador')} options={o.generadores.map((x) => [x, x])} testid="followup-filter-generador" />
           <div className="flex flex-col gap-1"><span className="text-[11px] font-medium text-slate-500">Envío desde</span><Input type="date" className="h-9" value={f.desde} onChange={(e) => set('desde')(e.target.value)} data-testid="followup-filter-desde" /></div>
           <div className="flex flex-col gap-1"><span className="text-[11px] font-medium text-slate-500">Envío hasta</span><Input type="date" className="h-9" value={f.hasta} onChange={(e) => set('hasta')(e.target.value)} data-testid="followup-filter-hasta" /></div>
           <Pick label="Tipo de Proyecto" value={f.tipo} onChange={set('tipo')} options={TIPOS} testid="followup-filter-tipo" />
           <Pick label="Estatus" value={f.estatus} onChange={set('estatus')} options={o.estatus.map((x) => [x, x])} testid="followup-filter-estatus" />
+          <Pick label="Tipo de Retraso" value={f.nivel} onChange={set('nivel')} options={NIVELES} testid="followup-filter-nivel" />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => run()} disabled={!!busy} data-testid="followup-run-btn"><Search size={14} className="mr-1.5" />{busy === 'run' ? 'Consultando…' : 'Aplicar filtros'}</Button>
