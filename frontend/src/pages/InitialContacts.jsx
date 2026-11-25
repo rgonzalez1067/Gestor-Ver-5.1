@@ -19,6 +19,10 @@ import { ReferentePicker, referentePayload } from '../components/referentes/Refe
 import { ContactAnalysisDialog } from '../components/initialContacts/ContactAnalysisDialog';
 import { BarChart3 } from 'lucide-react';
 import { ContactModalHeader, FormSection } from '../components/initialContacts/ContactFormParts';
+import { AttachmentPicker } from '../components/initialContacts/AttachmentPicker';
+import { AttachmentBadge, AttachmentViewer } from '../components/initialContacts/AttachmentViewer';
+
+const uploadForm = (file) => { const fd = new FormData(); fd.append('file', file); return fd; };
 
 export const InitialContacts = () => {
   const [contacts, setContacts] = useState([]);
@@ -91,6 +95,11 @@ export const InitialContacts = () => {
   const [editContact, setEditContact] = useState(null);
   const [editForm, setEditForm] = useState({ contact_name: '', legal_name: '', phone: '', email: '', sede: 'PYME', interest_notes: '' });
   const [editing, setEditing] = useState(false);
+  const [createFile, setCreateFile] = useState(null);
+  const [editFile, setEditFile] = useState(null);
+  const [editRemoveFile, setEditRemoveFile] = useState(false);
+  const [viewAttachment, setViewAttachment] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const isAdmin = currentUser?.role === 'admin';
   const [referentes, setReferentes] = useState({ items: [], can_create: false });
@@ -128,8 +137,12 @@ export const InitialContacts = () => {
       toast.error('Debe indicar al menos Teléfono o Email'); return;
     }
     if (refInvalid(createRef)) { toast.error('Indique el nombre del nuevo referente'); return; }
+    setSaving(true);
     try {
-      await api.post('/initial-contacts', { ...formData, ...referentePayload(createRef) });
+      let staged_attachment_id;
+      if (createFile) staged_attachment_id = (await api.post('/initial-contacts/attachments/stage', uploadForm(createFile))).data.staged_id;
+      await api.post('/initial-contacts', { ...formData, ...referentePayload(createRef), staged_attachment_id });
+      setCreateFile(null);
       setCreateRef({ referente_id: '', nuevo: null });
       fetchReferentes();
       toast.success('Contacto inicial creado');
@@ -137,6 +150,7 @@ export const InitialContacts = () => {
       setFormData({ contact_name: '', phone: '', email: '', legal_name: '', interest_notes: '', referred_by: '', assigned_to_user_id: '', due_date: '' });
       fetchData();
     } catch (err) { toast.error(err.response?.data?.detail || 'Error al crear contacto'); }
+    finally { setSaving(false); }
   };
 
   const handleDocument = async () => {
@@ -202,6 +216,7 @@ export const InitialContacts = () => {
       interest_notes: c.interest_notes || '',
     });
     setEditRef({ referente_id: c.referente_id || '', nuevo: null });
+    setEditFile(null); setEditRemoveFile(false);
     setEditOpen(true);
   };
 
@@ -214,6 +229,8 @@ export const InitialContacts = () => {
     setEditing(true);
     try {
       await api.put(`/initial-contacts/${editContact.contact_id}`, { ...editForm, ...referentePayload(editRef) });
+      if (editFile) await api.post(`/initial-contacts/${editContact.contact_id}/attachment`, uploadForm(editFile));
+      else if (editRemoveFile && editContact.adjunto_tipo) await api.delete(`/initial-contacts/${editContact.contact_id}/attachment`);
       fetchReferentes();
       toast.success('Contacto actualizado');
       setEditOpen(false);
@@ -395,7 +412,7 @@ export const InitialContacts = () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-700">{c.legal_name}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700"><div className="flex items-center gap-1.5 flex-wrap">{c.legal_name}<AttachmentBadge contact={c} onOpen={setViewAttachment} /></div></td>
                     <td className="px-4 py-3">
                       {c.referred_by ? (
                         <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-semibold uppercase">{c.referred_by}</span>
@@ -568,9 +585,12 @@ export const InitialContacts = () => {
                 />
                 <p className="text-xs text-slate-400 mt-1 text-right">{(formData.interest_notes || '').length}/300</p>
               </FormSection>
+              <FormSection title="Documento de Respaldo / Anexo (Opcional)">
+                <AttachmentPicker file={createFile} onChange={setCreateFile} testid="create-attachment" />
+              </FormSection>
               <div className="flex justify-end gap-2 pt-1">
-                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-                <Button type="submit" className="bg-green-600 hover:bg-green-700 px-6" data-testid="submit-contact-btn">Crear Contacto</Button>
+                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={saving}>Cancelar</Button>
+                <Button type="submit" disabled={saving} className="bg-green-600 hover:bg-green-700 px-6" data-testid="submit-contact-btn">{saving ? 'Guardando…' : 'Crear Contacto'}</Button>
               </div>
             </form>
           </DialogContent>
@@ -628,6 +648,14 @@ export const InitialContacts = () => {
                 />
                 <p className="text-xs text-slate-400 mt-1 text-right">{(editForm.interest_notes || '').length}/300</p>
               </FormSection>
+              <FormSection title="Documento de Respaldo / Anexo (Opcional)">
+                <AttachmentPicker file={editFile} onChange={setEditFile} testid="edit-attachment"
+                  existing={editContact?.adjunto_tipo && !editRemoveFile ? editContact : null} onRemoveExisting={() => setEditRemoveFile(true)} />
+                {editContact?.adjunto_tipo && !editRemoveFile && !editFile && (
+                  <button type="button" onClick={() => setViewAttachment(editContact)} className="mt-1 text-xs text-blue-600 hover:underline" data-testid="edit-attachment-view">Ver documento</button>
+                )}
+                {editRemoveFile && !editFile && <p className="mt-1 text-[11px] text-amber-700" data-testid="edit-attachment-remove-note">El documento actual se eliminará al guardar los cambios.</p>}
+              </FormSection>
               <div className="flex justify-end gap-2 pt-1">
                 <Button type="button" variant="outline" onClick={() => setEditOpen(false)} disabled={editing}>Cancelar</Button>
                 <Button type="button" onClick={handleEdit} disabled={editing} className="bg-blue-600 hover:bg-blue-700 px-6" data-testid="submit-edit-btn">{editing ? 'Guardando…' : 'Guardar Cambios'}</Button>
@@ -635,6 +663,8 @@ export const InitialContacts = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {viewAttachment && <AttachmentViewer contact={viewAttachment} onClose={() => setViewAttachment(null)} />}
 
         {/* Document Modal */}
         <Dialog open={documentOpen} onOpenChange={setDocumentOpen}>

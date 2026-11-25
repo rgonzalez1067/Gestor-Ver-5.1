@@ -27,6 +27,7 @@ class InitialContactCreate(BaseModel):
     nuevo_referente: Optional[ReferenteIn] = None
     assigned_to_user_id: Optional[str] = None
     due_date: Optional[str] = None
+    staged_attachment_id: Optional[str] = None
 
 class InitialContactAssign(BaseModel):
     assigned_to_user_id: str
@@ -97,7 +98,9 @@ async def create_initial_contact(data: InitialContactCreate, authorization: Opti
     """Crear un nuevo contacto inicial."""
     current_user = await get_current_user(authorization)
     
-    contact_id = f"ic_{uuid.uuid4().hex[:12]}"
+    from routes.initial_contact_attachments import consume_staged
+    staged = await consume_staged(data.staged_attachment_id, current_user)
+    contact_id = staged["contact_id"] if staged else f"ic_{uuid.uuid4().hex[:12]}"
     now = datetime.now(timezone.utc).isoformat()
     creator_name = user_display(current_user)
 
@@ -152,7 +155,8 @@ async def create_initial_contact(data: InitialContactCreate, authorization: Opti
                 "user_name": creator_name,
                 "timestamp": now
             }
-        ]
+        ],
+        **(staged["fields"] if staged else {}),
     }
     
     await db.initial_contacts.insert_one(contact)

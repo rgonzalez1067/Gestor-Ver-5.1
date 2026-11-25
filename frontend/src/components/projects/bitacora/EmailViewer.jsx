@@ -12,13 +12,14 @@ const saveBlob = (blob, name) => {
 const kb = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
 // Visor de correo .eml adjunto en la bitácora: encabezados, cuerpo y adjuntos descargables.
-export const EmailViewer = ({ projectId, ev, onClose }) => {
-  const base = `/projects/${projectId}/bitacora/evidence/${ev.evidence_id}`;
+export const EmailViewer = ({ projectId, ev, onClose, baseUrl }) => {
+  const base = baseUrl || `/projects/${projectId}/bitacora/evidence/${ev.evidence_id}`;
+  const emlBase = baseUrl ? `${baseUrl}/email` : `${base}/email`;
   const [mail, setMail] = useState(null);
   const [busy, setBusy] = useState(null);
 
   useEffect(() => {
-    api.get(`${base}/email`).then(r => setMail(r.data))
+    api.get(emlBase).then(r => setMail(r.data))
       .catch(e => { toast.error(e.response?.data?.detail || 'No se pudo abrir el correo'); onClose(); });
   }, [base]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -51,7 +52,7 @@ export const EmailViewer = ({ projectId, ev, onClose }) => {
             {mail.attachments.length > 0 && (
               <div className="flex flex-wrap gap-2" data-testid="email-viewer-attachments">
                 {mail.attachments.map(a => (
-                  <button key={a.index} type="button" onClick={() => download(`${base}/email/attachments/${a.index}`, a.filename, a.index)}
+                  <button key={a.index} type="button" onClick={() => download(`${emlBase}/attachments/${a.index}`, a.filename, a.index)}
                     className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50"
                     data-testid={`email-viewer-attachment-${a.index}`}>
                     {busy === a.index ? <Loader2 size={12} className="animate-spin" /> : <Paperclip size={12} />}
