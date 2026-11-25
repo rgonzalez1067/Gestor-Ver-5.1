@@ -8,7 +8,7 @@ const ZoneEditor = ({ zone, label, value, onChange, editorRef, zoneRef, context 
     <div onMouseDown={() => { zoneRef.current = zone; }}>
       <RichTextEditor ref={editorRef} value={value} onChange={(html) => { zoneRef.current = zone; onChange(html); }}
         maxChars={5000} hardLimit={false} placeholder={`Contenido del ${label.toLowerCase()} (texto, variables o logo)...`}
-        testid={`fusion-${zone}-editor-${context}`} minHeight={70} maxHeight={160} />
+        testid={`fusion-${zone}-editor-${context}`} enableFontSize minHeight={70} maxHeight={160} />
     </div>
   </div>
 );

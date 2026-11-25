@@ -267,7 +267,7 @@ export const EntityTemplatesConfig = ({
                       maxChars={20000}
                       hardLimit={false}
                       placeholder={isFusion ? 'Redacte aquí la estructura del documento...' : 'Redacte aquí el cuerpo del correo...'}
-                      testid={`entity-tpl-editor-${context}`}
+                      testid={`entity-tpl-editor-${context}`} enableFontSize={isFusion}
                       showPreview
                       minHeight={240}
                       maxHeight={400}

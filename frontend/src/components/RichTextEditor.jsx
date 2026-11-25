@@ -7,7 +7,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import { TableKit } from '@tiptap/extension-table';
 import TextAlign from '@tiptap/extension-text-align';
-import { TextStyle } from '@tiptap/extension-text-style';
+import { TextStyle, FontSize } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import Link from '@tiptap/extension-link';
@@ -272,6 +272,7 @@ export const RichTextEditor = forwardRef(function RichTextEditor({
   imageUploadUrl = '/projects/upload-image',
   enableHeadings = false,
   showTableControls = true,
+  enableFontSize = false,
 }, ref) {
   const [showHighlights, setShowHighlights] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -317,6 +318,7 @@ export const RichTextEditor = forwardRef(function RichTextEditor({
       Underline,
       TableKit.configure({ table: { resizable: false, HTMLAttributes: { class: 'rte-table' } } }),
       TextStyle,
+      FontSize,
       Color,
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ['paragraph'] }),
@@ -502,6 +504,19 @@ export const RichTextEditor = forwardRef(function RichTextEditor({
         <Btn active={editor.isActive({ textAlign: 'justify' })} onClick={() => editor.chain().focus().setTextAlign('justify').run()} title="Justificar" tid={`${testid}-align-justify`}><AlignJustify size={14} /></Btn>
 
         <span className="mx-1 h-4 w-px bg-slate-300" />
+
+        {enableFontSize && (
+          <select
+            value={editor.getAttributes('textStyle').fontSize || ''}
+            onChange={(e) => (e.target.value ? editor.chain().focus().setFontSize(e.target.value).run() : editor.chain().focus().unsetFontSize().run())}
+            className="h-7 rounded border border-slate-300 bg-white px-1 text-xs text-slate-700"
+            title="Tamaño de fuente"
+            data-testid={`${testid}-font-size`}
+          >
+            <option value="">Tamaño</option>
+            {[8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36].map((n) => <option key={n} value={`${n}pt`}>{n}</option>)}
+          </select>
+        )}
 
         {/* Color de fuente (native picker) */}
         <label className="relative inline-flex items-center justify-center h-7 w-7 rounded hover:bg-slate-200 cursor-pointer" title="Color de texto">
