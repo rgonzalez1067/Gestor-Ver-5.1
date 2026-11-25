@@ -43,12 +43,14 @@ async def _rows(user: dict, implementador: str, generador: str, desde: str, hast
     opts = {"implementadores": sorted({p["assigned_to_name"] for p in projects if p.get("assigned_to_name")}),
             "generadores": sorted({p["created_by_name"] for p in projects if p.get("created_by_name")}),
             "estatus": sorted({p["status"] for p in projects if p.get("status")})}
+    impls = {x for x in implementador.split("||") if x}
+    gens = {x for x in generador.split("||") if x}
     rows = []
     for p in projects:
         sent = str(p.get("sent_to_implementation_at") or p.get("created_at") or "")[:10]
-        if implementador and p.get("assigned_to_name") != implementador:
+        if impls and p.get("assigned_to_name") not in impls:
             continue
-        if generador and p.get("created_by_name") != generador:
+        if gens and p.get("created_by_name") not in gens:
             continue
         if (desde and sent < desde) or (hasta and sent > hasta):
             continue
