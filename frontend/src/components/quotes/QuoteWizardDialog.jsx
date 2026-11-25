@@ -24,6 +24,7 @@ import { ExpressServiceToggle } from './ExpressServiceToggle';
 import { PgAdditionalServicesToggles, LpStandaloneSummary } from './PgAdditionalServices';
 import { QuoteScopeSelector } from './scope/QuoteScopeSelector';
 import { SponsorTypeSelector } from './scope/SponsorTypeSelector';
+import { isScopeType } from './scope/scopeUtils';
 import { PendingCertBadge } from './CertWarningDialog';
 
 export const QuoteWizardDialog = ({ ctx }) => {
@@ -149,7 +150,10 @@ export const QuoteWizardDialog = ({ ctx }) => {
   };
 
   // Alcance jerárquico VPOS/MPOS: el RIF titular es el patrocinador-cliente o el primer RIF seleccionado.
-  const isScopeFlow = quoteData.quote_type === 'VPOS' || quoteData.quote_type === 'MPOS';
+  const isScopeFlow = isScopeType(quoteData.quote_type);
+  const singleRif = (quoteData.scope_tree || []).length === 1
+    ? (clients.find(c => c.client_id === quoteData.scope_tree[0].client_id) || { client_id: quoteData.scope_tree[0].client_id, rif: quoteData.scope_tree[0].rif, legal_name: quoteData.scope_tree[0].legal_name })
+    : null;
   const showRest = !!quoteData.quote_type;
   const handleScopeChange = (s) => setQuoteData(prev => {
     const firstRif = s.scope_tree[0]?.client_id || '';
@@ -787,7 +791,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                         </p>
                       </div>
                     ) : isScopeFlow ? (
-                      <SponsorTypeSelector value={quoteData} banks={banks} clients={clients}
+                      <SponsorTypeSelector value={quoteData} banks={banks} clients={clients} singleRifClient={singleRif}
                         onBank={handleSponsorBank} onClient={handleSponsorClient}
                         compositeLabel={quoteData.patrocinador_tipo === 'BANCO' && quoteData.sponsoring_bank_name
                           ? (quoteData.sponsoring_processor_name ? `${quoteData.sponsoring_processor_name} — ${quoteData.sponsoring_bank_name}` : quoteData.sponsoring_bank_name)

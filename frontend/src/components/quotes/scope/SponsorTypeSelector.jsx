@@ -35,10 +35,12 @@ const PickerDialog = ({ open, onClose, title, items, onPick, testId }) => {
 };
 
 // value: {patrocinador_tipo, patrocinador_nombre}; onBank(bank) / onClient(client)
-export const SponsorTypeSelector = ({ value, banks, clients, onBank, onClient, compositeLabel }) => {
+// singleRifClient: cotización de un solo RIF → «Cliente» toma ese RIF sin búsqueda.
+export const SponsorTypeSelector = ({ value, banks, clients, onBank, onClient, compositeLabel, singleRifClient }) => {
   const [modal, setModal] = useState(null);
+  const choose = (k) => (k === 'CLIENTE' && singleRifClient ? onClient(singleRifClient) : setModal(k));
   const opt = (k, label, Icon) => (
-    <button type="button" role="radio" aria-checked={value.patrocinador_tipo === k} onClick={() => setModal(k)} data-testid={`sponsor-type-${k}`}
+    <button type="button" role="radio" aria-checked={value.patrocinador_tipo === k} onClick={() => choose(k)} data-testid={`sponsor-type-${k}`}
       className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-colors flex items-center gap-1.5 ${value.patrocinador_tipo === k ? 'bg-brand-blue-600 text-white border-brand-blue-700' : 'bg-white text-slate-700 border-slate-300 hover:border-brand-blue-400'}`}>
       <Icon size={13} /> {label}
     </button>
@@ -54,7 +56,8 @@ export const SponsorTypeSelector = ({ value, banks, clients, onBank, onClient, c
       {value.patrocinador_tipo && (
         <p className="text-[11px] mt-1.5 font-medium text-emerald-700" data-testid="sponsor-selected-label">
           Patrocinador: {compositeLabel || value.patrocinador_nombre || '—'}
-          <button type="button" className="ml-2 text-indigo-600 hover:underline" onClick={() => setModal(value.patrocinador_tipo)} data-testid="sponsor-change-btn">Cambiar</button>
+          {!(value.patrocinador_tipo === 'CLIENTE' && singleRifClient) && <button type="button" className="ml-2 text-indigo-600 hover:underline" onClick={() => setModal(value.patrocinador_tipo)} data-testid="sponsor-change-btn">Cambiar</button>}
+          {value.patrocinador_tipo === 'CLIENTE' && singleRifClient && <span className="ml-2 text-slate-500 font-normal">(RIF único de la cotización{singleRifClient.rif ? ` · ${singleRifClient.rif}` : ''})</span>}
         </p>
       )}
       {!value.patrocinador_tipo && <p className="text-[11px] text-amber-600 mt-1.5">Debe indicar el tipo de patrocinio.</p>}

@@ -1,5 +1,5 @@
 // Alcance jerárquico VPOS/MPOS (Grupo → Marcas → RIFs → Sucursales) + Tipo de Patrocinio.
-export const isScopeType = (qt) => qt === 'VPOS' || qt === 'MPOS';
+export const isScopeType = (qt) => qt === 'VPOS' || qt === 'MPOS' || qt === 'FAST_TRACK';
 
 export const EMPTY_SCOPE = {
   nivel_cotizacion: '', grupo_economico_id: '', grupo_economico_name: '', scope_tree: [], cajas_desglose: true,
