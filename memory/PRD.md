@@ -4927,3 +4927,11 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Pendientes menores: PDF inicial fila Set-Up sin leyenda (regenerar sí), endpoint legacy /quotes/{id}/pdf sin leyenda, links cargados al abrir Cotizaciones.
 
 - 2026-06: MPOS (Imple + POS)/FAST_TRACK usa alcance Grupo/Marca/RIF y Tipo de Patrocinio como MPOS (isScopeType). Un solo RIF + Patrocinada por Cliente = ese RIF automático (sin modal), re-sincroniza si cambia el RIF.
+
+## 2026-11 — Plantillas de Fusión + Documentos de la Certificación
+- email_templates.tipo_plantilla (COMUNICACION|FUSION); FUSION sin asunto (subject=None), título y cuerpo obligatorios; INTEGRADORES COMUNICACION exige asunto (backend _validate_template).
+- Gestor /integrators/communications: selector de tipo al crear, badges, variables nuevas (empresa_integradora, rif_integrador, direccion_fiscal, contactos_integrador, nombre_aplicativo, tipo_integracion, productos_certificados, medios_pago_certificados, fecha_actual) en _build_integrator_vars (async).
+- Fusión excluidas de diálogos de envío de correo (frontend).
+- Pestaña Ficha Aplicativo "Documentos de la Certificación" (AppCertDocsTab) + GET /api/integrators/{id}/certification-documents (routes/integrator_cert_docs.py, colección integrator_cert_folders, en blanco).
+- MPOS/FAST_TRACK: communication_type SSL por defecto, Comunicación Backend tarifa outsourcing (1).
+- Backlog: fase 2 fusión documental hacia la carpeta; rechazo backend de FUSION en envíos masivos.

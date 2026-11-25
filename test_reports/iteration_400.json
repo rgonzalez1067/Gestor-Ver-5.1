@@ -1,0 +1,37 @@
+{
+  "summary": "Tested Plantillas de Fusión and the 'Documentos de la Certificación' tab, backend and UI. Backend 12/12 pytest passed. Frontend: every requested flow passed. Type picker works. The Fusión dialog has a title field, no Asunto, and a required body; empty title and empty body each show an error toast. Variables were inserted into the body. The card shows the 'Plantilla de Fusión' badge and no 'Asunto:' line, and editing keeps the subject hidden. Fusión and Comunicación dialogs have the same 31 variables, including the group 'Empresa Integradora y Certificación'. Comunicación without Asunto shows the error toast; with Asunto it saves with the 'Comunicación' badge. Fusión templates are left out of the EntityEmailDialog and MassCommunicationDialog dropdowns. The cert-docs tab shows 'Carpeta de Anexos inicializada' with no errors. Audit_trails recorded CREATE, UPDATE and DELETE for email_templates. All TEST_ templates were deleted.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/integrators/mass/communication (_mass_dispatch)", "issue": "Does not reject FUSION templates on the server; only the frontend filters them out. A direct API call could email a Fusión template."},
+      {"endpoint": "GET /api/integrators/{id}/certification-documents", "issue": "A GET has side effects: it creates a folder on disk and a DB record. The path is saved the first time and never recomputed, so if the app is later linked to an empresa, the stored path stays 'sin_empresa'. Only get_current_user is checked, with no integradores permission check."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/integrators/communications", "issues": [
+        "The 'Variables disponibles' hint at the top does not list the new variables (empresa_integradora, rif_integrador, ...). It is now out of date compared with the panel.",
+        "In the Fusión dialog, the variable panel's help text says '(o en el asunto si es el último campo editado)', but Fusión has no Asunto field.",
+        "The tab is still called 'Plantillas de Correo' even though it now holds non-email Fusión templates.",
+        "The edit and delete icon buttons on template cards have no data-testid."
+      ]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_fusion_templates_cert_docs.py", "/app/test_reports/pytest/fusion_results.xml"],
+  "action_items": [
+    "Optional: reject tipo_plantilla FUSION in _mass_dispatch and in the integrator send-email endpoint.",
+    "Optional: update variablesHint and the Fusión help text; add data-testid to the card edit and delete buttons."
+  ],
+  "critical_code_review_comments": [
+    "_validate_template now requires a name for every context (not only INTEGRADORES). Check that no older flow saves templates with an empty name.",
+    "The cert-docs folder path is saved once; it is not recomputed when the app's empresa changes."
+  ],
+  "updated_files": ["/app/backend/tests/test_fusion_templates_cert_docs.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None. The TEST_ templates made by pytest and the UI were deleted by id.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login: qa.integradores@megasoft.com.ve. To open an app ficha: /integrators -> company-toggle-* -> company-app-view-*. Notify dialog: integrators-view-projects -> notify-*. Mass dialog: mass-comm-btn -> mass-chooser-integrators -> mass-template-select."
+}

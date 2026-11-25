@@ -144,7 +144,7 @@ export const EntityTemplatesConfig = ({
         <div className="flex gap-2 mb-6">
           <Button variant={activeTab === 'plantillas' ? 'default' : 'outline'} size="sm"
             onClick={() => setActiveTab('plantillas')} data-testid="entity-tab-plantillas">
-            <FileText className="w-4 h-4 mr-1" /> Plantillas de Correo
+            <FileText className="w-4 h-4 mr-1" /> {allowFusion ? 'Plantillas' : 'Plantillas de Correo'}
           </Button>
           <Button variant={activeTab === 'documentos' ? 'default' : 'outline'} size="sm"
             onClick={() => setActiveTab('documentos')} data-testid="entity-tab-documentos">
@@ -204,7 +204,7 @@ export const EntityTemplatesConfig = ({
                     onChange={e => setTplForm({...tplForm, subject: e.target.value})} data-testid="entity-tpl-subject" /></div>}
                   {variableGroups && (
                     <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50 space-y-2" data-testid="entity-tpl-variables">
-                      <p className="text-[11px] text-slate-500">Clic en una variable para insertarla en el cuerpo (o en el asunto si es el último campo editado).</p>
+                      <p className="text-[11px] text-slate-500">{isFusion ? 'Clic en una variable para insertarla en el cuerpo del documento.' : 'Clic en una variable para insertarla en el cuerpo (o en el asunto si es el último campo editado).'}</p>
                       {variableGroups.map(g => (
                         <div key={g.title}>
                           <p className="text-[11px] font-semibold text-slate-600 mb-1">{g.title}{g.note && <span className="font-normal text-slate-400"> — {g.note}</span>}</p>
