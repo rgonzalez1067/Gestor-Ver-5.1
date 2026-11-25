@@ -177,6 +177,10 @@ export const QuoteWizardDialog = ({ ctx }) => {
     client_id: c.client_id, sponsored_implementation: false, sponsoring_bank_id: '', sponsoring_bank_name: '',
     sponsoring_processor_id: '', sponsoring_processor_name: '',
   }));
+  // Un solo RIF + patrocinio Cliente: el patrocinador siempre es ese RIF (se re-sincroniza si cambia).
+  useEffect(() => {
+    if (quoteData.patrocinador_tipo === 'CLIENTE' && singleRif && quoteData.patrocinador_id !== singleRif.client_id) handleSponsorClient(singleRif);
+  }, [singleRif?.client_id, quoteData.patrocinador_tipo]); // eslint-disable-line react-hooks/exhaustive-deps
   const scopeTotal = (quoteData.scope_tree || []).reduce((s, r) => s + (r.stores || []).reduce((a, st) => a + (parseInt(st.boxes) || 0), 0), 0);
   const cajasLocked = isScopeFlow && quoteData.cajas_desglose && scopeTotal > 0;
 

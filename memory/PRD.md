@@ -4925,3 +4925,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - productos_integracion.medio_pago_id (FK services); GET /api/productos-integracion/links.
 - Cotizador addMultipleMediosPago: findUncertified (por nombre) -> CertWarningDialog; Aceptar => pendiente_certificacion=true + badge; PDF concepto "<Medio> — (Pendiente por certificación del Integrador)" (frontend pendLabel + backend quotes.py additional). QuoteService.pendiente_certificacion.
 - Pendientes menores: PDF inicial fila Set-Up sin leyenda (regenerar sí), endpoint legacy /quotes/{id}/pdf sin leyenda, links cargados al abrir Cotizaciones.
+
+- 2026-06: MPOS (Imple + POS)/FAST_TRACK usa alcance Grupo/Marca/RIF y Tipo de Patrocinio como MPOS (isScopeType). Un solo RIF + Patrocinada por Cliente = ese RIF automático (sin modal), re-sincroniza si cambia el RIF.

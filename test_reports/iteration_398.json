@@ -1,0 +1,30 @@
+{
+  "summary": "Frontend testing (1366x768, admin QA qa.integradores) of the MPOS (Imple + POS) / FAST_TRACK scope and sponsor match-up, plus auto-sponsor when there is only one RIF. Everything the request asked for passes. 1) When 'MPOS (Imple + POS)' is picked, quote-scope-selector shows with the scope-level-GRUPO, MARCA and RIF levels, and sponsor-type-block shows with the Banco/Ente and Cliente options. This matches 'MPOS' exactly (screenshots compared). 2) With a single RIF (RIF level, 10 DE NOVIEMBRE C.A. J505015214), clicking sponsor-type-CLIENTE does NOT open sponsor-client-modal in VPOS, MPOS or MPOS Imple+POS. sponsor-selected-label reads 'Patrocinador: 10 DE NOVIEMBRE, C.A. (RIF único de la cotización · J505015214)' and there is no sponsor-change-btn. The same holds at MARCA level with a brand that has 1 RIF (A.C. VALLE ARRIBA ATHLETIC CLUB). 3) After a 2nd RIF is added (Multi RIF), sponsor-type-CLIENTE opens sponsor-client-modal and the 'Cambiar' button comes back, in all 3 types. 4) sponsor-type-BANCO opens sponsor-bank-modal (38 options) in all 3 types. Picking a bank shows the label with 'Cambiar'. 5) A FAST_TRACK quote was saved end-to-end (RIF level, single RIF, CLIENTE, Sin integrador, POS Morefun MF960) through submit-quote-button. It got quote_status=Borrador. GET /api/quotes/quo_c090dfb555ef confirmed these were persisted: quote_type FAST_TRACK, nivel_cotizacion RIF, scope_tree with 1 RIF and 1 store, patrocinador_tipo CLIENTE, patrocinador_id cli_2aa0ea072c7f (= the scope RIF), patrocinador_nombre, tipo_proyecto_inferido Monotienda. The quote was then deleted (DELETE 200, GET afterwards 404). No emails were sent. One edge-case bug found: the sponsor goes stale when the single RIF is swapped.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "QuoteWizardDialog handleScopeChange + SponsorTypeSelector (single-RIF auto-sponsor)", "issue": "Stale sponsor when the single RIF changes. Steps: RIF level → check RIF A → Patrocinada por Cliente (sponsor = A) → uncheck A → check RIF C. Result: sponsor-selected-label shows 'Patrocinador: 10 DE NOVIEMBRE, C.A. (RIF único de la cotización · J505215221)', i.e. the name of A next to the RIF of C. patrocinador_id stays A, which is no longer in scope_tree, and there is no Cambiar button to fix it (the user has to click Banco and then Cliente again). isScopeValid passes, so the quote could be saved with a sponsor outside its scope. Also, changing the level (RIF → MARCA) keeps the old CLIENTE sponsor.", "selector": "[data-testid='sponsor-selected-label']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Wizard MPOS (Imple + POS)", "issues": ["'Entidad Patrocinadora (Opcional)' in Detalles de Integración is preset to 'Mega Soft Computación C.A.' (sponsor_bank_id) while the new 'Tipo de Patrocinio' block can say Cliente. Two 'sponsor' concepts appear on the same screen and may confuse users (this behaviour existed before this change)."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "In handleScopeChange (QuoteWizardDialog.jsx ~L158): when patrocinador_tipo==='CLIENTE' and the new scope_tree has exactly 1 RIF whose client_id !== patrocinador_id, re-set the sponsor to that RIF (patrocinador_id/nombre/client_id). When the sponsor client is no longer in the tree, or nivel changes, clear patrocinador_tipo/id/nombre.",
+    "Optionally, in SponsorTypeSelector, show singleRifClient.legal_name instead of value.patrocinador_nombre when in single-RIF CLIENTE mode, so the label can never mix one RIF's name with another RIF's number."
+  ],
+  "critical_code_review_comments": [
+    "SponsorTypeSelector: the label shows value.patrocinador_nombre next to singleRifClient.rif. These two come from different sources and can disagree (this is the stale-sponsor bug above).",
+    "isScopeValid only checks that patrocinador_id is present, not that it belongs to scope_tree when tipo is CLIENTE and there is a single RIF.",
+    "QuoteWizardDialog.jsx and Quotes.jsx are very large (>2500 and >4400 lines); consider splitting them."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "95% (all requested flows pass; 1 edge-case bug)"},
+  "seed_data_creation": "Created one quote, COT-2026-11-124-PYME (quo_c090dfb555ef, FAST_TRACK Borrador), and deleted it by id (DELETE 200, then GET 404). The generated PDF /uploads/COT-2026-11-124-PYME_Cotizacion.pdf may remain on disk.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "UI path: /quotes -> create-quote-button(.first, wait up to 40s) -> new-impl-pyme -> select-quote-type option 'MPOS (Imple + POS)' -> scope-level-RIF -> scope-rifs-check-{client_id} -> sponsor-type-CLIENTE/BANCO -> sponsor-selected-label / sponsor-client-modal / sponsor-bank-modal(-option-{id}). To save: select-integrator 'Sin integrador', then select-pinpad (required for FAST_TRACK), then submit-quote-button (calls POST /api/quotes/create-with-pdf, status Borrador, no emails). If the preview shows a 'Resume Preview' overlay, click it and reload before logging in.",
+  "rca of the issue": "handleScopeChange keeps prev.patrocinador_id whenever patrocinador_tipo==='CLIENTE' and never checks it against the new scope_tree. The singleRifClient path only runs on click (choose()), so a later scope change does not update the sponsor."
+}
