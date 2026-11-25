@@ -17,8 +17,10 @@ ALIASES = {"Pagada": "Pagado", "Entregada": "Entregado", "En reparacion": "En re
 LABEL = {"Pagado": "Pagada", "Entregado": "Entregada"}
 
 
-def _diagnose(est: str, q: Optional[dict]) -> tuple[str, str]:
+def _diagnose(est: str, q: Optional[dict], ref: Optional[str] = None) -> tuple[str, str]:
     lbl = LABEL.get(est, est)
+    if not q and ref:
+        return "INCONSISTENCIA", f"INCONSISTENCIA: Equipo en estatus {lbl} tiene vinculada la cotización {ref}, pero no existe en Cotizaciones ni en el Histórico."
     if est == "Recibido":
         if q:
             return "ALERTA", f"ALERTA: Equipo recién recibido ya tiene cotización vinculada ({q['number']})."
@@ -77,10 +79,12 @@ async def _build(resultado: str, estatus: Optional[str], q: Optional[str], desde
             continue
         est = ALIASES.get(e.get("estatus"), e.get("estatus"))
         quote = by_id.get(e.get("quote_id")) or by_num.get(e.get("quote_number"))
-        nivel, diag = _diagnose(est, quote)
+        ref = e.get("quote_number") or e.get("quote_id")
+        nivel, diag = _diagnose(est, quote, ref)
         rows.append({"taller_equipo_id": e.get("taller_equipo_id"), "serial": e.get("serial", ""), "modelo": e.get("modelo", ""),
                      "client_name": e.get("client_name", ""), "rif": rif, "estatus": LABEL.get(est, est),
                      "quote_number": quote["number"] if quote else None,
+                     "quote_ref_missing": None if quote else ref,
                      "quote_status": (quote["status"] if quote else None),
                      "quote_historico": bool(quote and quote["historico"]),
                      "fecha_ingreso": e.get("fecha_ingreso"), "updated_at": e.get("updated_at"),
@@ -132,7 +136,7 @@ async def taller_audit_export(resultado: str = "inconsistencias", estatus: Optio
         c.fill = PatternFill("solid", fgColor="1E293B")
     fills = {"INCONSISTENCIA": "FEE2E2", "ALERTA": "FEF3C7", "OK": "DCFCE7"}
     for r in rows:
-        ws.append([r["serial"], r["modelo"], r["client_name"], r["rif"], r["estatus"], r["quote_number"] or "SIN COTIZACIÓN",
+        ws.append([r["serial"], r["modelo"], r["client_name"], r["rif"], r["estatus"], r["quote_number"] or (f"{r['quote_ref_missing']} (NO EXISTE)" if r["quote_ref_missing"] else "SIN COTIZACIÓN"),
                    (r["quote_status"] or "—") + (" (Histórico)" if r["quote_historico"] else ""),
                    (r["fecha_ingreso"] or "")[:10], {"OK": "Consistente"}.get(r["nivel"], r["nivel"].capitalize()), r["diagnostico"]])
         ws.cell(row=ws.max_row, column=9).fill = PatternFill("solid", fgColor=fills[r["nivel"]])

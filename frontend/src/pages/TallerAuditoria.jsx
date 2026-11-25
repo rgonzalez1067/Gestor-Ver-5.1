@@ -67,6 +67,7 @@ const Row = ({ r }) => {
       <td className="px-3 py-2 text-sm text-slate-700 whitespace-nowrap">{r.estatus}</td>
       <td className="px-3 py-2 text-xs whitespace-nowrap">{r.quote_number
         ? <><span className="font-mono text-slate-800">{r.quote_number}</span><p className="text-[11px] text-slate-500">{r.quote_status || '—'}{r.quote_historico ? ' · Histórico' : ''}</p></>
+        : r.quote_ref_missing ? <><span className="font-mono text-rose-700 line-through">{r.quote_ref_missing}</span><p className="text-[11px] text-rose-600">No existe</p></>
         : <span className="text-slate-400">{r.estatus === 'Recibido' ? '-- N/A --' : '-- SIN COTIZ. --'}</span>}</td>
       <td className="px-3 py-2 text-xs text-slate-500 whitespace-nowrap">{fmt(r.fecha_ingreso)}</td>
       <td className={`px-3 py-2 text-xs ${st.text}`} data-testid={`audit-diag-${r.taller_equipo_id}`}>

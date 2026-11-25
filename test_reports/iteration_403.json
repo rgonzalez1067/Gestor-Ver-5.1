@@ -1,0 +1,34 @@
+{
+  "summary": "Auditoría de Taller report tested end-to-end. Backend: 9/9 pytest pass (12 TEST_AUD_ equipos + TEST quotes/quote_history covering all matrix pairs: Recibido without quote OK, Recibido with quote ALERTA, Cotizado/Enviada, En reparación/Aprobada, Reparado/Facturada, Pagado/Pagada OK, Entregado archived OK, Entregado in quote_history OK, Entregado not archived, En reparación with Enviada, Cotizado without quote, Pagado without quote -> 'Pagada' label). Filters resultado/estatus/q/desde-hasta (ingreso & actualizacion) correct; export xlsx serials+diagnostics identical to screen; 403 for a non-admin with taller_auditoria=none; unauthenticated is rejected. Real data KPIs: 1160 total / 714 OK / 446 inconsistencias / 0 alertas, matching the self-check. UI: the sidebar link works, the filter defaults to Solo Inconsistencias, KPIs show correctly, inconsistency rows are red, Consultar and the filters work, and Exportar Excel downloads the file. /admin/profiles lists Auditoría de Taller under Gestión de Taller as Inactivo, and all 12 profiles have 'none'. A non-admin sees no menu item, and the direct URL redirects to /dashboard.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/reports/taller-audit", "issue": "291 equipos have a quote_id/quote_number that points to a quote that no longer exists in quotes or quote_history (e.g. serial 346731133 -> quo_5ace9a097d99 / COT-2026-03-339-PYME). They show as 'no posee cotización registrada' and the UI shows '-- SIN COTIZ. --', which hides the dangling reference. Consider a separate diagnosis such as 'cotización vinculada (X) no existe' so these can be fixed."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "TallerAuditoria filters", "issues": ["Desde/Hasta use the browser's native date input (mm/dd/yyyy) instead of the shadcn Calendar/date picker used elsewhere; the format is also inconsistent with the dd/mm/yyyy dates in the table"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_taller_audit.py", "/app/test_reports/pytest/taller_audit.xml"],
+  "action_items": [
+    "Optional: add a distinct diagnosis for equipos whose linked quote_id no longer exists (291 rows)",
+    "Optional: replace native date inputs with the shadcn date picker",
+    "Update /app/memory/test_credentials.md: kherrera password is neither 'Kherrera2026*Qa' nor 'Test1234!' (both fail verify_password against the DB hash). The test made 1 failed login (failed_login_attempts=1)."
+  ],
+  "critical_code_review_comments": [
+    "_build loads up to 20000 equipos and filters q/date in Python. This is fine at 1160 rows, but q/date filters could be pushed into the Mongo query as the data grows.",
+    "Date filter compares string prefix fecha[:10]; it falls back to created_at when fecha_ingreso/updated_at is missing. That is acceptable but undocumented.",
+    "Frontend export uses the client-side date for the filename while the backend uses the UTC date. This is harmless."
+  ],
+  "updated_files": ["/app/backend/tests/test_taller_audit.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Admin qa.integradores works. kherrera@megasoft.com.ve / Kherrera2026*Qa FAILS (invalid credentials). RBAC was tested with a temporary clone (test_aud_rbac@example.com, same profile prof_bacef16026), which was deleted afterwards.",
+  "seed_data_creation": "TEST_AUD_<tag>_ equipos, quotes and quote_history were created by the test fixture and deleted by id on teardown. Verified 0 leftovers. The temporary TEST user and its sessions were deleted. No real data was modified.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && AUD_NONADMIN_EMAIL=<user> AUD_NONADMIN_PW=<pw> python -m pytest tests/test_taller_audit.py -p no:xdist. Use a non-admin with taller_auditoria=none for the 403 test. The default uses kherrera creds, which are currently wrong. The UI login was done by injecting session_token/user into localStorage after the API login."
+}
