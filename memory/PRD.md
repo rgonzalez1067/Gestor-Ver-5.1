@@ -4937,3 +4937,4 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Backlog: fase 2 fusión documental hacia la carpeta; rechazo backend de FUSION en envíos masivos.
 - 2026-11: Plantillas de Fusión con zonas Encabezado y Pie de Página (header_html/footer_html, texto+variables+logo), opciones de Portada (portada_encabezado/portada_pie, default true) y variables de paginación {{pagina}}/{{total_paginas}} (solo Fusión, se resolverán en fase de generación). Componente components/templates/FusionZones.jsx.
 - 2026-11: Selector de tamaño de fuente (8–36 pt, FontSize de tiptap) en el editor de Plantillas de Fusión (Encabezado, Cuerpo y Pie); prop enableFontSize en RichTextEditor.
+- 2026-11: Selector de Tipo de Letra (Arial, Times New Roman, Calibri; FontFamily de tiptap) en editores de Plantillas de Fusión.

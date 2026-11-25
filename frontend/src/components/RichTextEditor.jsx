@@ -7,7 +7,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import { TableKit } from '@tiptap/extension-table';
 import TextAlign from '@tiptap/extension-text-align';
-import { TextStyle, FontSize } from '@tiptap/extension-text-style';
+import { TextStyle, FontSize, FontFamily } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import Link from '@tiptap/extension-link';
@@ -319,6 +319,7 @@ export const RichTextEditor = forwardRef(function RichTextEditor({
       TableKit.configure({ table: { resizable: false, HTMLAttributes: { class: 'rte-table' } } }),
       TextStyle,
       FontSize,
+      FontFamily,
       Color,
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ['paragraph'] }),
@@ -505,6 +506,18 @@ export const RichTextEditor = forwardRef(function RichTextEditor({
 
         <span className="mx-1 h-4 w-px bg-slate-300" />
 
+        {enableFontSize && (
+          <select
+            value={editor.getAttributes('textStyle').fontFamily || ''}
+            onChange={(e) => (e.target.value ? editor.chain().focus().setFontFamily(e.target.value).run() : editor.chain().focus().unsetFontFamily().run())}
+            className="h-7 rounded border border-slate-300 bg-white px-1 text-xs text-slate-700 mr-1"
+            title="Tipo de letra"
+            data-testid={`${testid}-font-family`}
+          >
+            <option value="">Fuente</option>
+            {[['Arial', 'Arial, Helvetica, sans-serif'], ['Times New Roman', '"Times New Roman", Times, serif'], ['Calibri', 'Calibri, Carlito, sans-serif']].map(([l, v]) => <option key={l} value={v} style={{ fontFamily: v }}>{l}</option>)}
+          </select>
+        )}
         {enableFontSize && (
           <select
             value={editor.getAttributes('textStyle').fontSize || ''}
