@@ -30,20 +30,21 @@ export const ProjectFollowupReportDialog = ({ open, onOpenChange }) => {
   const [f, setF] = useState(EMPTY);
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState('');
+  const [applied, setApplied] = useState(EMPTY);
 
-  const params = useCallback(() => Object.fromEntries(Object.entries(f).filter(([, v]) => v)), [f]);
-  const run = useCallback(async () => {
+  const params = (src) => Object.fromEntries(Object.entries(src).filter(([, v]) => v));
+  const run = useCallback(async (src = f) => {
     setBusy('run');
-    try { setData((await api.get('/projects-report/followup', { params: params() })).data); }
+    try { setData((await api.get('/projects-report/followup', { params: params(src) })).data); setApplied(src); }
     catch (e) { toast.error(e.response?.data?.detail || 'Error al generar el reporte'); }
     finally { setBusy(''); }
-  }, [params]);
+  }, [f]);
   useEffect(() => { if (open) run(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const exportAs = async (format) => {
     setBusy(format);
     try {
-      const r = await api.get('/projects-report/followup/export', { params: { ...params(), format, filters_label: label(f) }, responseType: 'blob' });
+      const r = await api.get('/projects-report/followup/export', { params: { ...params(applied), format, filters_label: label(applied) }, responseType: 'blob' });
       const url = URL.createObjectURL(r.data);
       if (format === 'pdf') window.open(url, '_blank');
       else { const a = document.createElement('a'); a.href = url; a.download = `Seguimiento_Proyectos_${new Date().toISOString().slice(0, 10)}.xlsx`; a.click(); }
@@ -57,7 +58,7 @@ export const ProjectFollowupReportDialog = ({ open, onOpenChange }) => {
   const set = (key) => (v) => setF((p) => ({ ...p, [key]: v }));
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[1200px] w-[96vw] max-h-[92vh] flex flex-col gap-3" data-testid="followup-report-dialog">
+      <DialogContent className="max-w-[1500px] w-[97vw] max-h-[92vh] flex flex-col gap-3" data-testid="followup-report-dialog">
         <DialogHeader>
           <DialogTitle>Reporte de Seguimiento de Proyectos</DialogTitle>
           <DialogDescription>Seleccione los filtros y genere el informe en PDF o Excel.</DialogDescription>
@@ -71,8 +72,8 @@ export const ProjectFollowupReportDialog = ({ open, onOpenChange }) => {
           <Pick label="Estatus" value={f.estatus} onChange={set('estatus')} options={o.estatus.map((x) => [x, x])} testid="followup-filter-estatus" />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" onClick={run} disabled={!!busy} data-testid="followup-run-btn"><Search size={14} className="mr-1.5" />{busy === 'run' ? 'Consultando…' : 'Aplicar filtros'}</Button>
-          <Button size="sm" variant="ghost" onClick={() => setF(EMPTY)} data-testid="followup-clear-btn">Limpiar</Button>
+          <Button size="sm" onClick={() => run()} disabled={!!busy} data-testid="followup-run-btn"><Search size={14} className="mr-1.5" />{busy === 'run' ? 'Consultando…' : 'Aplicar filtros'}</Button>
+          <Button size="sm" variant="ghost" onClick={() => { setF(EMPTY); run(EMPTY); }} data-testid="followup-clear-btn">Limpiar</Button>
           <div className="flex-1" />
           <span className="text-xs text-slate-600" data-testid="followup-kpis">
             {k.total ?? 0} proyectos · <b className="text-rose-600">{k.critico ?? 0} críticos</b> · <b className="text-amber-600">{k.medio ?? 0} medios</b> · <b className="text-emerald-600">{k.al_dia ?? 0} al día</b> · Avance prom. {k.avance_promedio ?? 0}%
@@ -89,7 +90,7 @@ export const ProjectFollowupReportDialog = ({ open, onOpenChange }) => {
               {(data?.rows || []).map((r) => (
                 <tr key={r.project_id} className="border-b border-slate-100" data-testid={`followup-row-${r.project_id}`}>
                   <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.project_number}<p className="font-sans text-[10px] text-slate-400">{r.tipo}</p></td>
-                  <td className="px-2 py-1.5 max-w-[220px] truncate" title={r.cliente}>{r.cliente}</td>
+                  <td className="px-2 py-1.5 max-w-[170px] truncate" title={r.cliente}>{r.cliente}</td>
                   <td className="px-2 py-1.5"><div className="flex items-center gap-1.5"><div className="h-1.5 w-12 rounded bg-slate-200"><div className="h-1.5 rounded bg-blue-600" style={{ width: `${r.avance}%` }} /></div>{r.avance}%</div></td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{fmt(r.fecha_asignacion)}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{r.generador}</td>

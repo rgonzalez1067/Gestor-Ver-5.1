@@ -1,0 +1,42 @@
+{
+  "summary": "Tested the Projects Follow-up Report (Reporte de Seguimiento). Backend: 19 pytest checks. 17 passed on the first run and 1 more after fixing the date range in my own test. The 2 kherrera tests were skipped because the login was rejected; visibility was then checked in-process instead. Using qa.integradores (admin): the report returns 703 rows, the same set as GET /api/projects. Every column matches the grid for all 703 projects (0 mismatches): avance=rollup global_progress, estado, generador, implementador, assigned_at, fecha_envio = sent_to_implementation_at or created_at, dias = business_days_in_state (0 for finished), and nivel uses the SLA thresholds per stage, identical to the grid's _avanceLevel. Sort is Crítico > Medio > Al Día, then days descending. Every filter (implementador, generador, tipo VPOS/MPOS/GATEWAY/LINK, estatus, date range 2026-08-01..09-30 = 272 rows, no-match case) returns exactly the expected set computed from /api/projects. Exports: PDF returns 200 with a %PDF header, including the empty case. XLSX returns 200; its row order and Tipo de Retraso match the API, and the filters label is in A2. An invalid format returns 400 and an unauthenticated call is rejected. Visibility was checked by calling the code directly (read-only) for 12 non-admin users: Implementadores yrivas 126, joliveros 120, ffernandez 4 and ojimenez 2; Ventas Pyme 209; Ventas Corp 473. For every user the report set equals the grid set, and Implementadores only see their own projects. kherrera is 'Analista Operaciones', so the visibility rule lets them see all 703 (grid = report). UI at 1920x1080: the button opens the dialog with 703 rows and KPIs. The MPOS filter gives 41 rows; MPOS plus dates gives 10. Generar PDF opens a new tab and Exportar Excel downloads an xlsx with the filters label 'Envío: 01/08/2026 a 30/09/2026 · Tipo: MPOS' and 10 rows. No 500 errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/projects-report/followup", "issue": "The Estatus options list a dirty status value 'notified' from the data (a status not in the catalog). It is a data-quality issue, not a code bug."},
+      {"endpoint": "/api/projects-report/followup", "issue": "'Suspendido' projects (33) are not in FINISHED, so their business days keep counting and many show as Retraso Crítico at the top of the report. This matches the grid's _avanceLevel, but it needs a product check: should paused/frozen statuses count as delay?"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ProjectFollowupReportDialog Limpiar", "issue": "Limpiar resets the filters to 'Todos' but does not re-run the query. The table and KPIs keep showing the old filtered rows (10), while PDF/Excel would then export ALL projects. What is shown no longer matches what is exported. Call run() after clearing, or build the exports from the last applied filters.", "selector": "[data-testid='followup-clear-btn']", "priority": "MEDIUM"},
+      {"component": "ProjectFollowupReportDialog exports", "issue": "Exports use the current filter state, not the last applied one. If a user changes a filter without clicking 'Aplicar filtros', the PDF/Excel differs from the table on screen.", "selector": "[data-testid='followup-pdf-btn'], [data-testid='followup-xlsx-btn']", "priority": "LOW"},
+      {"component": "filters label", "issue": "label(): fmt('') returns '—', so the '…' fallback never applies. With only 'desde' set, the label reads 'Envío: 01/08/2026 a —'. Cosmetic.", "selector": "label() in ProjectFollowupReportDialog.jsx", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Followup dialog (1920x1080)", "issues": ["The table overflows horizontally: the 'Días' and 'Tipo de Retraso' columns (the key ones) are cut off at the right edge and need a horizontal scroll. Widen the dialog, shrink the Cliente column, or put Tipo de Retraso earlier.", "The date filters use the browser's native date input (shows English 'mm/dd/yyyy' in a Spanish UI) instead of the shadcn Calendar/Popover."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_projects_followup_report.py", "/app/backend/tests/followup_visibility_check.py", "/app/test_reports/pytest/pytest_followup.xml"],
+  "action_items": [
+    "Make Limpiar re-run the report, or make exports use the last applied filters, so the table and exported files stay in sync",
+    "Fix the column overflow in the followup table so 'Días' and 'Tipo de Retraso' are visible without horizontal scroll at 1920px",
+    "Optional: replace the native date inputs with the shadcn date picker; fix the '…' fallback in the filters label",
+    "Product check: should 'Suspendido' (and other paused statuses) be treated as Al Día / excluded from the delay count?",
+    "Update /app/memory/test_credentials.md: the kherrera password 'Kherrera2026*Qa' is rejected (account now has 2 attempts left before lockout; I did not retry)"
+  ],
+  "critical_code_review_comments": [
+    "projects_followup_report.py duplicates the stage/level logic of Projects.jsx _avanceLevel and the FINISHED list in two places. They match today, but consider having the backend compute 'avance_level' once (for example in GET /projects) and sharing it.",
+    "_rows loads up to 5000 projects including the full bitacora (only notification_history/status_history are excluded). Project only the needed fields, and get the last bitácora date with an aggregation, for performance.",
+    "max() over bitacora created_at plus str(last_qualified_activity_at) assumes all values are ISO strings. A datetime-typed created_at would raise TypeError. None exist in the DB today (checked).",
+    "GET /api/projects uses to_list(1000) while the report uses 5000. Once there are more than 1000 projects, the report and the grid will diverge."
+  ],
+  "updated_files": ["/app/backend/tests/test_projects_followup_report.py", "/app/backend/tests/followup_visibility_check.py"],
+  "success_rate": {"backend": "100% (17/17 run passed; 2 kherrera HTTP tests skipped because the login failed, covered by the in-process visibility check)", "frontend": "90% (core flows work; Limpiar sync and column overflow issues)"},
+  "test_credentials": "Admin qa.integradores@megasoft.com.ve / QaIntegr2026*Ok works. kherrera@megasoft.com.ve / Kherrera2026*Qa is INVALID (rejected, 2 attempts left before lockout).",
+  "seed_data_creation": "None. Read-only testing; no projects were modified.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The report reuses _build_project_visibility_query, so its visibility is identical to the grid. The pytest file compares the report against /api/projects. Run it with -p no:xdist. followup_visibility_check.py is a read-only in-process check covering all non-admin roles. The kherrera password needs to be fixed before running test_nonadmin_*."
+}
