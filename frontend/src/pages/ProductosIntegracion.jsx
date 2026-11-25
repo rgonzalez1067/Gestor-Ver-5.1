@@ -60,8 +60,8 @@ export default function ProductosIntegracion() {
               <table className="w-full text-sm" data-testid="productos-table">
                 <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr>
                   <th className="px-3 py-3 text-center w-16">Orden</th><th className="px-3 py-3 text-left">Código</th><th className="px-3 py-3 text-left">Nombre</th>
-                  <th className="px-3 py-3 text-left">Descripción</th><th className="px-3 py-3 text-center"><button type="button" onClick={() => sortBy('en_proceso')} className="inline-flex items-center gap-1 uppercase hover:text-slate-800" title="Aplicativos con el producto En proceso (P)" data-testid="productos-sort-en-proceso">En Proceso (P)<SortIcon k="en_proceso" /></button></th>
-                  <th className="px-3 py-3 text-center"><button type="button" onClick={() => sortBy('certificados')} className="inline-flex items-center gap-1 uppercase hover:text-slate-800" title="Aplicativos con el producto Certificado (C)" data-testid="productos-sort-certificados">Certificados (C)<SortIcon k="certificados" /></button></th><th className="px-3 py-3 text-center">Activo</th><th className="px-3 py-3 w-20" />
+                  <th className="px-3 py-3 text-left">Descripción</th><th className="px-3 py-3 text-center"><button type="button" onClick={() => sortBy('certificados')} className="inline-flex items-center gap-1 uppercase hover:text-slate-800" title="Aplicativos con el producto Certificado (C)" data-testid="productos-sort-certificados">Certificados (C)<SortIcon k="certificados" /></button></th>
+                  <th className="px-3 py-3 text-center"><button type="button" onClick={() => sortBy('en_proceso')} className="inline-flex items-center gap-1 uppercase hover:text-slate-800" title="Aplicativos con el producto Pendiente (P)" data-testid="productos-sort-pendientes">Pendientes (P)<SortIcon k="en_proceso" /></button></th><th className="px-3 py-3 text-center">Activo</th><th className="px-3 py-3 w-20" />
                 </tr></thead>
                 <tbody className="divide-y divide-slate-100">
                   {filtered.map((p) => (
@@ -70,8 +70,8 @@ export default function ProductosIntegracion() {
                       <td className="px-3 py-2 font-mono text-xs text-slate-600">{p.codigo}</td>
                       <td className="px-3 py-2 font-medium text-slate-800">{p.nombre}</td>
                       <td className="px-3 py-2 text-slate-500 text-xs max-w-[280px] truncate" title={p.descripcion}>{p.descripcion || '—'}</td>
-                      <td className="px-3 py-2 text-center text-amber-700" data-testid={`producto-en-proceso-${p.producto_id}`}>{p.en_proceso}</td>
                       <td className="px-3 py-2 text-center font-semibold text-emerald-700" data-testid={`producto-certificados-${p.producto_id}`}>{p.certificados}</td>
+                      <td className="px-3 py-2 text-center text-amber-700" data-testid={`producto-pendientes-${p.producto_id}`}>{p.en_proceso}</td>
                       <td className="px-3 py-2 text-center"><Switch checked={p.activo} onCheckedChange={() => toggle(p)} data-testid={`producto-status-${p.producto_id}`} /></td>
                       <td className="px-3 py-2"><div className="flex items-center gap-3">
                         <button type="button" onClick={() => { setEditing(p); setFormOpen(true); }} className="text-slate-400 hover:text-brand-blue-600" title="Editar" data-testid={`producto-edit-${p.producto_id}`}><Pencil size={15} /></button>
@@ -90,7 +90,7 @@ export default function ProductosIntegracion() {
         <AlertDialogContent data-testid="producto-delete-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminar Producto</AlertDialogTitle>
-            <AlertDialogDescription>Se eliminará «{deleting?.nombre}» del catálogo y dejará de verse en la Matriz. {deleting?.aplicativos ? `Hoy lo usan ${deleting.aplicativos} aplicativo(s) (${deleting.certificados} certificados, ${deleting.en_proceso} en proceso). ` : ''}Los certificados ya emitidos conservan su histórico. Si solo quiere ocultarlo, use el interruptor Activo.</AlertDialogDescription>
+            <AlertDialogDescription>Se eliminará «{deleting?.nombre}» del catálogo y dejará de verse en la Matriz. {deleting?.aplicativos ? `Hoy lo usan ${deleting.aplicativos} aplicativo(s) (${deleting.certificados} certificados, ${deleting.en_proceso} pendientes). ` : ''}Los certificados ya emitidos conservan su histórico. Si solo quiere ocultarlo, use el interruptor Activo.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="producto-delete-cancel">Cancelar</AlertDialogCancel>
