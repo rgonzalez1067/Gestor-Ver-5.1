@@ -70,6 +70,7 @@ MODULES = [
     # Taller
     {"id": "taller_equipos", "name": "Consulta de Taller", "group": "gestion_taller"},
     {"id": "taller_recepcion", "name": "Recepción de Equipos", "group": "gestion_taller"},
+    {"id": "taller_auditoria", "name": "Auditoría de Taller", "group": "gestion_taller"},
     # Configuración (legacy, sin grupo visible)
     {"id": "configuracion", "name": "Configuración", "group": "gestion_administrativa"},
     {"id": "config_otras_acciones", "name": "Configuración de Otras Acciones", "group": "gestion_administrativa"},
@@ -180,7 +181,7 @@ def get_default_permissions(level: str = "read") -> dict:
 
 
 # Módulos incorporados después de la creación de perfiles: nacen Inactivos.
-NEW_MODULES_DEFAULT_NONE = ["impresoras_fiscales", "servidores", "referentes", "productos_integracion"]
+NEW_MODULES_DEFAULT_NONE = ["impresoras_fiscales", "servidores", "referentes", "productos_integracion", "taller_auditoria"]
 
 
 def has_module_level(user: dict, module_id: str, need: str = "read") -> bool:

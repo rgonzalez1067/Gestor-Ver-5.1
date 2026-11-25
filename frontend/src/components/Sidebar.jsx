@@ -39,7 +39,7 @@ import {
 } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
-import { KeyRound } from 'lucide-react';
+import { KeyRound, ShieldCheck } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { PasswordExpiryBanner } from './auth/PasswordExpiryBanner';
@@ -112,6 +112,7 @@ const menuItems = [
     children: [
       { path: '/taller-equipos', icon: ClipboardList, label: 'Consulta de Taller' },
       { path: '/taller-recepcion', icon: PackageCheck, label: 'Recepción de Equipos' },
+      { path: '/taller-auditoria', icon: ShieldCheck, label: 'Auditoría de Taller' },
     ]
   },
 ];

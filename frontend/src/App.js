@@ -63,6 +63,7 @@ import BankPaymentConditions from './pages/BankPaymentConditions';
 import NewProducts from './pages/NewProducts';
 import Inventory from './pages/Inventory';
 import TallerEquipos from './pages/TallerEquipos';
+import TallerAuditoria from './pages/TallerAuditoria';
 import TallerRecepcion from './pages/TallerRecepcion';
 import AuthCallback from './components/AuthCallback';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -243,6 +244,11 @@ function AppRouter() {
       <Route path="/taller-equipos" element={
         <ProtectedRoute>
           <TallerEquipos />
+        </ProtectedRoute>
+      } />
+      <Route path="/taller-auditoria" element={
+        <ProtectedRoute>
+          <TallerAuditoria />
         </ProtectedRoute>
       } />
       <Route path="/taller-recepcion" element={

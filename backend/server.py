@@ -42,6 +42,7 @@ from routes.initial_contacts import router as initial_contacts_router
 from routes.referentes import router as referentes_router
 from routes.productos_integracion import router as productos_integracion_router
 from routes.integrator_cert_docs import router as integrator_cert_docs_router
+from routes.taller_audit import router as taller_audit_router
 from routes.initial_contacts_report import router as initial_contacts_report_router
 from routes.initial_contact_attachments import router as initial_contact_attachments_router
 from routes.initial_contact_communications import router as initial_contact_comms_router
@@ -439,6 +440,7 @@ api_router.include_router(initial_contacts_router)
 api_router.include_router(referentes_router)
 api_router.include_router(productos_integracion_router)
 api_router.include_router(integrator_cert_docs_router)
+api_router.include_router(taller_audit_router)
 api_router.include_router(initial_contact_attachments_router)
 api_router.include_router(initial_contacts_report_router)
 api_router.include_router(initial_contact_comms_router)

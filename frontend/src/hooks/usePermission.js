@@ -82,6 +82,7 @@ export const ROUTE_MODULE_MAP = {
   '/inventory/invoiced-exits': 'reportes_contables',
   '/taller-equipos': 'taller_equipos',
   '/taller-recepcion': 'taller_recepcion',
+  '/taller-auditoria': 'taller_auditoria',
   '/new-products': 'nuevos_productos',
 };
 
@@ -116,6 +117,7 @@ export const MODULE_TO_GROUP = {
   reportes_contables: 'gestion_administrativa',
   taller_equipos: 'gestion_taller',
   taller_recepcion: 'gestion_taller',
+  taller_auditoria: 'gestion_taller',
   configuracion: 'gestion_administrativa',
   dashboard: 'dashboard',
 };
