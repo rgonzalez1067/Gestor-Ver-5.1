@@ -69,6 +69,11 @@ async def stage_attachment(file: UploadFile = File(...), authorization: Optional
     return {"staged_id": rec["staged_id"], "adjunto_nombre_original": name, "adjunto_tipo": tipo}
 
 
+def _require_admin(user: dict):
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Solo el Administrador puede modificar el documento adjunto de un contacto existente")
+
+
 async def _contact(contact_id: str) -> dict:
     c = await db.initial_contacts.find_one({"contact_id": contact_id}, {"_id": 0, "bitacora": 0})
     if not c:
@@ -79,6 +84,7 @@ async def _contact(contact_id: str) -> dict:
 @router.post("/initial-contacts/{contact_id}/attachment")
 async def upload_attachment(contact_id: str, file: UploadFile = File(...), authorization: Optional[str] = Header(None)):
     user = await get_current_user(authorization)
+    _require_admin(user)
     prev = await _contact(contact_id)
     data, name, tipo, ctype = await _read_valid(file)
     fields = _store(contact_id, data, name, tipo, ctype, user)
@@ -94,6 +100,7 @@ async def upload_attachment(contact_id: str, file: UploadFile = File(...), autho
 @router.delete("/initial-contacts/{contact_id}/attachment")
 async def delete_attachment(contact_id: str, authorization: Optional[str] = Header(None)):
     user = await get_current_user(authorization)
+    _require_admin(user)
     prev = await _contact(contact_id)
     if not prev.get("adjunto_url"):
         raise HTTPException(404, "El contacto no tiene documento adjunto")

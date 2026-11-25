@@ -1,0 +1,38 @@
+{
+  "summary": "Tested the Contacto Inicial attachment feature (image or .eml) end to end, backend and UI, as admin qa.integradores. Backend: 13/13 pytest pass. Covered: stage validation (.exe/.xlsx/.zip -> 400, >10MB -> 400, faked content type -> 400, bad or reused staged_id -> 400, no auth -> 401); create with PNG and with EML; download bytes match the original; Content-Disposition attachment/inline with the original filename; email preview from/to/subject/date/text; preview on an image -> 400; replace with POST and delete with DELETE (bitacora entries 'reemplazó'/'eliminó'; 404 after delete); create without attachment; audit_trails CREATE includes adjunto_nombre_original/adjunto_url and UPDATE entries on replace/delete. UI: dropzone shows; .exe/.xlsx/.zip are rejected with the exact toast and nothing is selected; Ctrl+V paste of an image gives a chip named captura_<ts>.png; file picker -> chip -> save -> 'Imagen' badge -> lightbox opens (img loaded) -> downloaded file matches the original; EML create -> 'Correo .eml' badge -> email-viewer shows De/Para/Fecha/Asunto/body -> downloaded .eml matches the original; Edit: existing chip + 'Ver documento', remove + save -> badge gone, add a file + save -> badge back, remove + new .eml + save -> replaced. Embedded bitacora and audit_trails confirmed in the DB. Regression: the EmailViewer in the project bitácora (prj_10e879128c18, evd_0ef1225cadbb) still opens and downloads the .eml. All TEST_ contacts were deleted (UI contacts with the admin delete button, API contacts in the fixture teardown); the one leftover staged record was deleted by its id.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST/DELETE /api/initial-contacts/{id}/attachment", "issue": "No RBAC: any logged-in user can replace or delete the attachment of any contact, but PUT /initial-contacts/{id} (edit) is admin-only. GET download/email also skip any visibility check. Code review only, not tested with a non-admin user."},
+      {"endpoint": "POST /api/initial-contacts/attachments/stage", "issue": "Staged records (initial_contact_staged_attachments) and their stored objects have no TTL or cleanup. If the user cancels the create modal after staging, or the create POST fails, the record and the object stay forever."},
+      {"endpoint": "DELETE /api/initial-contacts/{id}/attachment", "issue": "adjunto_subido_por and adjunto_fecha are not cleared on delete (stale metadata). The old object is never removed from storage on replace/delete. Cosmetic only."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Bitácora button on the Contacto Inicial grid", "issue": "The attachment entries ('adjuntó/reemplazó/eliminó el documento de respaldo') go into the embedded initial_contacts.bitacora array. The grid's Bitácora button opens the generic BitacoraModal (a different 'bitacora' collection), which shows 'No hay entradas en la bitácora', so users cannot see the attachment history in the UI. They are only stored in the DB and in audit_trails. The same applies to the existing 'created'/'edited' entries.", "affected_selectors": ["bitacora-btn-{id}"]}
+    ],
+    "design_issues": [
+      {"screen": "Create contact modal", "issues": ["'Fecha Máxima de Atención' uses the browser's native date input (existing issue, not part of this feature)"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter401_initial_contact_attachments.py", "/app/test_reports/pytest/iter401.xml"],
+  "action_items": [
+    "Optional: add permission checks to the attachment upload/delete endpoints that match edit rules (admin, or the creator/assignee when uploading)",
+    "Optional: add a TTL index or cleanup job for initial_contact_staged_attachments",
+    "Optional: show the attachment bitacora entries in the UI (merge the embedded contact bitacora into the BitacoraModal, or log them to the 'bitacora' collection too)"
+  ],
+  "critical_code_review_comments": [
+    "Attachment routes have no RBAC, while edit is admin-only",
+    "Staged uploads can be orphaned (no expiry)",
+    "List endpoint returns adjunto_url (internal storage path) to the client. Harmless, but not needed by the UI",
+    "InitialContacts.jsx is 934 lines (>700): consider splitting the create/edit modals"
+  ],
+  "updated_files": ["/app/backend/tests/test_iter401_initial_contact_attachments.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% of requested flows (1 minor visibility gap in bitácora)"},
+  "seed_data_creation": "None kept. Created TEST_Contacto img/eml/eml2/noatt (API) and TEST_UI Empresa Img/Eml (UI); all deleted.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login: POST /api/auth/login returns session_token; the UI accepts localStorage session_token + user. Audit: GET /api/audit-trails?registro=<contact_id>&action=CREATE, entidad_id=contact_id. Project EML regression: prj_10e879128c18, thumb bitacora-evidence-thumb-evd_0ef1225cadbb. The pytest file cleans up after itself (contacts by id, staged records are consumed)."
+}
