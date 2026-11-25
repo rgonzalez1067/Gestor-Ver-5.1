@@ -1,0 +1,21 @@
+{
+  "summary": "Frontend-only check of the Comunicación Backend tarifa fix for MPOS / MPOS (Imple + POS). Logged in as qa.integradores admin, /quotes > Implementaciones > Clientes Pymes, nivel RIF + 1 RIF, Patrocinada por Cliente, integrador 'Sin integrador'. Results: MPOS gives Otros Recurrentes item 1 'Comunicación Backend (SSL Público o VPN, APN, etc.)' tarifa 1 ($1.00). MPOS (Imple + POS) also gives tarifa 1 ($1.00). With 3 cajas, tarifa stays 1 and the total is $3.00. Neither MPOS type shows the SSL/VPN/No aplica buttons. VPOS regression with Modelo Convencional starts at 1; VPN sets 2, SSL sets 1, No aplica gives 1, and VPN again sets 2. Switching from VPOS with VPN (2) to MPOS resets the tarifa to 1. Switching from FAST_TRACK to MPOS keeps it at 1 per caja. No quotes were saved and no emails were sent.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Existing behavior, not a regression: changing Tipo de Cotización clears the selected 'Sin integrador', because integrators.find() returns nothing for 'sin_integrador'. The item grids then hide until the integrator is picked again. Consider keeping 'sin_integrador' when switching type.",
+    "The Comunicación Backend service lookup is duplicated in initializeRecurringOtherConcepts (Quotes.jsx ~1018) and handleCommunicationType (QuoteWizardDialog.jsx ~195). Consider extracting a shared helper."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "seed_data_creation": "None. No quotes saved.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Flow: create-quote-button(.first) -> new-impl-pyme -> select-quote-type -> scope-level-RIF -> scope-rifs-check-* (.first) -> sponsor-type-CLIENTE -> select-integrator 'Sin integrador'. After this the Otros Recurrentes grid appears. VPOS also needs select-pricing-model and has communication-type-ssl/vpn/no_aplica. The catalog Comunicación Backend has outsourcing=1 and conventional=2. cantidad-cajas-input is readonly in desglose mode; change the per-store input inside quote-scope-selector instead."
+}
