@@ -161,11 +161,11 @@ async def chat_summary(authorization: Optional[str] = Header(None)):
 
 @router.get("/projects-chat/alerts")
 async def chat_alerts(authorization: Optional[str] = Header(None)):
-    """Alertas emergentes para el Implementador: mensajes de otros en sus proyectos, posteriores a su última
-    lectura y a su último 'Leer después' (alert_seen_at)."""
+    """Alertas emergentes bidireccionales: D(u) = {Generador, Implementador vigente} \ {u}. Cada uno recibe
+    los mensajes de los demás posteriores a su última lectura y a su último 'Leer después' (alert_seen_at)."""
     user = await get_current_user(authorization)
     me = user.get("user_id")
-    projects = await db.projects.find({"assigned_to_user_id": me},
+    projects = await db.projects.find({"$or": [{"assigned_to_user_id": me}, {"created_by_user_id": me}]},
                                       {"_id": 0, "project_id": 1, "project_number": 1, "client_name": 1}).to_list(None)
     if not projects:
         return []

@@ -5,7 +5,7 @@ import { MessageSquare, Clock, ArrowRight, X } from 'lucide-react';
 
 const POLL_MS = 30000;
 
-// Alerta GLOBAL para el Implementador: nuevo mensaje en el chat de uno de sus proyectos.
+// Alerta GLOBAL bidireccional (Generador e Implementador del proyecto): nuevo mensaje en el chat.
 export default function ProjectChatAlert() {
   const [alerts, setAlerts] = useState([]);
   const navigate = useNavigate();
