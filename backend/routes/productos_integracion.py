@@ -141,3 +141,37 @@ async def delete_producto(producto_id: str, authorization: Optional[str] = Heade
     await db.productos_integracion.delete_one({"producto_id": producto_id})
     await refresh_products()
     return {"ok": True, "message": f"Producto «{doc['nombre']}» eliminado"}
+
+
+async def _apps_with_product(producto_id: str) -> list:
+    apps = await db.integrators.find(
+        {f"certifications.{producto_id}": {"$regex": r"^\s*[cC]\s*$"}},
+        {"_id": 0, "integrator_id": 1, "name": 1, "app_name": 1, "integration_type": 1, "implementador": 1, "integrator_status": 1},
+    ).to_list(5000)
+    apps.sort(key=lambda a: ((a.get("name") or "").casefold(), (a.get("app_name") or "").casefold()))
+    return apps
+
+
+@router.get("/productos-integracion/{producto_id}/certificados")
+async def productos_certificados(producto_id: str, authorization: Optional[str] = Header(None)):
+    await _require_admin(authorization)
+    return await _apps_with_product(producto_id)
+
+
+@router.get("/productos-integracion/{producto_id}/certificados/pdf")
+async def productos_certificados_pdf(producto_id: str, authorization: Optional[str] = Header(None)):
+    from fastapi.responses import StreamingResponse
+    from services.pdf_report import build_corporate_pdf
+    await _require_admin(authorization)
+    prod = await db.productos_integracion.find_one({"producto_id": producto_id}, {"_id": 0, "nombre": 1, "codigo": 1})
+    if not prod:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    apps = await _apps_with_product(producto_id)
+    rows = [[i + 1, a.get("name") or "", a.get("app_name") or "", a.get("integration_type") or "", a.get("implementador") or "", a.get("integrator_status") or ""]
+            for i, a in enumerate(apps)]
+    buf = build_corporate_pdf(
+        f"Integradores con «{prod['nombre']}» Certificado ({len(apps)})",
+        ["#", "Integrador", "Aplicativo", "Tipo de Integración", "Implementador", "Estatus"], rows,
+        col_ratios=[0.05, 0.3, 0.22, 0.13, 0.17, 0.13])
+    fname = f"Certificados_{prod['codigo']}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.pdf"
+    return StreamingResponse(buf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{fname}"'})

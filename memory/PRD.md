@@ -4918,3 +4918,5 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Backup Total 1 clic incluye productos-integracion. Auditoría productos_integracion.
 
 - 2026-06: Catálogo Productos para Integración: columna Aplicativos reemplazada por "En Proceso (P)" y "Certificados (C)", ordenables.
+
+- 2026-06: Hover sobre Certificados (C) en Productos para Integración lista integradores/aplicativos con el producto en C + PDF por producto (GET /productos-integracion/{id}/certificados[/pdf]).

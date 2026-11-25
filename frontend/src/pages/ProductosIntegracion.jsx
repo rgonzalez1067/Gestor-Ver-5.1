@@ -6,6 +6,7 @@ import { Switch } from '../components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../components/ui/alert-dialog';
 import { Plus, Pencil, Search, Boxes, Trash2, ArrowUpDown, ArrowDown, ArrowUp } from 'lucide-react';
 import { ProductoFormDialog } from '../components/productosIntegracion/ProductoFormDialog';
+import { CertifiedAppsHover } from '../components/productosIntegracion/CertifiedAppsHover';
 import { toast } from 'sonner';
 import api from '../utils/api';
 
@@ -70,7 +71,7 @@ export default function ProductosIntegracion() {
                       <td className="px-3 py-2 font-mono text-xs text-slate-600">{p.codigo}</td>
                       <td className="px-3 py-2 font-medium text-slate-800">{p.nombre}</td>
                       <td className="px-3 py-2 text-slate-500 text-xs max-w-[280px] truncate" title={p.descripcion}>{p.descripcion || '—'}</td>
-                      <td className="px-3 py-2 text-center font-semibold text-emerald-700" data-testid={`producto-certificados-${p.producto_id}`}>{p.certificados}</td>
+                      <td className="px-3 py-2 text-center"><CertifiedAppsHover producto={p} /></td>
                       <td className="px-3 py-2 text-center text-amber-700" data-testid={`producto-pendientes-${p.producto_id}`}>{p.en_proceso}</td>
                       <td className="px-3 py-2 text-center"><Switch checked={p.activo} onCheckedChange={() => toggle(p)} data-testid={`producto-status-${p.producto_id}`} /></td>
                       <td className="px-3 py-2"><div className="flex items-center gap-3">
