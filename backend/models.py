@@ -598,6 +598,7 @@ class QuoteItem(BaseModel):
     bank_name: Optional[str] = None
     tarifa_setup: Optional[float] = None
     tarifa_recurrente: Optional[float] = None
+    pendiente_certificacion: Optional[bool] = None
     # Metadatos de comportamiento (para restaurar correctamente al editar)
     lockBancos: Optional[bool] = None
     autoBancos: Optional[bool] = None

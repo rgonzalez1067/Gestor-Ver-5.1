@@ -1,3 +1,4 @@
+import { findUncertified, pendLabel, CertWarningDialog } from '../components/quotes/CertWarningDialog';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
@@ -59,6 +60,8 @@ export const Quotes = () => {
   const [banks, setBanks] = useState([]);
   const [serviceCatalog, setServiceCatalog] = useState([]); // Catálogo de precios
   const [integrators, setIntegrators] = useState([]); // Lista de integradores
+  const [certLinks, setCertLinks] = useState([]);
+  const [certWarn, setCertWarn] = useState(null);
   const [pinpads, setPinpads] = useState([]); // Lista de pinpads (dispositivos tipo Pinpad)
   const [posDevices, setPosDevices] = useState([]); // Lista de POS (dispositivos tipo POS) para MPOS
   const [allHardware, setAllHardware] = useState([]); // Todos los dispositivos y accesorios
@@ -818,6 +821,7 @@ export const Quotes = () => {
       setBanks(banksRes.data);
       setServiceCatalog(servicesRes.data);
       setIntegrators(integratorsRes.data);
+      api.get('/productos-integracion/links').then((r) => setCertLinks(r.data)).catch(() => {});
       // Irregular count
       try { const ic = await api.get('/quotes/irregular/count'); setIrregularCount(ic.data.count || 0); } catch {}
       // Guardar todos los hardware
@@ -1285,10 +1289,15 @@ export const Quotes = () => {
   };
 
   // Agregar múltiples medios de pago de una vez (VPOS)
-  const addMultipleMediosPago = (selectedProducts) => {
+  const addMultipleMediosPago = (selectedProducts, opts = {}) => {
     if (!selectedBankId || selectedProducts.length === 0) return;
     const bank = banks.find(b => b.bank_id === selectedBankId);
     if (!bank) return;
+    if (!opts.skipCheck) {
+      const flagged = findUncertified(selectedProducts.map((p) => p.product_name), quoteData.integrator_id, integrators, certLinks);
+      if (flagged.length) { setCertWarn({ selected: selectedProducts, flagged, integrator: integrators.find(i => i.integrator_id === quoteData.integrator_id) }); return; }
+    }
+    const pendingNames = new Set(opts.pendingNames || []);
 
     let newAdditionalItems = [...quoteData.additional_items];
     let newRecurringBasicItems = [...quoteData.recurring_basic_items];
@@ -1314,7 +1323,8 @@ export const Quotes = () => {
         tarifa_recurrente: prices.monthly_cost,
         application_type: prices.application_type,
         isDefault: false,
-        linked_recurring_service_id: prices.linked_recurring_service_id
+        linked_recurring_service_id: prices.linked_recurring_service_id,
+        pendiente_certificacion: pendingNames.has(medioPago.product_name)
       };
       newAdditionalItems.push(newItem);
       addedCount++;
@@ -1865,7 +1875,7 @@ export const Quotes = () => {
       client_segment: quoteData.client_segment || 'PYME',
       setup_items: [
         ...quoteData.setup_items.map(item => ({
-          concepto: item.medio_pago_name,
+          concepto: pendLabel(item),
           cantidad_cajas: parseInt(item.cantidad_cajas) || 1,
           cantidad_bancos: item.lockBancos ? 1 : (parseInt(item.cantidad_bancos) || 1),
           tarifa: parseFloat(item.tarifa) || 0,
@@ -1879,11 +1889,12 @@ export const Quotes = () => {
           tarifa: parseFloat(item.tarifa_setup) || 0,
           bank_name: item.bank_name || null,
           tipo_corp: findServiceTipoCorp(item.medio_pago_name),
-          operational_status: item.operational_status || null
+          operational_status: item.operational_status || null,
+          pendiente_certificacion: !!item.pendiente_certificacion
         }))
       ],
       recurring_basic_items: quoteData.recurring_basic_items.map(item => ({
-        concepto: item.medio_pago_name + (item.linkedTo ? ` (vinculado a ${item.linkedTo})` : ''),
+        concepto: pendLabel(item) + (item.linkedTo ? ` (vinculado a ${item.linkedTo})` : ''),
         cantidad_cajas: parseInt(item.cantidad_cajas) || 1,
         cantidad_bancos: item.lockBancos ? 1 : (parseInt(item.cantidad_bancos) || 1),
         tarifa: parseFloat(item.tarifa) || 0,
@@ -1891,7 +1902,7 @@ export const Quotes = () => {
         tipo_corp: findServiceTipoCorp(item.medio_pago_name)
       })),
       recurring_other_items: quoteData.recurring_other_items.map(item => ({
-        concepto: item.medio_pago_name,
+        concepto: pendLabel(item),
         cantidad_cajas: parseInt(item.cantidad_cajas) || 1,
         cantidad_bancos: item.lockBancos ? 1 : (parseInt(item.cantidad_bancos) || 1),
         tarifa: parseFloat(item.tarifa) || 0,
@@ -1901,13 +1912,14 @@ export const Quotes = () => {
       additional_items: quoteData.additional_items
         .filter(item => item.bank_name)
         .map(item => ({
-          concepto: item.medio_pago_name,
+          concepto: pendLabel(item),
           cantidad_cajas: parseInt(item.cantidad_cajas) || 1,
           cantidad_bancos: parseInt(item.cantidad_bancos) || 1,
           tarifa: parseFloat(item.tarifa_setup) || 0,
           bank_name: item.bank_name,
           tipo_corp: findServiceTipoCorp(item.medio_pago_name),
-          operational_status: item.operational_status || null
+          operational_status: item.operational_status || null,
+          pendiente_certificacion: !!item.pendiente_certificacion
         })),
       descuento: quoteData.descuento || 0,
       descuento_setup: quoteData.descuento_setup || 0,
@@ -1921,7 +1933,7 @@ export const Quotes = () => {
         concepto: item.concepto, costo: item.costo || 0, banco: item.banco || '', observacion: item.observacion || '', operational_status: item.operational_status || null
       })),
       production_items: productionItems.map(item => ({
-        concepto: item.medio_pago_name,
+        concepto: pendLabel(item),
         cantidad_cajas: parseInt(item.cantidad_cajas) || 1,
         cantidad_bancos: parseInt(item.cantidad_bancos) || 1,
         tarifa: parseFloat(item.tarifa) || 0,
@@ -2114,7 +2126,8 @@ export const Quotes = () => {
           bank_name: item.bank_name || '',
           tarifa_setup: item.tarifa_setup || 0,
           tarifa_recurrente: item.tarifa_recurrente || 0,
-          operational_status: item.operational_status || null
+          operational_status: item.operational_status || null,
+          pendiente_certificacion: !!item.pendiente_certificacion
         })),
         // Items de cliente en producción
         ...productionItems.map(item => ({
@@ -2163,7 +2176,7 @@ export const Quotes = () => {
         client_segment: quoteData.client_segment || 'PYME',
         setup_items: [
           ...quoteData.setup_items.map(item => ({
-            concepto: item.medio_pago_name,
+            concepto: pendLabel(item),
             cantidad_cajas: parseInt(item.cantidad_cajas) || 1,
             cantidad_bancos: item.lockBancos ? 1 : (parseInt(item.cantidad_bancos) || 1),
             tarifa: parseFloat(item.tarifa) || 0,
@@ -2177,11 +2190,12 @@ export const Quotes = () => {
             tarifa: parseFloat(item.tarifa_setup) || 0,
             bank_name: item.bank_name || null,
             tipo_corp: findServiceTipoCorp(item.medio_pago_name),
-          operational_status: item.operational_status || null
+          operational_status: item.operational_status || null,
+          pendiente_certificacion: !!item.pendiente_certificacion
           }))
         ],
         recurring_basic_items: quoteData.recurring_basic_items.map(item => ({
-          concepto: item.medio_pago_name + (item.linkedTo ? ` (vinculado a ${item.linkedTo})` : ''),
+          concepto: pendLabel(item) + (item.linkedTo ? ` (vinculado a ${item.linkedTo})` : ''),
           cantidad_cajas: parseInt(item.cantidad_cajas) || 1,
           cantidad_bancos: item.lockBancos ? 1 : (parseInt(item.cantidad_bancos) || 1),
           tarifa: parseFloat(item.tarifa) || 0,
@@ -2189,7 +2203,7 @@ export const Quotes = () => {
           tipo_corp: findServiceTipoCorp(item.medio_pago_name)
         })),
         recurring_other_items: quoteData.recurring_other_items.map(item => ({
-          concepto: item.medio_pago_name,
+          concepto: pendLabel(item),
           cantidad_cajas: parseInt(item.cantidad_cajas) || 1,
           cantidad_bancos: item.lockBancos ? 1 : (parseInt(item.cantidad_bancos) || 1),
           tarifa: parseFloat(item.tarifa) || 0,
@@ -2199,13 +2213,14 @@ export const Quotes = () => {
         additional_items: quoteData.additional_items
           .filter(item => item.bank_name)
           .map(item => ({
-            concepto: item.medio_pago_name,
+            concepto: pendLabel(item),
             cantidad_cajas: parseInt(item.cantidad_cajas) || 1,
             cantidad_bancos: parseInt(item.cantidad_bancos) || 1,
             tarifa: parseFloat(item.tarifa_setup) || 0,
             bank_name: item.bank_name,
             tipo_corp: findServiceTipoCorp(item.medio_pago_name),
-          operational_status: item.operational_status || null
+          operational_status: item.operational_status || null,
+          pendiente_certificacion: !!item.pendiente_certificacion
           })),
         descuento: quoteData.descuento || 0,
         descuento_setup: quoteData.descuento_setup || 0,
@@ -2220,10 +2235,11 @@ export const Quotes = () => {
           costo: item.costo || 0,
           banco: item.banco || '',
           observacion: item.observacion || '',
-          operational_status: item.operational_status || null
+          operational_status: item.operational_status || null,
+          pendiente_certificacion: !!item.pendiente_certificacion
         })),
         production_items: productionItems.map(item => ({
-          concepto: item.medio_pago_name,
+          concepto: pendLabel(item),
           cantidad_cajas: parseInt(item.cantidad_cajas) || 1,
           cantidad_bancos: parseInt(item.cantidad_bancos) || 1,
           tarifa: parseFloat(item.tarifa) || 0,
@@ -3798,6 +3814,7 @@ export const Quotes = () => {
         service_id: s.item_id || s.service_id || '',
         medio_pago_name: name,
         name: name,
+        pendiente_certificacion: !!s.pendiente_certificacion,
         quantity: s.quantity || 1,
         bank_id: s.bank_id || '',
         bank_name: s.bank_name || '',
@@ -4066,7 +4083,8 @@ export const Quotes = () => {
           bank_name: item.bank_name || '',
           tarifa_setup: item.tarifa_setup || 0,
           tarifa_recurrente: item.tarifa_recurrente || 0,
-          operational_status: item.operational_status || null
+          operational_status: item.operational_status || null,
+          pendiente_certificacion: !!item.pendiente_certificacion
         })),
         // Items de cliente en producción
         ...productionItems.map(item => ({
@@ -4597,6 +4615,11 @@ export const Quotes = () => {
 
 
           {/* Wizard de Nueva Cotización (componente extraído) */}
+          <CertWarningDialog
+            warn={certWarn}
+            onCancel={() => { const w = certWarn; setCertWarn(null); const rest = w ? w.selected.filter((p) => !w.flagged.some((f) => f.medio === p.product_name)) : []; if (rest.length) addMultipleMediosPago(rest, { skipCheck: true }); }}
+            onAccept={() => { const w = certWarn; setCertWarn(null); addMultipleMediosPago(w.selected, { skipCheck: true, pendingNames: w.flagged.map((f) => f.medio) }); }}
+          />
           <QuoteWizardDialog ctx={{
             wizardOpen, setWizardOpen, isEditing, setIsEditing, setEditingQuoteId,
             quoteData, setQuoteData, banks, integrators, pinpads, posDevices, allHardware,

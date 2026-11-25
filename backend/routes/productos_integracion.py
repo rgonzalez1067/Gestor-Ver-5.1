@@ -20,6 +20,7 @@ class ProductoIn(BaseModel):
     descripcion: Optional[str] = ""
     orden_despliegue: Optional[int] = None
     activo: bool = True
+    medio_pago_id: Optional[str] = None
 
 
 class ProductoUpdate(BaseModel):
@@ -28,6 +29,7 @@ class ProductoUpdate(BaseModel):
     descripcion: Optional[str] = None
     orden_despliegue: Optional[int] = None
     activo: Optional[bool] = None
+    medio_pago_id: Optional[str] = None
 
 
 def _code(v: str) -> str:
@@ -83,7 +85,9 @@ async def list_productos(authorization: Optional[str] = Header(None)):
             st = str(v).strip().upper()
             if st in usage:
                 usage[st][k] = usage[st].get(k, 0) + 1
+    mp_names = await _medio_pago_names()
     for d in docs:
+        d["medio_pago_name"] = mp_names.get(d.get("medio_pago_id") or "", "")
         d["certificados"] = usage["C"].get(d["producto_id"], 0)
         d["en_proceso"] = usage["P"].get(d["producto_id"], 0)
         d["aplicativos"] = d["certificados"] + d["en_proceso"]
@@ -99,12 +103,35 @@ async def _check_unique(codigo: Optional[str], nombre: Optional[str], exclude: s
         raise HTTPException(status_code=409, detail="Ya existe un producto con ese nombre")
 
 
+async def _medio_pago_names() -> dict:
+    return {s["service_id"]: s.get("name", "") async for s in db.services.find({}, {"_id": 0, "service_id": 1, "name": 1})}
+
+
+async def _check_medio_pago(mp_id: Optional[str]):
+    if mp_id and not await db.services.find_one({"service_id": mp_id}, {"_id": 1}):
+        raise HTTPException(status_code=400, detail="Medio de Pago no encontrado")
+
+
+@router.get("/productos-integracion/links")
+async def productos_links(authorization: Optional[str] = Header(None)):
+    """Vínculos activos Producto de Integración -> Medio de Pago (para la validación del Cotizador)."""
+    await get_current_user(authorization)
+    mp_names = await _medio_pago_names()
+    docs = await db.productos_integracion.find({"activo": {"$ne": False}, "medio_pago_id": {"$nin": [None, ""]}},
+                                               {"_id": 0, "producto_id": 1, "nombre": 1, "medio_pago_id": 1}).to_list(2000)
+    for d in docs:
+        d["medio_pago_name"] = mp_names.get(d["medio_pago_id"], "")
+    return docs
+
+
 @router.post("/productos-integracion")
 async def create_producto(data: ProductoIn, authorization: Optional[str] = Header(None)):
     user = await _require_admin(authorization)
     await _check_unique(data.codigo, data.nombre)
+    await _check_medio_pago(data.medio_pago_id)
     doc = {"producto_id": f"prod_{uuid.uuid4().hex[:10]}", "codigo": _code(data.codigo), "nombre": data.nombre.strip(),
            "descripcion": (data.descripcion or "").strip(), "orden_despliegue": data.orden_despliegue, "activo": data.activo,
+           "medio_pago_id": data.medio_pago_id or None,
            "created_at": datetime.now(timezone.utc).isoformat(), "created_by": user.get("email", "")}
     await db.productos_integracion.insert_one(doc)
     doc.pop("_id", None)
@@ -119,6 +146,9 @@ async def update_producto(producto_id: str, data: ProductoUpdate, authorization:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
     upd = data.model_dump(exclude_unset=True)
     await _check_unique(upd.get("codigo"), upd.get("nombre"), producto_id)
+    if "medio_pago_id" in upd:
+        upd["medio_pago_id"] = upd["medio_pago_id"] or None
+        await _check_medio_pago(upd["medio_pago_id"])
     if "codigo" in upd:
         upd["codigo"] = _code(upd["codigo"])
     if "nombre" in upd:

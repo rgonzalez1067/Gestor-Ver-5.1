@@ -1292,6 +1292,8 @@ async def regenerate_quote_pdf(quote_id: str, data: dict = {}, authorization: Op
             elif item_type == "recurring_other":
                 recurring_other_items.append(pdf_item)
             elif item_type == "additional":
+                if svc.get("pendiente_certificacion"):
+                    svc = {**svc, "item_name": f"{svc.get('item_name', '')} — (Pendiente por certificación del Integrador)"}
                 # Additional items go to BOTH setup_items (for cost table) AND additional_items (for bank/product matrix)
                 setup_items.append({
                     "concepto": f"{svc.get('item_name', '')} - {svc.get('bank_name', '')}".strip(' -'),

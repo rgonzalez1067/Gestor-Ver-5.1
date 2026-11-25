@@ -24,6 +24,7 @@ import { ExpressServiceToggle } from './ExpressServiceToggle';
 import { PgAdditionalServicesToggles, LpStandaloneSummary } from './PgAdditionalServices';
 import { QuoteScopeSelector } from './scope/QuoteScopeSelector';
 import { SponsorTypeSelector } from './scope/SponsorTypeSelector';
+import { PendingCertBadge } from './CertWarningDialog';
 
 export const QuoteWizardDialog = ({ ctx }) => {
   const {
@@ -1801,7 +1802,7 @@ export const QuoteWizardDialog = ({ ctx }) => {
                           <tr key={`add-setup-${index}`} className="bg-white border-l-4 border-l-amber-500">
                             <td className="px-3 py-2 text-center font-medium border border-slate-300">{quoteData.setup_items.length + index + 1}</td>
                             <td className="px-3 py-2 border border-slate-300">
-                              <div className="font-medium text-slate-900 flex items-center gap-2">{item.medio_pago_name}<PhaseTag status={item.operational_status} testId={`additional-phase-${index}`} /></div>
+                              <div className="font-medium text-slate-900 flex items-center gap-2 flex-wrap">{item.medio_pago_name}<PhaseTag status={item.operational_status} testId={`additional-phase-${index}`} />{item.pendiente_certificacion && <PendingCertBadge testId={`additional-pending-cert-${index}`} />}</div>
                               <div className="text-xs text-slate-500">{item.bank_name}</div>
                             </td>
                             <td className="px-3 py-2 text-center border border-slate-300">

@@ -8,19 +8,21 @@ import { Switch } from '../ui/switch';
 import { toast } from 'sonner';
 import api from '../../utils/api';
 
-const EMPTY = { codigo: '', nombre: '', descripcion: '', orden_despliegue: '', activo: true };
+const EMPTY = { codigo: '', nombre: '', descripcion: '', orden_despliegue: '', activo: true, medio_pago_id: '' };
 
 export const ProductoFormDialog = ({ open, producto, onClose, onSaved }) => {
   const [f, setF] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [medios, setMedios] = useState([]);
+  useEffect(() => { if (open && !medios.length) api.get('/services').then((r) => setMedios([...r.data].sort((a, b) => a.name.localeCompare(b.name, 'es')))).catch(() => {}); }, [open, medios.length]);
   useEffect(() => {
-    if (open) setF(producto ? { ...EMPTY, ...producto, orden_despliegue: producto.orden_despliegue ?? '' } : EMPTY);
+    if (open) setF(producto ? { ...EMPTY, ...producto, orden_despliegue: producto.orden_despliegue ?? '', medio_pago_id: producto.medio_pago_id || '' } : EMPTY);
   }, [open, producto]);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
   const save = async () => {
     if (!f.codigo.trim() || !f.nombre.trim()) { toast.error('Código y Nombre son obligatorios'); return; }
-    const body = { codigo: f.codigo, nombre: f.nombre, descripcion: f.descripcion, activo: f.activo,
+    const body = { codigo: f.codigo, nombre: f.nombre, descripcion: f.descripcion, activo: f.activo, medio_pago_id: f.medio_pago_id || null,
       orden_despliegue: f.orden_despliegue === '' ? null : Number(f.orden_despliegue) };
     setSaving(true);
     try {
@@ -42,6 +44,14 @@ export const ProductoFormDialog = ({ open, producto, onClose, onSaved }) => {
             <div><Label>Orden</Label><Input type="number" value={f.orden_despliegue} onChange={set('orden_despliegue')} data-testid="producto-form-orden" /></div>
           </div>
           <div><Label>Nombre *</Label><Input maxLength={150} value={f.nombre} onChange={set('nombre')} placeholder="Nombre en la Matriz del Integrador" data-testid="producto-form-nombre" /></div>
+          <div>
+            <Label>Medio de Pago Asociado</Label>
+            <select className="h-9 w-full rounded-md border border-input bg-white px-2 text-sm" value={f.medio_pago_id} onChange={set('medio_pago_id')} data-testid="producto-form-medio-pago">
+              <option value="">— Sin medio de pago asociado —</option>
+              {medios.map((m) => <option key={m.service_id} value={m.service_id}>{m.name}</option>)}
+            </select>
+            <p className="text-[11px] text-slate-400 mt-1">El Cotizador advertirá si este medio de pago se agrega con un aplicativo que no tenga el producto Certificado.</p>
+          </div>
           <div><Label>Descripción</Label><Textarea rows={3} value={f.descripcion} onChange={set('descripcion')} data-testid="producto-form-descripcion" /></div>
           <label className="flex items-center gap-3"><Switch checked={f.activo} onCheckedChange={(v) => setF({ ...f, activo: v })} data-testid="producto-form-activo" /><span className="text-sm">{f.activo ? 'Activo (visible en la Matriz)' : 'Inactivo'}</span></label>
         </div>

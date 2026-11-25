@@ -61,7 +61,7 @@ export default function ProductosIntegracion() {
               <table className="w-full text-sm" data-testid="productos-table">
                 <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr>
                   <th className="px-3 py-3 text-center w-16">Orden</th><th className="px-3 py-3 text-left">Código</th><th className="px-3 py-3 text-left">Nombre</th>
-                  <th className="px-3 py-3 text-left">Descripción</th><th className="px-3 py-3 text-center"><button type="button" onClick={() => sortBy('certificados')} className="inline-flex items-center gap-1 uppercase hover:text-slate-800" title="Aplicativos con el producto Certificado (C)" data-testid="productos-sort-certificados">Certificados (C)<SortIcon k="certificados" /></button></th>
+                  <th className="px-3 py-3 text-left">Medio de Pago Asoc.</th><th className="px-3 py-3 text-center"><button type="button" onClick={() => sortBy('certificados')} className="inline-flex items-center gap-1 uppercase hover:text-slate-800" title="Aplicativos con el producto Certificado (C)" data-testid="productos-sort-certificados">Certificados (C)<SortIcon k="certificados" /></button></th>
                   <th className="px-3 py-3 text-center"><button type="button" onClick={() => sortBy('en_proceso')} className="inline-flex items-center gap-1 uppercase hover:text-slate-800" title="Aplicativos con el producto Pendiente (P)" data-testid="productos-sort-pendientes">Pendientes (P)<SortIcon k="en_proceso" /></button></th><th className="px-3 py-3 text-center">Activo</th><th className="px-3 py-3 w-20" />
                 </tr></thead>
                 <tbody className="divide-y divide-slate-100">
@@ -70,7 +70,7 @@ export default function ProductosIntegracion() {
                       <td className="px-3 py-2 text-center text-slate-500">{p.orden_despliegue ?? '—'}</td>
                       <td className="px-3 py-2 font-mono text-xs text-slate-600">{p.codigo}</td>
                       <td className="px-3 py-2 font-medium text-slate-800">{p.nombre}</td>
-                      <td className="px-3 py-2 text-slate-500 text-xs max-w-[280px] truncate" title={p.descripcion}>{p.descripcion || '—'}</td>
+                      <td className="px-3 py-2 text-slate-600 text-xs max-w-[220px] truncate" title={p.descripcion || ''} data-testid={`producto-medio-pago-${p.producto_id}`}>{p.medio_pago_name || <span className="text-slate-300">—</span>}</td>
                       <td className="px-3 py-2 text-center"><CertifiedAppsHover producto={p} /></td>
                       <td className="px-3 py-2 text-center text-amber-700" data-testid={`producto-pendientes-${p.producto_id}`}>{p.en_proceso}</td>
                       <td className="px-3 py-2 text-center"><Switch checked={p.activo} onCheckedChange={() => toggle(p)} data-testid={`producto-status-${p.producto_id}`} /></td>
