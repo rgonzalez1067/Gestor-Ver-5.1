@@ -1,3 +1,5 @@
+import { FileBarChart } from 'lucide-react';
+import { ProjectFollowupReportDialog } from '../components/projects/ProjectFollowupReportDialog';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
@@ -90,6 +92,7 @@ const Projects = () => {
   })();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
+  const [followupOpen, setFollowupOpen] = useState(false);
   const [slaConfig, setSlaConfig] = useState(null); // matriz de días por etapa
   const [clientMap, setClientMap] = useState({}); // client_id → {fantasy_name, legal_name}
   const [stats, setStats] = useState({});
@@ -590,6 +593,11 @@ const Projects = () => {
               )}
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setFollowupOpen(true)} data-testid="projects-followup-report-btn"
+                className="border-blue-300 text-blue-700 hover:bg-blue-50" title="Reporte de Seguimiento de Proyectos (PDF / Excel)">
+                <FileBarChart size={15} className="mr-1.5" />Reporte de Seguimiento
+              </Button>
+              <ProjectFollowupReportDialog open={followupOpen} onOpenChange={setFollowupOpen} />
               {canManageTemplates && (
                 <Button
                   variant="outline"
