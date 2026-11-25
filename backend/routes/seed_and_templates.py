@@ -111,6 +111,10 @@ class EmailTemplate(BaseModel):
     subject: Optional[str] = None
     body_html: str
     tipo_plantilla: str = "COMUNICACION"  # "COMUNICACION" | "FUSION" (documental, sin asunto)
+    header_html: Optional[str] = None  # Solo FUSION: zona de Encabezado
+    footer_html: Optional[str] = None  # Solo FUSION: zona de Pie de Página
+    portada_encabezado: Optional[bool] = None  # Solo FUSION: la página 1 lleva encabezado
+    portada_pie: Optional[bool] = None  # Solo FUSION: la página 1 lleva pie
     description: Optional[str] = None
     is_active: bool = True
     context: Optional[str] = None  # "COTIZACIONES" | "IMPLEMENTACION" | "ADMINISTRACION" | "CLIENTES"
@@ -933,6 +937,8 @@ def _validate_template(t: EmailTemplate):
         raise HTTPException(status_code=400, detail="El título es obligatorio")
     if t.tipo_plantilla == "FUSION":
         t.subject = None
+        t.portada_encabezado = t.portada_encabezado is not False
+        t.portada_pie = t.portada_pie is not False
         if not re.sub(r"<[^>]+>|&nbsp;|\s", "", t.body_html or ""):
             raise HTTPException(status_code=400, detail="El cuerpo del documento es obligatorio")
     elif (t.context or "").upper() == "INTEGRADORES" and not (t.subject or "").strip():

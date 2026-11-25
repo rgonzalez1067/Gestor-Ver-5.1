@@ -6,6 +6,7 @@ import { Label } from '../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../components/ui/dialog';
 import { ArrowLeft, FileText, Upload, Trash2, Plus, Save, Pencil, FileUp, Eye, Download, Mail, FileStack } from 'lucide-react';
 import { RichTextEditor } from '../components/RichTextEditor';
+import { FusionHeaderZone, FusionFooterZone, FusionCoverOptions } from '../components/templates/FusionZones';
 import { DocumentViewerModal, downloadEntityDocument } from '../components/DocumentViewerModal';
 import api from '../utils/api';
 import { toast } from 'sonner';
@@ -32,6 +33,9 @@ export const EntityTemplatesConfig = ({
   const navigate = useNavigate();
   const editorRef = useRef(null);
   const subjectFocusRef = useRef(false);
+  const headerRef = useRef(null);
+  const footerRef = useRef(null);
+  const zoneRef = useRef('body');
   const { user: currentUser } = usePermission(permissionKey);
   const isAdmin = currentUser?.role === 'admin';
 
@@ -39,7 +43,8 @@ export const EntityTemplatesConfig = ({
   const [templates, setTemplates] = useState([]);
   const [tplDialogOpen, setTplDialogOpen] = useState(false);
   const [editingTpl, setEditingTpl] = useState(null);
-  const [tplForm, setTplForm] = useState({ name: '', subject: '', body_html: '', tipo_plantilla: 'COMUNICACION' });
+  const EMPTY_FUSION = { header_html: '', footer_html: '', portada_encabezado: true, portada_pie: true };
+  const [tplForm, setTplForm] = useState({ name: '', subject: '', body_html: '', tipo_plantilla: 'COMUNICACION', ...EMPTY_FUSION });
   const [typePickerOpen, setTypePickerOpen] = useState(false);
   const isFusion = tplForm.tipo_plantilla === 'FUSION';
 
@@ -59,20 +64,23 @@ export const EntityTemplatesConfig = ({
   const startNewTemplate = (tipo) => {
     setTypePickerOpen(false);
     setEditingTpl(null);
-    setTplForm({ name: '', subject: '', body_html: '', tipo_plantilla: tipo });
+    zoneRef.current = 'body';
+    setTplForm({ name: '', subject: '', body_html: '', tipo_plantilla: tipo, ...EMPTY_FUSION });
     setTplDialogOpen(true);
   };
   const openNewTemplate = () => (allowFusion ? setTypePickerOpen(true) : startNewTemplate('COMUNICACION'));
   const openEditTemplate = (tpl) => {
     setEditingTpl(tpl);
-    setTplForm({ name: tpl.name, subject: tpl.subject || '', body_html: tpl.body_html || tpl.body || '', tipo_plantilla: tpl.tipo_plantilla || 'COMUNICACION' });
+    zoneRef.current = 'body';
+    setTplForm({ name: tpl.name, subject: tpl.subject || '', body_html: tpl.body_html || tpl.body || '', tipo_plantilla: tpl.tipo_plantilla || 'COMUNICACION',
+      header_html: tpl.header_html || '', footer_html: tpl.footer_html || '', portada_encabezado: tpl.portada_encabezado !== false, portada_pie: tpl.portada_pie !== false });
     setTplDialogOpen(true);
   };
   const saveTemplate = async () => {
     if (!tplForm.name.trim()) { toast.error(isFusion ? 'El título es obligatorio' : 'El nombre es obligatorio'); return; }
     if (isFusion && !tplForm.body_html.replace(/<[^>]+>|&nbsp;|\s/g, '')) { toast.error('El cuerpo del documento es obligatorio'); return; }
     if (allowFusion && !isFusion && !tplForm.subject.trim()) { toast.error('El asunto es obligatorio para plantillas de comunicación'); return; }
-    const payload = { ...tplForm, subject: isFusion ? null : tplForm.subject };
+    const payload = isFusion ? { ...tplForm, subject: null } : { name: tplForm.name, subject: tplForm.subject, body_html: tplForm.body_html, tipo_plantilla: tplForm.tipo_plantilla };
     try {
       if (editingTpl) {
         await api.put(`/email-templates/${editingTpl.template_id}`, {
@@ -177,6 +185,11 @@ export const EntityTemplatesConfig = ({
                   {allowFusion && (tpl.tipo_plantilla === 'FUSION'
                     ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 mb-1.5" data-testid={`tpl-badge-fusion-${tpl.template_id}`}><FileStack className="w-3 h-3" />Plantilla de Fusión</span>
                     : <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200 mb-1.5" data-testid={`tpl-badge-comunicacion-${tpl.template_id}`}><Mail className="w-3 h-3" />Comunicación</span>)}
+                  {tpl.tipo_plantilla === 'FUSION' && (
+                    <p className="text-[10px] text-slate-500 mb-1" data-testid={`tpl-fusion-zones-${tpl.template_id}`}>
+                      Encabezado: {(tpl.header_html || '').replace(/<[^>]+>/g, '').trim() || /<img/i.test(tpl.header_html || '') ? 'Sí' : 'No'} · Pie: {(tpl.footer_html || '').replace(/<[^>]+>/g, '').trim() || /<img/i.test(tpl.footer_html || '') ? 'Sí' : 'No'} · Portada: {tpl.portada_encabezado === false && tpl.portada_pie === false ? 'sin encabezado/pie' : `${tpl.portada_encabezado === false ? 'sin' : 'con'} encabezado, ${tpl.portada_pie === false ? 'sin' : 'con'} pie`}
+                    </p>
+                  )}
                   {tpl.tipo_plantilla !== 'FUSION' && <p className="text-xs text-blue-600 font-medium mb-1">Asunto: {tpl.subject || '—'}</p>}
                   <p className="text-xs text-slate-500 line-clamp-3">{(tpl.body_html || tpl.body || '—').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() || '—'}</p>
                 </div>
@@ -204,7 +217,7 @@ export const EntityTemplatesConfig = ({
                     onChange={e => setTplForm({...tplForm, subject: e.target.value})} data-testid="entity-tpl-subject" /></div>}
                   {variableGroups && (
                     <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50 space-y-2" data-testid="entity-tpl-variables">
-                      <p className="text-[11px] text-slate-500">{isFusion ? 'Clic en una variable para insertarla en el cuerpo del documento.' : 'Clic en una variable para insertarla en el cuerpo (o en el asunto si es el último campo editado).'}</p>
+                      <p className="text-[11px] text-slate-500">{isFusion ? 'Clic en una variable para insertarla en la zona editada por última vez (Encabezado, Cuerpo o Pie de Página).' : 'Clic en una variable para insertarla en el cuerpo (o en el asunto si es el último campo editado).'}</p>
                       {variableGroups.map(g => (
                         <div key={g.title}>
                           <p className="text-[11px] font-semibold text-slate-600 mb-1">{g.title}{g.note && <span className="font-normal text-slate-400"> — {g.note}</span>}</p>
@@ -216,6 +229,8 @@ export const EntityTemplatesConfig = ({
                                 onClick={() => {
                                   const token = `{{${v.key}}}`;
                                   if (subjectFocusRef.current && !isFusion) setTplForm(f => ({ ...f, subject: `${f.subject}${token}` }));
+                                  else if (isFusion && zoneRef.current === 'header') headerRef.current?.insertText(token);
+                                  else if (isFusion && zoneRef.current === 'footer') footerRef.current?.insertText(token);
                                   else editorRef.current?.insertText(token);
                                 }}
                                 data-testid={`entity-tpl-var-${v.key}`}>
@@ -225,15 +240,30 @@ export const EntityTemplatesConfig = ({
                           </div>
                         </div>
                       ))}
+                      {isFusion && (
+                        <div>
+                          <p className="text-[11px] font-semibold text-slate-600 mb-1">Paginación <span className="font-normal text-slate-400">— opcional, se resuelve al generar el documento</span></p>
+                          <div className="flex flex-wrap gap-1">
+                            {[{ key: 'pagina', label: 'Número de página actual' }, { key: 'total_paginas', label: 'Total de páginas' }].map(v => (
+                              <button key={v.key} type="button" title={v.label} onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => { const t = `{{${v.key}}}`; (zoneRef.current === 'header' ? headerRef : zoneRef.current === 'footer' ? footerRef : editorRef).current?.insertText(t); }}
+                                className="text-[11px] px-2 py-0.5 rounded border font-mono transition-colors bg-white border-amber-200 text-amber-700 hover:bg-amber-50"
+                                data-testid={`entity-tpl-var-${v.key}`}>{`{{${v.key}}}`}</button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
+                  {isFusion && <FusionCoverOptions form={tplForm} setForm={setTplForm} />}
+                  {isFusion && <FusionHeaderZone form={tplForm} setForm={setTplForm} editorRef={headerRef} zoneRef={zoneRef} context={context} />}
                   <div>
                     <Label className="text-xs">{isFusion ? <>Cuerpo / Estructura del Documento <span className="text-red-500">*</span></> : 'Cuerpo del Mensaje'}</Label>
-                    <div onMouseDown={() => { subjectFocusRef.current = false; }}>
+                    <div onMouseDown={() => { subjectFocusRef.current = false; zoneRef.current = 'body'; }}>
                     <RichTextEditor
                       ref={editorRef}
                       value={tplForm.body_html}
-                      onChange={(html) => { subjectFocusRef.current = false; setTplForm({ ...tplForm, body_html: html }); }}
+                      onChange={(html) => { subjectFocusRef.current = false; zoneRef.current = 'body'; setTplForm(f => ({ ...f, body_html: html })); }}
                       maxChars={20000}
                       hardLimit={false}
                       placeholder={isFusion ? 'Redacte aquí la estructura del documento...' : 'Redacte aquí el cuerpo del correo...'}
@@ -245,6 +275,7 @@ export const EntityTemplatesConfig = ({
                     </div>
                     {variablesHint && !variableGroups && <p className="text-[10px] text-slate-400 mt-1">Variables: {variablesHint}</p>}
                   </div>
+                  {isFusion && <FusionFooterZone form={tplForm} setForm={setTplForm} editorRef={footerRef} zoneRef={zoneRef} context={context} />}
                 </div>
                 <DialogFooter className="px-6 py-4 border-t border-slate-100 bg-white shrink-0">
                   <Button variant="outline" onClick={() => setTplDialogOpen(false)}>Cancelar</Button>

@@ -4935,3 +4935,4 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Pestaña Ficha Aplicativo "Documentos de la Certificación" (AppCertDocsTab) + GET /api/integrators/{id}/certification-documents (routes/integrator_cert_docs.py, colección integrator_cert_folders, en blanco).
 - MPOS/FAST_TRACK: communication_type SSL por defecto, Comunicación Backend tarifa outsourcing (1).
 - Backlog: fase 2 fusión documental hacia la carpeta; rechazo backend de FUSION en envíos masivos.
+- 2026-11: Plantillas de Fusión con zonas Encabezado y Pie de Página (header_html/footer_html, texto+variables+logo), opciones de Portada (portada_encabezado/portada_pie, default true) y variables de paginación {{pagina}}/{{total_paginas}} (solo Fusión, se resolverán en fase de generación). Componente components/templates/FusionZones.jsx.
