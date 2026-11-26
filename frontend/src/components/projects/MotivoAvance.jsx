@@ -11,17 +11,17 @@ export const MOTIVOS_AVANCE = [
 export const motivoOf = (p) => (p?.motivo_avance || '').toUpperCase() || null;
 
 // Botones de color Cliente / Banco / Imple; pulsar el activo lo deja sin motivo.
-const MotivoButtons = ({ project, canEdit, onChanged, compact, testPrefix }) => {
-  const [value, setValue] = useState(motivoOf(project));
+const MotivoButtons = ({ project, canEdit, onChanged, compact, testPrefix, field = 'motivo_avance', endpoint = 'motivo-avance', title = 'Responsable del Avance' }) => {
+  const [value, setValue] = useState((project?.[field] || '').toUpperCase() || null);
   const [busy, setBusy] = useState(false);
   const pick = async (key) => {
     if (!canEdit || busy) return;
     const next = key === value ? null : key;
     setBusy(true);
     try {
-      await api.put(`/projects/${project.project_id}/motivo-avance`, { motivo: next });
+      await api.put(`/projects/${project.project_id}/${endpoint}`, { motivo: next });
       setValue(next);
-      toast.success(next ? 'Responsable del Avance actualizado' : 'Responsable del Avance retirado');
+      toast.success(next ? `${title} actualizado` : `${title} retirado`);
       onChanged?.(next);
     } catch (e) { toast.error(e.response?.data?.detail || 'No se pudo actualizar el responsable'); }
     finally { setBusy(false); }
@@ -51,6 +51,15 @@ export const MotivoAvanceSelector = ({ project, canEdit, onChanged }) => (
     <p className="text-xs text-slate-500 mb-1">Responsable del Avance</p>
     <MotivoButtons project={project} canEdit={canEdit} onChanged={onChanged} testPrefix="motivo-avance" />
     {!canEdit && <p className="text-[10px] text-slate-400 mt-0.5">Solo el implementador del proyecto o un administrador puede cambiarlo.</p>}
+  </div>
+);
+
+// Selector "Responsable del Retraso" (dato independiente) en la ficha del proyecto.
+export const ResponsableRetrasoSelector = ({ project, canEdit, onChanged }) => (
+  <div data-testid="responsable-retraso-section">
+    <p className="text-xs text-slate-500 mb-1">Responsable del Retraso</p>
+    <MotivoButtons project={project} canEdit={canEdit} onChanged={onChanged} testPrefix="responsable-retraso"
+      field="responsable_retraso" endpoint="responsable-retraso" title="Responsable del Retraso" />
   </div>
 );
 

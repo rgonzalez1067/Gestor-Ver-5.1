@@ -71,7 +71,8 @@ async def _rows(user: dict, implementador: str, generador: str, desde: str, hast
                      "generador": p.get("created_by_name", ""), "implementador": p.get("assigned_to_name") or "Sin asignar",
                      "estado": p.get("status", ""), "responsable": MOTIVO_LABEL.get((p.get("motivo_avance") or "").upper(), "Sin responsable"),
                      "ultimo_seguimiento": seguim or None,
-                     "dias_retraso": 0 if p.get("status") in FINISHED else days, "nivel": level, "nivel_label": LEVEL_LABEL[level]})
+                     "dias_retraso": 0 if p.get("status") in FINISHED else days, "nivel": level, "nivel_label": LEVEL_LABEL[level],
+                     "responsable_retraso": MOTIVO_LABEL.get((p.get("responsable_retraso") or "").upper(), "Sin registrar")})
     if nivel:
         rows = [r for r in rows if r["nivel"] == nivel]
     order = {"critico": 0, "medio": 1, "al_dia": 2}
@@ -82,12 +83,12 @@ async def _rows(user: dict, implementador: str, generador: str, desde: str, hast
 
 
 HEAD = ["Proyecto", "Cliente", "Tipo", "% Avance", "Fecha Asignación", "Generador", "Implementador", "Estado",
-        "Responsable del Avance", "Último Seguimiento", "Días Retraso", "Tipo de Retraso"]
+        "Responsable del Avance", "Último Seguimiento", "Días Retraso", "Tipo de Retraso", "Responsable del Retraso"]
 
 
 def _vals(r):
     return [r["project_number"], r["cliente"], r["tipo"], f"{r['avance']}%", _fmt(r["fecha_asignacion"]), r["generador"],
-            r["implementador"], r["estado"], r["responsable"], _fmt(r["ultimo_seguimiento"]), r["dias_retraso"], r["nivel_label"]]
+            r["implementador"], r["estado"], r["responsable"], _fmt(r["ultimo_seguimiento"]), r["dias_retraso"], r["nivel_label"], r["responsable_retraso"]]
 
 
 def _xlsx(rows, kpis, ftext):
@@ -113,7 +114,7 @@ def _xlsx(rows, kpis, ftext):
         ws.append(v)
         ws.cell(row=ws.max_row, column=4).number_format = "0%"
         ws.cell(row=ws.max_row, column=12).fill = PatternFill("solid", fgColor=fills[r["nivel"]])
-    for col, w in zip("ABCDEFGHIJKL", [24, 34, 16, 10, 15, 24, 24, 20, 20, 16, 12, 16]):
+    for col, w in zip("ABCDEFGHIJKLM", [24, 34, 16, 10, 15, 24, 24, 20, 20, 16, 12, 16, 20]):
         ws.column_dimensions[col].width = w
     ws.freeze_panes = "A6"
     buf = io.BytesIO()
@@ -144,7 +145,7 @@ def _pdf(rows, kpis, ftext):
           ("Al Día", kpis["al_dia"]), ("Avance Promedio", f"{kpis['avance_promedio']}%")]
     kt = Table([[Paragraph(k, hs) for k, _ in kp], [P(v) for _, v in kp]], colWidths=[doc.width / 5] * 5)
     kt.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), BRAND_BLUE), ("GRID", (0, 0), (-1, -1), 0.5, GRID_COLOR)]))
-    widths = [.1, .14, .06, .05, .07, .1, .1, .08, .07, .07, .05, .07]
+    widths = [.095, .13, .055, .045, .065, .09, .09, .075, .07, .065, .045, .07, .065]
     data = [[Paragraph(h, hs) for h in HEAD]] + [[P(v) for v in _vals(r)] for r in rows]
     t = Table(data, colWidths=[doc.width * w for w in widths], repeatRows=1)
     style = [("BACKGROUND", (0, 0), (-1, 0), BRAND_BLUE), ("GRID", (0, 0), (-1, -1), 0.5, GRID_COLOR), ("VALIGN", (0, 0), (-1, -1), "TOP")]
