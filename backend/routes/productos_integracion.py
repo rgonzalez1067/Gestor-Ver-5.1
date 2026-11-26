@@ -62,7 +62,7 @@ async def seed_products_and_baselines():
     if not await db["_migrations"].find_one({"_id": "cert_baseline_v1"}):
         with_cert = set(await db.integrator_certificates.distinct("integrator_id", {"status": {"$ne": "anulado"}}))
         async for i in db.integrators.find({"integrator_id": {"$in": list(with_cert)}}, {"_id": 0, "integrator_id": 1, "certifications": 1}):
-            base = [k for k, v in (i.get("certifications") or {}).items() if str(v).strip().upper() == "C"]
+            base = [k for k, v in (i.get("certifications") or {}).items() if str(v).strip().upper() in ("C", "R")]
             await db.integrators.update_one({"integrator_id": i["integrator_id"]}, {"$set": {"cert_baseline": base}})
         await db["_migrations"].insert_one({"_id": "cert_baseline_v1", "ran_at": datetime.now(timezone.utc).isoformat()})
     await refresh_products()

@@ -79,11 +79,21 @@ async def _refresh_products():
 
 
 def _cert_delta_ids(intg: dict, baseline_doc: dict = None) -> list:
-    """Productos marcados 'C' que no están en la línea base certificada (Delta de Certificación)."""
+    """Delta de Certificación: productos en S (Solicitado) o R (Recertificación), más los 'C' fuera de la línea base."""
     certs = intg.get("certifications") or {}
     base = set((baseline_doc or intg).get("cert_baseline") or [])
+    st = lambda pid: str(certs.get(pid, "")).strip().upper()
     # Solo productos activos del catálogo (los inactivos no se muestran en la Matriz ni se certifican).
-    return [pid for pid in INTEGRATOR_PRODUCT_IDS if str(certs.get(pid, "")).strip().upper() == "C" and pid not in base]
+    return [pid for pid in INTEGRATOR_PRODUCT_IDS if st(pid) in ("S", "R") or (st(pid) == "C" and pid not in base)]
+
+
+def productos_a_certificar(intg: dict) -> str:
+    """Variable {{productos_a_certificar}}: productos en S (Nuevo) y R (Recertificación), uno por línea."""
+    from routes.productos_integracion import ALL_PRODUCT_NAMES
+    certs = intg.get("certifications") or {}
+    lbl = {"S": "Nuevo - S", "R": "Recertificación - R"}
+    return "\n".join(f"{ALL_PRODUCT_NAMES.get(pid, pid)} ({lbl[v]})" for pid, v in
+                     ((p, str(certs.get(p, "")).strip().upper()) for p in INTEGRATOR_PRODUCT_IDS) if v in lbl)
 
 
 def _names_for(ids: list) -> list:
@@ -766,6 +776,8 @@ async def _store_integrator_certificate(integrator_id: str, filename: str, conte
         {"integrator_id": integrator_id, "status": {"$nin": ["anulado", "reemplazado"]}},
         {"$set": {"status": "reemplazado", "status_updated_at": doc["created_at"]}})
     if product_ids:
+        # S (Solicitado) y R (Recertificación) emitidos pasan a C (Certificado) en la matriz.
+        await db.integrators.update_one({"integrator_id": integrator_id}, {"$set": {f"certifications.{p}": "C" for p in product_ids}})
         # cert_baseline puede venir null (POST /integrators persiste el default None del modelo).
         await db.integrators.update_one({"integrator_id": integrator_id, "cert_baseline": None}, {"$set": {"cert_baseline": []}})
         await db.integrators.update_one({"integrator_id": integrator_id}, {"$addToSet": {"cert_baseline": {"$each": product_ids}}})
@@ -1581,6 +1593,7 @@ async def assign_test_environment(integrator_id: str, payload: TestEnvironmentPa
 
 class ExpandPayload(BaseModel):
     productos_certificar: Optional[str] = None
+    solicitados: Optional[dict] = None  # {producto_id: 'S' | 'R'} marcados por el Generador
     correo_eventual: Optional[str] = None
     contacts: Optional[List[dict]] = None
 
@@ -1609,6 +1622,15 @@ async def expand_integrator_type(integrator_id: str, payload: Optional[ExpandPay
             set_data["productos_certificar"] = payload.productos_certificar
         if payload.correo_eventual is not None:
             set_data["correo_eventual"] = payload.correo_eventual
+        certs = dict(existing.get("certifications") or {})
+        for pid, v in (payload.solicitados or {}).items():
+            cur = str(certs.get(pid, "")).strip().upper()
+            v = str(v).strip().upper()
+            if (v == "S" and cur not in ("C", "R")) or (v == "R" and cur == "C"):
+                certs[pid] = v
+        if payload.solicitados is not None:
+            set_data["certifications"] = certs
+            set_data["productos_certificar"] = productos_a_certificar({"certifications": certs}).replace("\n", ", ")
         # Fusionar el Responsable capturado (dedupe por email) en los contactos del integrador.
         if payload.contacts:
             # Los del asistente van primero (contacts[0] = Responsable principal); luego los previos sin duplicar.
@@ -3095,8 +3117,9 @@ async def notify_new_integration_project(
         "Nombre_Ejecutivo": f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip(),
         "fecha_sistema": datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M"),
         # Productos a Certificar (texto libre del Proyecto de Integración).
-        "Productos_Certificar_Integrador": integrator.get("productos_certificar", "") or "",
-        "productos_certificar_integrador": integrator.get("productos_certificar", "") or "",
+        "Productos_Certificar_Integrador": productos_a_certificar(integrator).replace("\n", ", ") or integrator.get("productos_certificar", "") or "",
+        "productos_certificar_integrador": productos_a_certificar(integrator).replace("\n", ", ") or integrator.get("productos_certificar", "") or "",
+        "productos_a_certificar": productos_a_certificar(integrator).replace("\n", "<br>"),
         # Productos del nuevo proyecto (para la plantilla de creación de Nuevos Proyectos).
         "Productos_nuevos": integrator.get("productos_certificar", "") or "",
     }

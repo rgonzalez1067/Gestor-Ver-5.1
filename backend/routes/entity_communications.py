@@ -278,6 +278,7 @@ async def _build_integrator_vars(integrator: dict) -> dict:
         "medios_pago_certificados": " / ".join(medios),
         "contactos_integrador": "; ".join(contactos),
         "fecha_actual": datetime.now(timezone.utc).strftime("%d/%m/%Y"),
+        "productos_a_certificar": __import__("routes.integrators", fromlist=["x"]).productos_a_certificar(integrator).replace("\n", "<br>"),
     })
     return v
 

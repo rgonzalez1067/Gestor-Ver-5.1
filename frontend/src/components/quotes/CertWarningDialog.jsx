@@ -14,7 +14,7 @@ export const findUncertified = (names, integratorId, integrators, links) => {
   const certs = app.certifications || {};
   return names.flatMap((name) => {
     const link = links.find((l) => norm(l.medio_pago_name) === norm(name));
-    if (!link || String(certs[link.producto_id] || '').trim().toUpperCase() === 'C') return [];
+    if (!link || ['C', 'R'].includes(String(certs[link.producto_id] || '').trim().toUpperCase())) return [];
     return [{ medio: name, producto: link.nombre }];
   });
 };

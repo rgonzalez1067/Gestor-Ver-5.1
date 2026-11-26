@@ -392,7 +392,7 @@ const INTEGRATOR_VARIABLE_GROUPS = [
     { key: 'empresa_integradora', label: 'Empresa Integradora (Razón Social)' }, { key: 'rif_integrador', label: 'RIF de la Empresa Integradora' },
     { key: 'direccion_fiscal', label: 'Dirección Fiscal' }, { key: 'contactos_integrador', label: 'Contactos de la Empresa Integradora' },
     { key: 'nombre_aplicativo', label: 'Nombre del Aplicativo' }, { key: 'tipo_integracion', label: 'Tipo de Integración' },
-    { key: 'productos_certificados', label: 'Productos certificados (lineal)' }, { key: 'medios_pago_certificados', label: 'Medios de Pago certificados (lineal)' },
+    { key: 'productos_certificados', label: 'Productos certificados (lineal)' }, { key: 'productos_a_certificar', label: 'Productos a certificar (S Nuevo / R Recertificación)' }, { key: 'medios_pago_certificados', label: 'Medios de Pago certificados (lineal)' },
     { key: 'fecha_actual', label: 'Fecha actual (dd/mm/aaaa)' },
   ] },
   { title: 'Bancos y Entes', note: 'un correo por Banco/Ente (BCC)', tone: 'bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50', vars: [

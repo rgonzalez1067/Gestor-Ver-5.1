@@ -11,6 +11,8 @@ export const CERT_STATES = {
   C: { label: 'C', text: 'Certificado', color: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
   P: { label: 'P', text: 'Pendiente', color: 'bg-amber-100 text-amber-700 border-amber-300' },
   'N/A': { label: 'N/A', text: 'No Aplica', color: 'bg-[#E3F2FD] text-[#0D47A1] border-[#90CAF9]' },
+  S: { label: 'S', text: 'Solicitado', color: 'bg-blue-600 text-white border-blue-700' },
+  R: { label: 'R', text: 'Recertificación', color: 'bg-slate-400 text-white border-slate-500' },
 };
 export const CERT_CYCLE = ['P', 'C', 'N/A'];
 

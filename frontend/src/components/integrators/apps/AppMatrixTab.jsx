@@ -3,6 +3,7 @@ import { Button } from '../../ui/button';
 import { Pencil, Lock } from 'lucide-react';
 import { ReasonField, reasonError } from './ReasonField';
 import { buildPayload, CERT_STATES, CERT_CYCLE } from './appPayload';
+import { toggleRequest } from './ProductRequestPicker';
 import api from '../../../utils/api';
 import { toast } from 'sonner';
 
@@ -15,14 +16,16 @@ export const AppMatrixTab = ({ app, products, editable, locked, onSaved }) => {
 
   const certs = editing ? draft : (app.certifications || {});
   const counts = useMemo(() => {
-    const c = { C: 0, P: 0, 'N/A': 0 };
+    const c = { C: 0, P: 0, 'N/A': 0, S: 0, R: 0 };
     products.forEach((p) => { c[certs[p.service_id] || 'N/A'] += 1; });
     return c;
   }, [products, certs]);
   const changed = editing && products.filter((p) => (draft[p.service_id] || 'N/A') !== ((app.certifications || {})[p.service_id] || 'N/A')).length;
 
+  const isProject = app.project_scope === 'expansion';
   const cycle = (pid) => setDraft((d) => {
     const cur = d[pid] || 'N/A';
+    if (isProject) return { ...d, [pid]: toggleRequest(cur, (app.certifications || {})[pid] || 'N/A') };
     return { ...d, [pid]: CERT_CYCLE[(CERT_CYCLE.indexOf(cur) + 1) % CERT_CYCLE.length] };
   });
   const save = async () => {
@@ -64,7 +67,7 @@ export const AppMatrixTab = ({ app, products, editable, locked, onSaved }) => {
       </div>
       {editing && (
         <div className="space-y-3 border-t pt-3">
-          <p className="text-xs text-slate-500" data-testid="matrix-changed-count">{changed} producto(s) modificado(s). Haz clic en cada estado para alternar P → C → N/A.</p>
+          <p className="text-xs text-slate-500" data-testid="matrix-changed-count">{changed} producto(s) modificado(s). {isProject ? 'Pulse un producto disponible para marcarlo S (Solicitado) o uno certificado (C) para R (Recertificación); pulse de nuevo para revertir.' : 'Haz clic en cada estado para alternar P → C → N/A.'}</p>
           {locked && <ReasonField value={reason} onChange={setReason} testId="matrix-reason" />}
           <div className="flex justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => setEditing(false)} data-testid="matrix-cancel-btn">Cancelar</Button>

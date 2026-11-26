@@ -22,6 +22,7 @@ import { BankMassCommunicationDialog } from '../components/BankMassCommunication
 import { IntegratorCertificatesCell } from '../components/IntegratorCertificatesCell';
 import PurgeIntegratorsDialog from '../components/PurgeIntegratorsDialog';
 import { CompanyDirectory } from '../components/integrators/companies/CompanyDirectory';
+import { ProductRequestPicker } from '../components/integrators/apps/ProductRequestPicker';
 import { CertFilter, certMatches } from '../components/integrators/CertFilter';
 import { AppFichaDialog } from '../components/integrators/apps/AppFichaDialog';
 import { isLockedApp } from '../components/integrators/apps/appPayload';
@@ -112,6 +113,8 @@ export const Integrators = () => {
   const [existingName, setExistingName] = useState('');     // integrador existente seleccionado
   const [scopeChoice, setScopeChoice] = useState('');       // '' | 'new_type' | 'expansion'
   const [expandTargetId, setExpandTargetId] = useState(''); // integrator_id (fila) a ampliar
+  const [requestDraft, setRequestDraft] = useState({}); // {producto_id: 'S'|'R'} marcados en la Ampliación
+  useEffect(() => { setRequestDraft({}); }, [expandTargetId, dialogOpen]);
   const [wizardSaving, setWizardSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: '', integrator_type: '', integration_type: '', app_name: '',
@@ -467,9 +470,6 @@ export const Integrators = () => {
     // --- Caso: Ampliación de un tipo vigente (actualiza la fila existente) ---
     if (integratorMode === 'existing' && scopeChoice === 'expansion') {
       if (!expandTargetId) { toast.error('Selecciona el tipo de integración a ampliar'); return; }
-      if (formData.correo_eventual && !EMAIL_RE.test(formData.correo_eventual.trim())) {
-        toast.error('El Correo Adicional Eventual tiene un formato inválido'); return;
-      }
       const rc = (formData.contacts && formData.contacts[0]) || {};
       if (rc.email && !EMAIL_RE.test(rc.email.trim())) {
         toast.error('El email del Responsable tiene un formato inválido'); return;
@@ -477,8 +477,7 @@ export const Integrators = () => {
       setWizardSaving(true);
       try {
         const res = await api.post(`/integrators/${expandTargetId}/expand`, {
-          productos_certificar: (formData.productos_certificar || '').trim(),
-          correo_eventual: (formData.correo_eventual || '').trim(),
+          solicitados: Object.fromEntries(Object.entries(requestDraft).filter(([, v]) => v === 'S' || v === 'R')),
           contacts: cleanWizardContacts(formData.contacts),
         });
         await syncNewCompanyContacts(wizardEmpresaId, formData.contacts);
@@ -1803,28 +1802,11 @@ export const Integrators = () => {
                             <div className="mt-4 pt-3 border-t border-fuchsia-200 space-y-3">
                               <p className="text-xs font-semibold text-fuchsia-600 uppercase tracking-wider">Datos del Proyecto de Complemento</p>
                               <div>
-                                <Label>Productos a Certificar</Label>
-                                <Input
-                                  value={formData.productos_certificar || ''}
-                                  onChange={(e) => setFormData({ ...formData, productos_certificar: e.target.value })}
-                                  placeholder="Ej: Cashea, Verif. Zelle, C2P, etc."
-                                  data-testid="wizard-productos-certificar"
-                                />
-                                <p className="text-[11px] text-slate-400 mt-0.5">Texto libre. Se incrusta en el correo del Integrador vía la variable {'{Productos_Certificar_Integrador}'}.</p>
-                              </div>
-                              <div>
-                                <Label>Correo Adicional Eventual</Label>
-                                <Input
-                                  type="email"
-                                  value={formData.correo_eventual || ''}
-                                  onChange={(e) => setFormData({ ...formData, correo_eventual: e.target.value })}
-                                  placeholder="gerente@banco.com"
-                                  data-testid="wizard-correo-eventual"
-                                  className={formData.correo_eventual && !EMAIL_RE.test(formData.correo_eventual.trim()) ? 'border-red-400 focus-visible:ring-red-400' : ''}
-                                />
-                                {formData.correo_eventual && !EMAIL_RE.test(formData.correo_eventual.trim())
-                                  ? <p className="text-[11px] text-red-500 mt-0.5" data-testid="wizard-correo-eventual-error">Formato de correo inválido (ej: usuario@dominio.com)</p>
-                                  : <p className="text-[11px] text-slate-400 mt-0.5">Opcional. Recibirá una copia (CC) de la notificación de este proyecto.</p>}
+                                <Label>Productos a Certificar <span className="font-normal text-slate-400">(opcional — el Implementador puede definirlos luego)</span></Label>
+                                {expandTargetId
+                                  ? <ProductRequestPicker products={certProducts} base={existingRows.find((r) => r.integrator_id === expandTargetId)?.certifications}
+                                      value={requestDraft} onChange={setRequestDraft} testid="wizard-request-matrix" />
+                                  : <p className="text-[11px] text-slate-400 mt-1">Seleccione primero la integración a ampliar para ver su Matriz de Productos.</p>}
                               </div>
                               {renderResponsibleContact({ required: false })}
                             </div>
