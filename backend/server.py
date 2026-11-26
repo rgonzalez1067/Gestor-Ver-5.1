@@ -257,6 +257,7 @@ RBAC_EXEMPT_PREFIXES = [
     "/api/external",
     "/api/notifications",
     "/api/ws/",
+    "/api/cron/",
 ]
 
 # Métodos HTTP que requieren nivel "edit"

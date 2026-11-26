@@ -4953,3 +4953,7 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Modal de confirmación en todo cambio de estatus (Nuevos Productos: AlertDialog; DESA/SQA: modal de asignación muestra "X → Y").
 - SQA→IMPLE: promoción al Roadmap con estatus nuevo `IMPLE` (pendiente de Coordinador); equipo = Coordinadores/Gerentes de Implementación.
 - Roadmap (BankDetail): cada cambio IMPLE→PreProd→Primer Prod→Masificación abre RoadmapPhaseDialog (confirmación + recursos de Implementación, obligatorio). Backend `_apply_phase_team` en banks.py: IMPLE→PreProd solo Coordinador/Gerente Implementación o admin; luego coordinador o equipo asignado. Guarda equipo_fase/responsable_nombre; correo usa ese equipo.
+
+## 2026-11-26 — Tasa BCV automática
+- Cron `.emergent/crons.yml` `bcv-rate-daily`: "0 8 * * 1-5" America/Caracas → POST /api/cron/bcv-rate (Bearer WEBHOOK_CRON_SECRET, idempotente por run_id en `cron_runs`, trabajo en background).
+- Salta días del Calendario de días hábiles (holidays). Reutiliza `fetch_and_store_bcv_rate` (services.py) = misma lógica del botón manual; registra en exchange_rates + historico_tasas_cambio con usuario "Actualización automática (8:00am)".

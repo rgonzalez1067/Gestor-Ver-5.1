@@ -1,7 +1,7 @@
 """Route module: services.py"""
 # ruff: noqa: F403, F405
 from services.report_header import html_with_page_header
-from fastapi import APIRouter, HTTPException, Header, Response, status, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Header, Response, status, UploadFile, File, Form, Request, BackgroundTasks
 from fastapi.responses import FileResponse, StreamingResponse
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
@@ -319,7 +319,11 @@ async def get_current_exchange_rate(authorization: Optional[str] = Header(None))
 @router.post("/exchange-rate/update")
 async def update_exchange_rate(authorization: Optional[str] = Header(None)):
     current_user = await get_current_user(authorization)
-    
+    return await fetch_and_store_bcv_rate(current_user.get("email", "system"))
+
+
+async def fetch_and_store_bcv_rate(registered_by: str) -> dict:
+    """Obtiene la tasa oficial BCV (con fuente alterna) y la guarda como activa + histórico del día."""
     rate_value = None
     source_name = ""
     
@@ -356,7 +360,7 @@ async def update_exchange_rate(authorization: Optional[str] = Header(None)):
         "rate": rate_value,
         "source": source_name,
         "date": now.isoformat(),
-        "updated_by": current_user.get("email", "system"),
+        "updated_by": registered_by,
         "active": True,
     }
     
@@ -372,13 +376,13 @@ async def update_exchange_rate(authorization: Optional[str] = Header(None)):
             "valor_tasa": rate_value,
             "moneda": "USD/BS",
             "fuente": source_name,
-            "usuario_registro": current_user.get("email", "system"),
+            "usuario_registro": registered_by,
             "created_at": now.isoformat()
         })
     else:
         await db.historico_tasas_cambio.update_one(
             {"fecha": date_str},
-            {"$set": {"valor_tasa": rate_value, "fuente": source_name, "usuario_registro": current_user.get("email", "system"), "updated_at": now.isoformat()}}
+            {"$set": {"valor_tasa": rate_value, "fuente": source_name, "usuario_registro": registered_by, "updated_at": now.isoformat()}}
         )
     
     return new_rate
@@ -681,3 +685,45 @@ async def report_banks_by_product_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# ==================== CRON: TASA BCV DIARIA (8:00am, días hábiles) ====================
+
+async def _run_bcv_cron(run_id: str):
+    from zoneinfo import ZoneInfo
+    from services.business_calendar import get_holiday_sets, is_business_day
+    today = datetime.now(ZoneInfo("America/Caracas")).date()
+    specific, recurring = await get_holiday_sets()
+    result = {"run_id": run_id, "job": "bcv-rate", "fecha": today.isoformat(), "created_at": datetime.now(timezone.utc).isoformat()}
+    if not is_business_day(today, specific, recurring):
+        result.update(status="skipped", detail="Día no hábil (fin de semana o Calendario de días hábiles)")
+    else:
+        try:
+            rate = await fetch_and_store_bcv_rate("Actualización automática (8:00am)")
+            result.update(status="ok", rate=rate["rate"], source=rate["source"])
+        except Exception as e:
+            result.update(status="error", detail=str(getattr(e, "detail", e)))
+    await db.cron_runs.update_one({"run_id": run_id}, {"$set": result}, upsert=True)
+    logging.info(f"[CRON BCV] {result}")
+
+
+@router.post("/cron/bcv-rate")
+async def cron_bcv_rate(request: Request, background_tasks: BackgroundTasks, authorization: Optional[str] = Header(None)):
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    import hmac
+    secret = os.environ["WEBHOOK_CRON_SECRET"]
+    token = authorization[7:] if authorization and authorization.startswith("Bearer ") else ""
+    if not token or not hmac.compare_digest(token, secret):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid body")
+    run_id = request.headers.get("X-Webhook-Id") or (body or {}).get("run_id")
+    if not run_id:
+        raise HTTPException(status_code=400, detail="Missing run_id")
+    res = await db.cron_runs.update_one({"run_id": run_id}, {"$setOnInsert": {"run_id": run_id, "status": "queued"}}, upsert=True)
+    if res.upserted_id is None:
+        return {"status": "duplicate"}
+    background_tasks.add_task(_run_bcv_cron, run_id)
+    return {"status": "accepted"}
