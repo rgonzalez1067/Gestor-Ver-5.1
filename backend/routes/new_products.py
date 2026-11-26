@@ -56,6 +56,62 @@ async def sync_bank_product_status(product: dict, status: str):
     await db.banks.update_one({"bank_id": product["bank_id"]}, {"$set": {"products": products}})
 
 
+async def send_phase_change_email(service_name: str, bank_name: str, new_status: str, days_text: str, equipo: list, responsable: Optional[str] = None, closing: bool = False):
+    """Correo estándar de cambio de fase (Nuevos Productos + Roadmap) a Gerencia/Coordinación/Dirección."""
+    try:
+        notify_users = await db.users.find(
+            {"is_active": True, "$or": [
+                {"cargo": {"$in": ["Gerente", "Coordinador", "Director"]}, "departamento": {"$in": ["Ventas Pyme", "Ventas Corporativas", "Implementación"]}},
+                {"cargo": "Director"},
+            ]},
+            {"_id": 0, "email": 1}
+        ).to_list(100)
+        recipients = list(set([u["email"] for u in notify_users if u.get("email")]) | {e.get("email") for e in equipo or [] if e.get("email")})
+        if not recipients:
+            logging.info(f"[NP] Sin destinatarios para notificación de {service_name}/{bank_name} → {new_status}")
+            return
+        if closing:
+            team_block = "<p style='color:#047857;font-size:14px;font-weight:bold;'>El proceso de integración ha culminado: el medio de pago queda en Producción y habilitado para cotizar.</p>"
+        else:
+            if equipo:
+                equipo_html = "<ul style='margin:10px 0;padding-left:20px;'>" + "".join(
+                    f"<li style='margin:4px 0;'><strong>{e.get('name','')}</strong> — {e.get('cargo','')}</li>" for e in equipo) + "</ul>"
+            elif responsable:
+                equipo_html = f"<p style='margin:10px 0;'><strong>{responsable}</strong></p>"
+            else:
+                equipo_html = "<p style='margin:10px 0;color:#94a3b8;'>Por definir</p>"
+            team_block = f"<p style='color:#475569;font-size:14px;'>Será atendido por el siguiente equipo de trabajo:</p>{equipo_html}"
+        email_html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;padding:20px;">
+          <div style="background:#003366;padding:20px;text-align:center;border-radius:8px 8px 0 0;">
+            <h1 style="color:white;margin:0;font-size:20px;">Actualización de Nuevos Proyectos</h1>
+            <p style="color:#93c5fd;margin:4px 0 0;font-size:14px;">Producto: {service_name} — Banco: {bank_name}</p>
+          </div>
+          <div style="background:#f8fafc;padding:25px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;">
+            <p style="color:#334155;font-size:14px;">Reciban un cordial saludo.</p>
+            <p style="color:#475569;font-size:14px;">
+              El día de hoy, el proyecto de Integración del Medio de Pago <strong>{service_name}</strong>,
+              para el Banco/Entidad: <strong>{bank_name}</strong>,
+              ha pasado al Estatus: <span style="color:#003366;font-weight:bold;font-size:15px;">{new_status}</span>.{days_text}
+            </p>
+            {team_block}
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
+            <p style="color:#94a3b8;font-size:12px;text-align:center;">Sistema de Gestión de Proyectos — Mega Soft</p>
+          </div>
+        </div>
+        """
+        from services.email_service import send_email, resolve_sender_for_area
+        await send_email(
+            to=recipients,
+            subject=f"Actualización de Nuevos Proyectos - Producto: {service_name} - Banco: {bank_name}",
+            html=email_html, action="new_product_status_change",
+            sender=await resolve_sender_for_area("nuevos_productos"),
+        )
+        logging.info(f"[NP] Email de fase enviado a {len(recipients)} destinatarios para {service_name}/{bank_name} → {new_status}")
+    except Exception as e:
+        logging.error(f"Error al enviar notificación de cambio de fase: {e}")
+
+
 async def _log_transition(product_id: str, old_status: str, new_status: str, user: dict):
     """Registra una transición de estado con cálculo de lead time."""
     days_in_phase = None
@@ -349,6 +405,10 @@ async def update_new_product_status(product_id: str, body: dict, authorization: 
     is_admin = user.get("role") == "admin"
 
     # === GOBERNANZA: Restricciones de transición (NO aplican al administrador) ===
+    # Solo el usuario/equipo asignado a la fase actual puede moverla
+    _phase_ids = [e.get("user_id") for e in product.get("equipo_fase") or []] + ([responsable_id] if responsable_id else [])
+    if _phase_ids and current_user_id not in _phase_ids and not is_admin:
+        raise HTTPException(status_code=403, detail=f"GOBERNANZA: Solo el usuario asignado a la fase {old_status} (o el Administrador) puede cambiar el estatus")
 
     # 1. Negociación → DESA: Requiere asignar equipo de Desarrolladores
     if old_status == "Negociación" and new_status == "DESA":
@@ -524,73 +584,9 @@ async def update_new_product_status(product_id: str, body: dict, authorization: 
     except Exception as e:
         logging.error(f"[NP] motor dinámico de otras acciones falló: {e}")
 
-    # -- Notificación por email a Gerencia de Ventas y Gerente de Implementación (LEGACY fallback) --
-    try:
-        # Destinatarios: Gerentes de Ventas + Gerente de Implementación + Coordinadores
-        notify_cargos = ["Gerente", "Coordinador", "Director"]
-        notify_deptos = ["Ventas Pyme", "Ventas Corporativas", "Implementación"]
-        notify_users = await db.users.find(
-            {"is_active": True, "$or": [
-                {"cargo": {"$in": notify_cargos}, "departamento": {"$in": notify_deptos}},
-                {"cargo": "Director"},
-            ]},
-            {"_id": 0, "email": 1, "first_name": 1}
-        ).to_list(100)
-        recipients = list(set([u["email"] for u in notify_users if u.get("email")]))
-
-        # Equipo asignado
-        equipo = product.get("equipo_fase", [])
-        equipo_html = ""
-        if equipo:
-            equipo_html = "<ul style='margin:10px 0;padding-left:20px;'>"
-            for e in equipo:
-                equipo_html += f"<li style='margin:4px 0;'><strong>{e.get('name','')}</strong> — {e.get('cargo','')}</li>"
-            equipo_html += "</ul>"
-        elif product.get("responsable_nombre"):
-            equipo_html = f"<p style='margin:10px 0;'><strong>{product.get('responsable_nombre')}</strong></p>"
-        else:
-            equipo_html = "<p style='margin:10px 0;color:#94a3b8;'>Por definir</p>"
-
-        service_name = product.get("service_name", "N/A")
-        bank_name = product.get("bank_name", "N/A")
-
-        email_html = f"""
-        <div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;padding:20px;">
-          <div style="background:#003366;padding:20px;text-align:center;border-radius:8px 8px 0 0;">
-            <h1 style="color:white;margin:0;font-size:20px;">Actualización de Nuevos Proyectos</h1>
-            <p style="color:#93c5fd;margin:4px 0 0;font-size:14px;">Producto: {service_name} — Banco: {bank_name}</p>
-          </div>
-          <div style="background:#f8fafc;padding:25px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;">
-            <p style="color:#334155;font-size:14px;">Reciban un cordial saludo.</p>
-            <p style="color:#475569;font-size:14px;">
-              El día de hoy, el proyecto de Integración del Medio de Pago <strong>{service_name}</strong>,
-              para el Banco/Entidad: <strong>{bank_name}</strong>,
-              ha pasado al Estatus: <span style="color:#003366;font-weight:bold;font-size:15px;">{new_status}</span>.{days_text}
-            </p>
-            <p style="color:#475569;font-size:14px;">Será atendido por el siguiente equipo de trabajo:</p>
-            {equipo_html}
-            <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
-            <p style="color:#94a3b8;font-size:12px;text-align:center;">Sistema de Gestión de Proyectos — Mega Soft</p>
-          </div>
-        </div>
-        """
-
-        if recipients and not dynamic_result.get("dispatched"):
-            from services.email_service import send_email, resolve_sender_for_area
-            await send_email(
-                to=recipients,
-                subject=f"Actualización de Nuevos Proyectos - Producto: {service_name} - Banco: {bank_name}",
-                html=email_html,
-                action="new_product_status_change",
-                sender=await resolve_sender_for_area("nuevos_productos"),
-            )
-            logging.info(f"[NP] Email de actualización enviado a {len(recipients)} destinatarios para {service_name}/{bank_name} → {new_status}")
-        elif dynamic_result.get("dispatched"):
-            logging.info(f"[NP] Notificación manejada por motor dinámico (sent={dynamic_result.get('sent_count')}, disabled={dynamic_result.get('disabled')}) para {service_name}/{bank_name} → {new_status}")
-        else:
-            logging.info(f"[NP] Sin destinatarios para notificación de {service_name}/{bank_name} → {new_status}")
-    except Exception as e:
-        logging.error(f"Error al enviar notificación de nuevo producto: {e}")
+    if not dynamic_result.get("dispatched"):
+        await send_phase_change_email(product.get("service_name", "N/A"), product.get("bank_name", "N/A"), new_status,
+                                      days_text, product.get("equipo_fase", []), product.get("responsable_nombre"))
 
     # -- Sincronización con la Matriz del Banco: DESA crea, SQA/IMPLE actualizan --
     try:
@@ -613,6 +609,8 @@ async def update_new_product_status(product_id: str, body: dict, authorization: 
         intg_doc = integration.model_dump()
         intg_doc["created_at"] = intg_doc["created_at"].isoformat()
         intg_doc["source_product_id"] = product_id
+        intg_doc["equipo_fase"] = product.get("equipo_fase", [])
+        intg_doc["responsable_nombre"] = product.get("responsable_nombre")
 
         await db.banks.update_one(
             {"bank_id": bank_id},

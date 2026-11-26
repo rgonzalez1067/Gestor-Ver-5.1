@@ -457,12 +457,18 @@ async def _apply_phase_team(intg: dict, old_status: str, update_data: dict, user
     if new_status == "IMPLE":
         raise HTTPException(status_code=400, detail="La fase IMPLE solo se asigna al promover desde Nuevos Productos")
     is_admin = user.get("role") == "admin"
-    is_coord = user.get("departamento") == "Implementación" and user.get("cargo") in ("Coordinador", "Gerente")
-    team_ids = [e.get("user_id") for e in intg.get("equipo_fase") or []]
-    if not is_admin and not is_coord:
-        if old_status == "IMPLE" or user.get("user_id") not in team_ids:
-            raise HTTPException(status_code=403, detail="GOBERNANZA: Solo el Coordinador de Integración (o el equipo asignado a la fase actual) puede cambiar el estatus")
+    team_ids = [e.get("user_id") for e in intg.get("equipo_fase") or []] + ([intg["responsable_user_id"]] if intg.get("responsable_user_id") else [])
+    if old_status == "Masificación" and not is_admin:
+        raise HTTPException(status_code=403, detail="GOBERNANZA: El proceso ya culminó (Masificación). Solo el Administrador puede modificarlo")
+    if old_status == "IMPLE" and not team_ids and not is_admin and not (
+            user.get("departamento") == "Implementación" and user.get("cargo") in ("Coordinador", "Gerente")):
+        raise HTTPException(status_code=403, detail="GOBERNANZA: Solo el Coordinador de Integración (o el Administrador) puede pasar a PreProd")
+    if team_ids and user.get("user_id") not in team_ids and not is_admin:
+        raise HTTPException(status_code=403, detail=f"GOBERNANZA: Solo el usuario asignado a la fase {old_status} (o el Administrador) puede cambiar el estatus")
     ids = list(dict.fromkeys(update_data.pop("equipo_user_ids", None) or []))
+    if new_status == "Masificación":
+        update_data.update(equipo_fase=[], responsable_user_id=None, responsable_nombre="Proceso culminado")
+        return
     if not ids:
         raise HTTPException(status_code=400, detail=f"GOBERNANZA: Debe asignar los recursos de la fase {new_status}")
     users = await db.users.find({"user_id": {"$in": ids}}, {"_id": 0, "user_id": 1, "first_name": 1, "last_name": 1, "email": 1, "cargo": 1}).to_list(50)
@@ -609,6 +615,12 @@ async def update_bank_integration(bank_id: str, integration_id: str, update_data
                 "new_product_phase_change", tpl_vars, current_user=user,
                 fallback_subject=f"Implementación - {service_name} - Banco: {bank_name} → {new_status}",
             )
+            if not result.get("dispatched"):
+                from routes.new_products import send_phase_change_email
+                await send_phase_change_email(service_name, bank_name, new_status,
+                                              f" (Tiempo transcurrido en fase {old_status}: {dias_saliente} días)" if dias_saliente else "",
+                                              intg_final.get("equipo_fase") or [], intg_final.get("responsable_nombre"),
+                                              closing=new_status == "Masificación")
             if result.get("dispatched"):
                 logging.info(f"[Implementación] Notificación dinámica {old_status}->{new_status} de {service_name}/{bank_name}: sent={result.get('sent_count')}, disabled={result.get('disabled')}")
             else:

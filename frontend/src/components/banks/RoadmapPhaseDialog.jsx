@@ -13,6 +13,7 @@ export const RoadmapPhaseDialog = ({ open, onClose, change, implementers, curren
     setIds(prev.length ? prev : fallback);
   }, [open, change, implementers, currentUserId]);
 
+  const closing = change?.to === 'Masificación';
   const toggle = (id) => setIds(p => (p.includes(id) ? p.filter(x => x !== id) : [...p, id]));
 
   return (
@@ -33,6 +34,11 @@ export const RoadmapPhaseDialog = ({ open, onClose, change, implementers, curren
               <span className="px-2 py-0.5 rounded bg-orange-600 text-white">{change?.to}</span>
             </div>
           </div>
+          {closing ? (
+            <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3" data-testid="roadmap-phase-closing">
+              Con Masificación culmina el proceso: el medio de pago pasa a Producción y queda habilitado para cotizar. No requiere equipo de trabajo.
+            </p>
+          ) : (
           <div>
             <p className="text-sm font-semibold text-slate-800">Recursos asignados a la fase {change?.to}</p>
             <p className="text-[11px] text-slate-400 mb-2">Coordinador u otros implementadores. Puede seleccionar varios.</p>
@@ -47,9 +53,10 @@ export const RoadmapPhaseDialog = ({ open, onClose, change, implementers, curren
               ))}
             </div>
           </div>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose} data-testid="roadmap-phase-cancel">Cancelar</Button>
-            <Button onClick={() => onConfirm(ids)} disabled={!ids.length || saving}
+            <Button onClick={() => onConfirm(closing ? [] : ids)} disabled={(!closing && !ids.length) || saving}
               className="bg-orange-600 hover:bg-orange-700 text-white" data-testid="roadmap-phase-confirm">
               <UserCheck size={16} className="mr-1.5" />Confirmar y mover a {change?.to}
             </Button>

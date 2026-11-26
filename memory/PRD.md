@@ -4957,3 +4957,8 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 ## 2026-11-26 — Tasa BCV automática
 - Cron `.emergent/crons.yml` `bcv-rate-daily`: "0 8 * * 1-5" America/Caracas → POST /api/cron/bcv-rate (Bearer WEBHOOK_CRON_SECRET, idempotente por run_id en `cron_runs`, trabajo en background).
 - Salta días del Calendario de días hábiles (holidays). Reutiliza `fetch_and_store_bcv_rate` (services.py) = misma lógica del botón manual; registra en exchange_rates + historico_tasas_cambio con usuario "Actualización automática (8:00am)".
+
+## 2026-11-26 — Ajustes gobernanza/correos Roadmap
+- Correos post-IMPLE: banks.py ahora usa fallback `send_phase_change_email` (new_products.py) cuando no hay config dinámica `new_product_phase_change` (antes no salía nada). Incluye al equipo asignado como destinatario.
+- Gobernanza estricta: solo el usuario/equipo asignado a la fase actual (o admin) mueve a la siguiente, tanto en Nuevos Productos como en Roadmap. Al promover, la integración hereda como equipo IMPLE a los Coordinadores/Gerentes de Implementación.
+- Masificación: no requiere equipo (responsable "Proceso culminado"), correo indica cierre; tras Masificación solo admin puede modificar.
