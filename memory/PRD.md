@@ -4947,3 +4947,9 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - 2026-11: Reporte de Seguimiento — columna 'Responsable del Avance' (motivo_avance) movida al final junto a Tipo de Retraso (se descartó campo separado responsable_retraso).
 - 2026-11: Ampliación de tipo vigente — estados S (Solicitado, azul) y R (Recertificación, gris); matriz clicable en asistente (ProductRequestPicker) reemplaza texto libre; eliminado Correo Adicional Eventual del asistente; Implementador marca S/R en ficha y grilla (project_scope=expansion); variable {{productos_a_certificar}}; certificado incluye S+R y los pasa a C (+cert_baseline); R cuenta como certificado (cotizaciones, variables, baseline).
 - 2026-11: Nuevos Productos ↔ Matriz del Banco — unicidad Banco+Producto (409) en alta NP y ficha Banco; DESA crea medio en bank.products (operational_status DESA, source_np_id), SQA/IMPLE actualizan; Roadmap PreProd=Imple, Primer Prod, Masificación=Producción (pre_production=False → disponible en Cotizador).
+
+## 2026-11-26 — Correcciones flujo Nuevos Productos / Roadmap
+- Correo de cambio de fase usa el equipo de la fase ENTRANTE (producto re-leído tras asignación). Antes mostraba el equipo DESA en SQA.
+- Modal de confirmación en todo cambio de estatus (Nuevos Productos: AlertDialog; DESA/SQA: modal de asignación muestra "X → Y").
+- SQA→IMPLE: promoción al Roadmap con estatus nuevo `IMPLE` (pendiente de Coordinador); equipo = Coordinadores/Gerentes de Implementación.
+- Roadmap (BankDetail): cada cambio IMPLE→PreProd→Primer Prod→Masificación abre RoadmapPhaseDialog (confirmación + recursos de Implementación, obligatorio). Backend `_apply_phase_team` en banks.py: IMPLE→PreProd solo Coordinador/Gerente Implementación o admin; luego coordinador o equipo asignado. Guarda equipo_fase/responsable_nombre; correo usa ese equipo.

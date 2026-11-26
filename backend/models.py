@@ -210,7 +210,7 @@ class BankIntegration(BaseModel):
     service_name: str
     component_type: str  # "VPOS/MPOS" o "PG/Link"
     tipo_corp: str = ""
-    status: Literal["PreProd", "Primer Prod", "Masificación"] = "PreProd"
+    status: Literal["IMPLE", "PreProd", "Primer Prod", "Masificación"] = "PreProd"
     notes: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../com
 import api from '../utils/api';
 import { getProductStatus, isPreProduction } from '../utils/bankProductStatus';
 import { toast } from 'sonner';
+import { RoadmapPhaseDialog } from '../components/banks/RoadmapPhaseDialog';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -25,6 +26,7 @@ const PIPELINE_STATUSES = [
 
 // Phase B: Editable from Banks
 const INTEGRATION_STATUSES = [
+  { id: 'IMPLE', label: 'IMPLE', full: 'Recibido en IMPLE (pendiente de Coordinador)', color: 'bg-amber-100 text-amber-700 border-amber-300', phase: 'B' },
   { id: 'PreProd', label: 'PreProd', full: 'Pre-Producción', color: 'bg-orange-100 text-orange-700 border-orange-300', phase: 'B' },
   { id: 'Primer Prod', label: 'Primer Prod', full: 'Primera Producción', color: 'bg-blue-100 text-blue-700 border-blue-300', phase: 'B' },
   { id: 'Masificación', label: 'Masificación', full: 'Masificación', color: 'bg-emerald-100 text-emerald-700 border-emerald-300', phase: 'B' }
@@ -36,6 +38,7 @@ const PHASE_DOT_COLORS = {
   'Negociación': 'bg-slate-500 border-slate-300',
   'DESA': 'bg-yellow-500 border-yellow-300',
   'SQA': 'bg-purple-500 border-purple-300',
+  'IMPLE': 'bg-amber-500 border-amber-300',
   'PreProd': 'bg-orange-500 border-orange-300',
   'Primer Prod': 'bg-blue-500 border-blue-300',
   'Masificación': 'bg-emerald-500 border-emerald-300'
@@ -80,14 +83,21 @@ export const BankDetail = () => {
   const [evoForm, setEvoForm] = useState({ comment: '', phase: '', date: new Date().toISOString().slice(0, 10) });
   const [evoEditing, setEvoEditing] = useState(null);
 
+  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; } })();
+  const [implementers, setImplementers] = useState([]);
+  const [phaseChange, setPhaseChange] = useState(null);
+  const [phaseSaving, setPhaseSaving] = useState(false);
+
   const fetchData = useCallback(async () => {
     try {
-      const [bankRes, servicesRes] = await Promise.all([
+      const [bankRes, servicesRes, usersRes] = await Promise.all([
         api.get(`/banks/${bankId}/detail`),
-        api.get('/services')
+        api.get('/services'),
+        api.get('/auth/users').catch(() => ({ data: [] })),
       ]);
       setBank(bankRes.data);
       setMediosPago(servicesRes.data);
+      setImplementers((usersRes.data || []).filter(u => u.departamento === 'Implementación' && u.is_active !== false));
     } catch {
       toast.error('Error al cargar datos del banco');
       navigate('/banks');
@@ -142,15 +152,21 @@ export const BankDetail = () => {
     } catch { toast.error('Error al agregar integración'); }
   };
 
-  const handleStatusChange = async (integrationId, newStatus) => {
+  const handleStatusChange = (intg, newStatus) => {
+    if (newStatus === intg.status) return;
+    setPhaseChange({ intg, to: newStatus });
+  };
+
+  const confirmPhaseChange = async (ids) => {
+    setPhaseSaving(true);
     try {
-      await api.put(`/banks/${bankId}/integrations/${integrationId}`, { status: newStatus });
-      toast.success('Estatus actualizado');
+      await api.put(`/banks/${bankId}/integrations/${phaseChange.intg.integration_id}`, { status: phaseChange.to, equipo_user_ids: ids });
+      toast.success(`Estatus actualizado a ${phaseChange.to}`);
+      setPhaseChange(null);
       fetchData();
     } catch (err) {
-      const detail = err.response?.data?.detail || 'Error al actualizar estatus';
-      toast.error(detail);
-    }
+      toast.error(err.response?.data?.detail || 'Error al actualizar estatus');
+    } finally { setPhaseSaving(false); }
   };
 
   const handleDeleteIntegration = async () => {
@@ -405,13 +421,13 @@ export const BankDetail = () => {
                             <StatusBadge status={intg.status} />
                           </div>
                         ) : (
-                          <Select value={intg.status} onValueChange={(v) => handleStatusChange(intg.integration_id, v)}>
+                          <Select value={intg.status} onValueChange={(v) => handleStatusChange(intg, v)}>
                             <SelectTrigger className="h-8 text-xs" data-testid={`status-select-${intg.integration_id}`}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               {INTEGRATION_STATUSES.map(s => (
-                                <SelectItem key={s.id} value={s.id}>
+                                <SelectItem key={s.id} value={s.id} disabled={s.id === 'IMPLE'}>
                                   <span className="flex items-center gap-1.5">
                                     <StatusBadge status={s.id} />
                                   </span>
@@ -421,6 +437,12 @@ export const BankDetail = () => {
                           </Select>
                         )}
                       </div>
+                      {intg.responsable_nombre && !isReadOnly && (
+                        <span className="text-[11px] text-orange-700 bg-orange-50 border border-orange-200 rounded px-1.5 py-0.5 truncate max-w-[200px]"
+                          title={intg.responsable_nombre} data-testid={`intg-team-${intg.integration_id}`}>
+                          <User size={10} className="inline mr-1" />{intg.responsable_nombre}
+                        </span>
+                      )}
                       {intg.notes && <p className="text-xs text-slate-500 flex-1 truncate">{intg.notes}</p>}
                       {!isReadOnly && (
                         <>
@@ -492,7 +514,7 @@ export const BankDetail = () => {
                 <Select value={newIntegration.status} onValueChange={(v) => setNewIntegration({ ...newIntegration, status: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {INTEGRATION_STATUSES.map(s => (
+                    {INTEGRATION_STATUSES.filter(s => s.id !== 'IMPLE').map(s => (
                       <SelectItem key={s.id} value={s.id}>{s.label} — {s.full}</SelectItem>
                     ))}
                   </SelectContent>
@@ -626,6 +648,8 @@ export const BankDetail = () => {
           </DialogContent>
         </Dialog>
       </main>
+      <RoadmapPhaseDialog open={!!phaseChange} onClose={() => setPhaseChange(null)} change={phaseChange}
+        implementers={implementers} currentUserId={currentUser?.user_id} onConfirm={confirmPhaseChange} saving={phaseSaving} />
     </div>
   );
 };

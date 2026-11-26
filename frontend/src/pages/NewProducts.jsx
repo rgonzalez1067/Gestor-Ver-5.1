@@ -115,6 +115,7 @@ export const NewProducts = () => {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignContext, setAssignContext] = useState({ productId: '', newStatus: '', role: '', currentProduct: null });
   const [assignUserIds, setAssignUserIds] = useState([]);
+  const [confirmChange, setConfirmChange] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -209,7 +210,7 @@ export const NewProducts = () => {
       return;
     }
 
-    executeStatusChange(productId, newStatus);
+    setConfirmChange({ productId, newStatus, product });
   };
 
   const executeStatusChange = async (productId, newStatus, extraBody = {}) => {
@@ -722,6 +723,11 @@ export const NewProducts = () => {
                 </p>
               </div>
 
+              {assignContext.newStatus && (
+                <p className="text-sm font-semibold text-slate-700" data-testid="assign-transition">
+                  Cambio de estatus: {assignContext.currentProduct?.status} → <span className="text-indigo-700">{assignContext.newStatus}</span>
+                </p>
+              )}
               <div className="bg-white border border-slate-200 rounded-lg p-3">
                 <p className="text-xs text-slate-500 mb-1">Producto</p>
                 <p className="text-sm font-semibold text-slate-800">{assignContext.currentProduct?.service_name}</p>
@@ -788,6 +794,25 @@ export const NewProducts = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={!!confirmChange} onOpenChange={(o) => { if (!o) setConfirmChange(null); }}>
+          <AlertDialogContent data-testid="np-status-confirm-modal">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar cambio de estatus</AlertDialogTitle>
+              <AlertDialogDescription>
+                ¿Confirma mover <strong>{confirmChange?.product?.service_name}</strong> ({confirmChange?.product?.bank_name}) de <strong>{confirmChange?.product?.status}</strong> a <strong>{confirmChange?.newStatus}</strong>?
+                {confirmChange?.newStatus === 'IMPLE' && ' El proyecto será promovido al Roadmap de Integración del banco y quedará bajo control de la Coordinación de Integración, que asignará los recursos al pasar a PreProd.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="np-status-confirm-cancel">Cancelar</AlertDialogCancel>
+              <AlertDialogAction data-testid="np-status-confirm-ok"
+                onClick={() => { const c = confirmChange; setConfirmChange(null); executeStatusChange(c.productId, c.newStatus); }}>
+                Confirmar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* ==================== EVOLUTION + TRANSITIONS MODAL ==================== */}
         <Dialog open={evoOpen} onOpenChange={(o) => { if (!o) { setEvoOpen(false); setEvoEditing(null); } }}>

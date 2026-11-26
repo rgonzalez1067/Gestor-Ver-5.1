@@ -61,8 +61,8 @@ async def get_integrations_report(group_by: Optional[str] = None, authorization:
     Soporta agrupación dinámica: group_by=bank|product|phase (o None para lista plana)."""
     await get_current_user(authorization)
     
-    PHASE_ORDER = {"Masificación": 0, "Primer Prod": 1, "PreProd": 2}
-    PHASE_LABELS = {"PreProd": "Pre-Producción", "Primer Prod": "Primera Producción", "Masificación": "Masificación"}
+    PHASE_ORDER = {"Masificación": 0, "Primer Prod": 1, "PreProd": 2, "IMPLE": 3}
+    PHASE_LABELS = {"IMPLE": "Recibido en IMPLE", "PreProd": "Pre-Producción", "Primer Prod": "Primera Producción", "Masificación": "Masificación"}
     
     banks = await db.banks.find(
         {"integrations": {"$exists": True, "$ne": []}},
@@ -220,6 +220,7 @@ STATUS_MIGRATION = {
     "SQA": "Primer Prod",
     "Imple.": "Primer Prod",
     "PreProd": "PreProd",
+    "IMPLE": "IMPLE",
     "Completado": "Masificación",
     "Primer Prod": "Primer Prod",
     "Masificación": "Masificación"
@@ -445,6 +446,33 @@ async def add_bank_integration(bank_id: str, integration: BankIntegration, autho
     )
     return doc
 
+ROADMAP_FLOW = ["IMPLE", "PreProd", "Primer Prod", "Masificación"]
+
+
+async def _apply_phase_team(intg: dict, old_status: str, update_data: dict, user: dict):
+    """Gobernanza del Roadmap: cada cambio de fase exige asignar el equipo IMPLE de la fase entrante."""
+    new_status = update_data["status"]
+    if new_status not in ROADMAP_FLOW:
+        raise HTTPException(status_code=400, detail=f"Estatus inválido. Permitidos: {ROADMAP_FLOW}")
+    if new_status == "IMPLE":
+        raise HTTPException(status_code=400, detail="La fase IMPLE solo se asigna al promover desde Nuevos Productos")
+    is_admin = user.get("role") == "admin"
+    is_coord = user.get("departamento") == "Implementación" and user.get("cargo") in ("Coordinador", "Gerente")
+    team_ids = [e.get("user_id") for e in intg.get("equipo_fase") or []]
+    if not is_admin and not is_coord:
+        if old_status == "IMPLE" or user.get("user_id") not in team_ids:
+            raise HTTPException(status_code=403, detail="GOBERNANZA: Solo el Coordinador de Integración (o el equipo asignado a la fase actual) puede cambiar el estatus")
+    ids = list(dict.fromkeys(update_data.pop("equipo_user_ids", None) or []))
+    if not ids:
+        raise HTTPException(status_code=400, detail=f"GOBERNANZA: Debe asignar los recursos de la fase {new_status}")
+    users = await db.users.find({"user_id": {"$in": ids}}, {"_id": 0, "user_id": 1, "first_name": 1, "last_name": 1, "email": 1, "cargo": 1}).to_list(50)
+    equipo = [{"user_id": u["user_id"], "name": f"{u.get('first_name', '')} {u.get('last_name', '')}".strip() or u.get("email", ""),
+               "cargo": u.get("cargo", ""), "email": u.get("email", "")} for u in users]
+    update_data["equipo_fase"] = equipo
+    update_data["responsable_user_id"] = ids[0]
+    update_data["responsable_nombre"] = ", ".join(e["name"] for e in equipo)
+
+
 @router.put("/banks/{bank_id}/integrations/{integration_id}")
 async def update_bank_integration(bank_id: str, integration_id: str, update_data: dict, authorization: Optional[str] = Header(None)):
     """Actualiza el estatus o datos de una integración. Valida permisos de fase y sincroniza bidireccionalmente."""
@@ -478,8 +506,11 @@ async def update_bank_integration(bank_id: str, integration_id: str, update_data
                         detail="Este producto está siendo gestionado desde el módulo de Nuevos Productos. No se permite modificar su estado desde Gestión de Bancos en esta fase."
                     )
 
+            status_changing = update_data.get("status") and update_data.get("status") != old_status
+            if status_changing:
+                await _apply_phase_team(intg, old_status, update_data, user)
             for key, val in update_data.items():
-                if key in ("status", "notes", "service_name", "component_type", "responsable_nombre"):
+                if key in ("status", "notes", "service_name", "component_type", "responsable_nombre", "equipo_fase", "responsable_user_id"):
                     integrations[i][key] = val
             # Marcar el momento de entrada a la nueva fase (para "días en fase saliente")
             if update_data.get("status") and update_data.get("status") != old_status:
@@ -514,7 +545,7 @@ async def update_bank_integration(bank_id: str, integration_id: str, update_data
         np_doc = await db.new_products.find_one({"product_id": source_product_id}, {"_id": 0})
         if np_doc:
             from routes.new_products import sync_bank_product_status
-            await sync_bank_product_status(np_doc, {"PreProd": "Imple", "Primer Prod": "Primer Prod", "Masificación": "Producción"}.get(new_status, "Imple"))
+            await sync_bank_product_status(np_doc, {"IMPLE": "Imple", "PreProd": "Imple", "Primer Prod": "Primer Prod", "Masificación": "Producción"}.get(new_status, "Imple"))
     
     # Notificación de cambio de fase de Implementación (proceso continuo):
     # usa el MISMO motor, configuración de correos, plantillas, reglas y variables
@@ -567,7 +598,9 @@ async def update_bank_integration(bank_id: str, integration_id: str, update_data
                 "dias_fase_saliente": dias_saliente, "Dias_Fase_Saliente": dias_saliente,
                 "dias_totales_proyecto": dias_totales, "Dias_Totales_Proyecto": dias_totales,
                 "responsable_fase_entrante": resp_entrante, "Responsable_Fase_Entrante": resp_entrante,
-                "equipo_trabajo": f"<p style='margin:10px 0;'><strong>{resp_entrante}</strong></p>",
+                "equipo_trabajo": ("<ul style='margin:10px 0;padding-left:20px;'>" + "".join(
+                    f"<li style='margin:4px 0;'><strong>{e.get('name','')}</strong> — {e.get('cargo','')}</li>" for e in intg_final.get("equipo_fase") or []
+                ) + "</ul>") if intg_final.get("equipo_fase") else f"<p style='margin:10px 0;'><strong>{resp_entrante}</strong></p>",
                 "usuario_responsable": resp_entrante,
                 "tipo_evento": "Cambio de fase", "Tipo_Evento": "Cambio de fase",
                 "fecha_sistema": now_str, "Fecha_Sistema": now_str,

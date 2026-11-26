@@ -439,6 +439,22 @@ async def update_new_product_status(product_id: str, body: dict, authorization: 
                 status_code=403,
                 detail="GOBERNANZA: Solo el equipo SQA asignado puede autorizar el paso a IMPLE"
             )
+        # Fase entrante: queda bajo control de la Coordinación de Integración (IMPLE)
+        coords = await db.users.find(
+            {"is_active": True, "departamento": "Implementación", "cargo": {"$in": ["Coordinador", "Gerente"]}},
+            {"_id": 0, "user_id": 1, "first_name": 1, "last_name": 1, "email": 1, "cargo": 1}
+        ).to_list(50)
+        equipo_fase = [{"user_id": u["user_id"], "name": f"{u.get('first_name', '')} {u.get('last_name', '')}".strip() or u.get("email", ""),
+                        "cargo": u.get("cargo", ""), "email": u.get("email", "")} for u in coords]
+        await db.new_products.update_one(
+            {"product_id": product_id},
+            {"$set": {
+                "usuario_responsable_fase": None,
+                "responsable_nombre": ", ".join(e["name"] for e in equipo_fase) or "Coordinación de Integración",
+                "responsable_role": "Coordinación de Integración",
+                "equipo_fase": equipo_fase,
+            }}
+        )
 
     # Registrar transición con lead time
     transition = await _log_transition(product_id, old_status, new_status, user)
@@ -448,6 +464,8 @@ async def update_new_product_status(product_id: str, body: dict, authorization: 
 
     # -- Motor dinámico: "Configuración de otras Acciones" (con fallback legacy) --
     dynamic_result = {"dispatched": False}
+    # Re-leer el producto: el equipo/responsable debe ser el de la fase ENTRANTE
+    product = await db.new_products.find_one({"product_id": product_id}, {"_id": 0}) or product
     try:
         from services.other_actions_engine import dispatch_other_action
         _equipo = product.get("equipo_fase", [])
@@ -589,7 +607,7 @@ async def update_new_product_status(product_id: str, body: dict, authorization: 
             service_name=product["service_name"],
             component_type=product["component_type"],
             tipo_corp=product.get("tipo_corp", ""),
-            status="PreProd",
+            status="IMPLE",
             notes=f"Promovido desde Pipeline I+D (producto {product_id})",
         )
         intg_doc = integration.model_dump()

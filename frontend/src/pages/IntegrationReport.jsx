@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const STATUS_CONFIG = {
+  'IMPLE':         { label: 'IMPLE',        full: 'Recibido en IMPLE',    color: 'bg-amber-100 text-amber-700 border-amber-300',       dot: 'bg-amber-500' },
   'PreProd':       { label: 'PreProd',      full: 'Pre-Producción',       color: 'bg-orange-100 text-orange-700 border-orange-300',    dot: 'bg-orange-500' },
   'Primer Prod':   { label: 'Primer Prod',  full: 'Primera Producción',   color: 'bg-blue-100 text-blue-700 border-blue-300',          dot: 'bg-blue-500' },
   'Masificación':  { label: 'Masificación', full: 'Masificación',         color: 'bg-emerald-100 text-emerald-700 border-emerald-300', dot: 'bg-emerald-500' }
@@ -19,6 +20,7 @@ const getStatus = (s) => STATUS_CONFIG[s] || STATUS_CONFIG['PreProd'];
 
 const FILTER_OPTIONS = [
   { value: 'all', label: 'Todas las Fases' },
+  { value: 'IMPLE', label: 'Recibido en IMPLE' },
   { value: 'PreProd', label: 'Pre-Producción' },
   { value: 'Primer Prod', label: 'Primera Producción' },
   { value: 'Masificación', label: 'Masificación' }
