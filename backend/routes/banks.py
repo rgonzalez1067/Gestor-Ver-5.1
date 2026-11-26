@@ -447,7 +447,10 @@ async def add_bank_integration(bank_id: str, integration: BankIntegration, autho
     return doc
 
 ROADMAP_FLOW = ["IMPLE", "PreProd", "Primer Prod", "Masificación"]
-PHASE_NOTES = {"Primer Prod": "Se requiere apoyo del Equipo Comercial para identificar algún cliente para que participe en ese Primer Prod."}
+PHASE_NOTES = {
+    "Primer Prod": "Se requiere apoyo del Equipo Comercial para identificar algún cliente para que participe en ese Primer Prod.",
+    "Masificación": "El proceso de integración ha culminado: el medio de pago queda en Producción y habilitado para cotizar.",
+}
 
 
 async def harmonize_roadmap_matrix():

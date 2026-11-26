@@ -4967,3 +4967,7 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - operational_status ahora: DESA, SQA, Imple, PreProd, Primer Prod, Producción (models.py + utils/bankProductStatus.js).
 - Roadmap→Matriz: IMPLE=Imple, PreProd=PreProd, Primer Prod, Masificación=Producción; también para integraciones sin Nuevo Producto origen (match por nombre). `harmonize_roadmap_matrix()` en startup alinea datos existentes.
 - Correo Primer Prod: variables `Equipo_Trabajo`/`Usuario_Responsable`/`nota_fase` añadidas (antes faltaba Equipo_Trabajo en roadmap → nombres vacíos en plantillas); nota de apoyo del Equipo Comercial.
+
+## 2026-11-26 — Plantilla editable Cambio de Fase NP
+- email_templates `new_product_phase_change` ("Cambio de Fase de Nuevos Productos"), sembrada en startup ($setOnInsert, seed_np_phase_template.py). Usa {equipo_trabajo} (incluye nota Primer Prod / cierre Masificación vía PHASE_NOTES en banks.py).
+- No se creó config en Otras Acciones: el usuario debe asignarla con destinatarios (al activarla deja de usarse el correo estándar).
