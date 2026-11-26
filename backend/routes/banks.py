@@ -178,9 +178,19 @@ async def delete_product_evolution(bank_id: str, integration_id: str, entry_id: 
 
 # ==================== BANKS ENDPOINTS ====================
 
+def _reject_duplicate_products(products: list):
+    seen = set()
+    for p in products:
+        k = " ".join(str(p.get("product_name", "")).lower().split())
+        if k in seen:
+            raise HTTPException(status_code=409, detail=f"El medio de pago «{p.get('product_name')}» ya existe en la Matriz de Medios de Pago Asociados del Banco. No es posible duplicar el registro.")
+        seen.add(k)
+
+
 @router.post("/banks", response_model=Bank)
 async def create_bank(bank_data: BankCreate, authorization: Optional[str] = Header(None)):
     await get_current_user(authorization)
+    _reject_duplicate_products(bank_data.model_dump().get("products") or [])
     bank = Bank(**bank_data.model_dump())
     doc = bank.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
@@ -328,6 +338,14 @@ async def get_banks(authorization: Optional[str] = Header(None)):
 async def update_bank(bank_id: str, bank_data: BankCreate, authorization: Optional[str] = Header(None)):
     await get_current_user(authorization)
     payload = bank_data.model_dump()
+    _reject_duplicate_products(payload.get("products") or [])
+    # Mantener el vínculo con Nuevos Productos (source_np_id) que el formulario no envía
+    _prev = await db.banks.find_one({"bank_id": bank_id}, {"_id": 0, "products": 1}) or {}
+    _links = {" ".join(str(p.get("product_name", "")).lower().split()): p.get("source_np_id") for p in _prev.get("products") or [] if p.get("source_np_id")}
+    for p in payload.get("products") or []:
+        k = " ".join(str(p.get("product_name", "")).lower().split())
+        if k in _links and not p.get("source_np_id"):
+            p["source_np_id"] = _links[k]
     # Asegurar contact_ids
     for c in payload.get("contacts", []):
         if not c.get("contact_id"):
@@ -492,6 +510,11 @@ async def update_bank_integration(bank_id: str, integration_id: str, update_data
                 {"product_id": source_product_id},
                 {"$set": {"bank_integration_status": new_status}}
             )
+        # Roadmap → Matriz del Banco: PreProd=Imple, Primer Prod, Masificación=Producción (habilitado para cotizar)
+        np_doc = await db.new_products.find_one({"product_id": source_product_id}, {"_id": 0})
+        if np_doc:
+            from routes.new_products import sync_bank_product_status
+            await sync_bank_product_status(np_doc, {"PreProd": "Imple", "Primer Prod": "Primer Prod", "Masificación": "Producción"}.get(new_status, "Imple"))
     
     # Notificación de cambio de fase de Implementación (proceso continuo):
     # usa el MISMO motor, configuración de correos, plantillas, reglas y variables

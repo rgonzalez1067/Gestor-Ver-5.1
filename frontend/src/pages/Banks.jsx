@@ -142,7 +142,7 @@ export const Banks = () => {
       setDialogOpen(false);
       resetForm();
       fetchData();
-    } catch { toast.error('Error al guardar banco'); }
+    } catch (err) { toast.error(err.response?.data?.detail || 'Error al guardar banco'); }
   };
 
   const handleDelete = (bankId) => {
@@ -178,6 +178,9 @@ export const Banks = () => {
 
   const addProduct = () => {
     if (!newProduct.product_name) { toast.error('Seleccione un medio de pago'); return; }
+    const norm = (x) => String(x || '').toLowerCase().split(/\s+/).join(' ').trim();
+    const dup = formData.products.find((p) => norm(p.product_name) === norm(newProduct.product_name));
+    if (dup) { toast.error(`La combinación de Banco y Producto ya existe en la Matriz de Medios de Pago Asociados (Estatus actual: ${getProductStatus(dup)}). No es posible duplicar el registro.`); return; }
     setFormData({ ...formData, products: [...formData.products, { ...newProduct }] });
     setNewProduct({ product_name: '', description: '', service_id: '', vpos_available: false, gateway_available: false, mpos_available: false, link_available: false });
   };

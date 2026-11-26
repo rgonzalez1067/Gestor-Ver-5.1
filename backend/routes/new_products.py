@@ -15,6 +15,47 @@ router = APIRouter()
 NP_STATUSES = ["Negociación", "DESA", "SQA", "IMPLE", "Promovido"]
 
 
+def _norm(s) -> str:
+    return " ".join(str(s or "").lower().split())
+
+
+async def find_bank_product_conflict(bank_id: str, service_name: str, exclude_np_id: str = None) -> Optional[str]:
+    """Estatus actual si Banco + Producto ya existe (Matriz del Banco o pipeline activo de Nuevos Productos)."""
+    bank = await db.banks.find_one({"bank_id": bank_id}, {"_id": 0, "products": 1}) or {}
+    for p in bank.get("products") or []:
+        if _norm(p.get("product_name")) == _norm(service_name):
+            return p.get("operational_status") or ("Imple" if p.get("pre_production") else "Producción")
+    flt = {"bank_id": bank_id, "status": {"$ne": "Promovido"}}
+    if exclude_np_id:
+        flt["product_id"] = {"$ne": exclude_np_id}
+    async for np in db.new_products.find(flt, {"_id": 0, "service_name": 1, "status": 1}):
+        if _norm(np.get("service_name")) == _norm(service_name):
+            return f"{np.get('status')} en Nuevos Productos"
+    return None
+
+
+def _component_flags(component_type: str) -> dict:
+    ct = (component_type or "").upper()
+    return {"vpos_available": "VPOS" in ct, "mpos_available": "MPOS" in ct,
+            "gateway_available": "PG" in ct or "GATEWAY" in ct, "link_available": "LINK" in ct}
+
+
+async def sync_bank_product_status(product: dict, status: str):
+    """Crea (en DESA) o actualiza el medio de pago en 'Medios de Pago Asociados' de la ficha del Banco."""
+    bank = await db.banks.find_one({"bank_id": product["bank_id"]}, {"_id": 0, "products": 1}) or {}
+    products = bank.get("products") or []
+    pre = status != "Producción"
+    for p in products:
+        if p.get("source_np_id") == product["product_id"] or _norm(p.get("product_name")) == _norm(product.get("service_name")):
+            p.update({"operational_status": status, "pre_production": pre, "source_np_id": product["product_id"]})
+            break
+    else:
+        products.append({"product_name": product.get("service_name", ""), "description": "", **_component_flags(product.get("component_type")),
+                         "pg_setup_cost": 0.0, "pre_production": pre, "comment": "Creado automáticamente desde Nuevos Productos",
+                         "operational_status": status, "source_np_id": product["product_id"]})
+    await db.banks.update_one({"bank_id": product["bank_id"]}, {"$set": {"products": products}})
+
+
 async def _log_transition(product_id: str, old_status: str, new_status: str, user: dict):
     """Registra una transición de estado con cálculo de lead time."""
     days_in_phase = None
@@ -77,6 +118,9 @@ async def create_new_product(body: NewProductCreate, authorization: Optional[str
     service = await db.services.find_one({"service_id": body.service_id}, {"_id": 0, "name": 1, "service_id": 1, "tipo_corp": 1})
     if not service:
         raise HTTPException(status_code=404, detail="Medio de pago no encontrado en el catálogo. Créelo primero en Medios de Pago.")
+    conflict = await find_bank_product_conflict(body.bank_id, service["name"])
+    if conflict:
+        raise HTTPException(status_code=409, detail=f"La combinación de Banco y Producto seleccionada ya existe en la Matriz de Medios de Pago Asociados del Banco (Estatus actual: {conflict}). No es posible duplicar el registro.")
 
     product = NewProduct(
         service_id=body.service_id,
@@ -529,6 +573,13 @@ async def update_new_product_status(product_id: str, body: dict, authorization: 
             logging.info(f"[NP] Sin destinatarios para notificación de {service_name}/{bank_name} → {new_status}")
     except Exception as e:
         logging.error(f"Error al enviar notificación de nuevo producto: {e}")
+
+    # -- Sincronización con la Matriz del Banco: DESA crea, SQA/IMPLE actualizan --
+    try:
+        if new_status in ("DESA", "SQA", "IMPLE"):
+            await sync_bank_product_status(product, "Imple" if new_status == "IMPLE" else new_status)
+    except Exception as e:
+        logging.error(f"[NP] sincronización con Matriz del Banco falló: {e}")
 
     # -- Hand-off automático a integraciones del banco cuando llega a IMPLE --
     promoted = False

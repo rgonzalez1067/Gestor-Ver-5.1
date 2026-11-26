@@ -190,6 +190,7 @@ class BankProduct(BaseModel):
     pre_production: bool = False
     # Estatus operativo; pre_production se deriva (todo != 'Producción' es fase previa).
     operational_status: Literal["DESA", "SQA", "Imple", "Primer Prod", "Producción"] = "Producción"
+    source_np_id: Optional[str] = None  # Vínculo con Nuevos Productos (sincronización de fases)
     # Comentario libre de la relación producto↔banco (visible como tooltip en el resumen).
     comment: str = ""
 
