@@ -669,6 +669,7 @@ async def export_taller_equipos_excel(
 class EstatusUpdateRequest(BaseModel):
     estatus: str
     motivo: str = ""
+    quote_number: Optional[str] = None  # Reasignación de la cotización (mismo cliente)
 
 
 VALID_TALLER_ESTATUS = ["Recibido", "Cotizado", "En reparación", "Reparado", "Pagado", "Entregado"]
@@ -697,6 +698,18 @@ async def update_taller_equipo_estatus(
     anterior = equipo.get("estatus", "")
     now_iso = datetime.now(timezone.utc).isoformat()
     set_fields = {"estatus": nuevo, "updated_at": now_iso}
+    cot_anterior = equipo.get("quote_number") or ""
+    cot_nueva = (payload.quote_number or "").strip().upper()
+    if cot_nueva and cot_nueva != cot_anterior.upper():
+        q = await db.quotes.find_one({"quote_number": cot_nueva}, {"_id": 0, "quote_id": 1, "quote_number": 1, "client_id": 1}) \
+            or await db.quote_history.find_one({"quote_number": cot_nueva}, {"_id": 0, "quote_id": 1, "quote_number": 1, "client_id": 1})
+        if not q:
+            raise HTTPException(status_code=404, detail=f"La cotización {cot_nueva} no existe en Cotizaciones ni en el Histórico")
+        if q.get("client_id") != equipo.get("client_id"):
+            raise HTTPException(status_code=400, detail=f"La cotización {cot_nueva} pertenece a otro cliente; debe corresponder al mismo cliente del equipo")
+        set_fields.update({"quote_id": q["quote_id"], "quote_number": q["quote_number"]})
+    elif nuevo == anterior:
+        raise HTTPException(status_code=400, detail="No hay cambios: el estatus y la cotización son los mismos")
     # fecha_entrega: se registra al pasar a 'Entregado', se limpia al salir de ese estatus.
     if nuevo == "Entregado":
         set_fields["fecha_entrega"] = equipo.get("fecha_entrega") or now_iso
@@ -714,6 +727,8 @@ async def update_taller_equipo_estatus(
             "client_id": equipo.get("client_id", ""),
             "estatus_anterior": anterior,
             "estatus_nuevo": nuevo,
+            "cotizacion_anterior": cot_anterior,
+            "cotizacion_nueva": set_fields.get("quote_number", cot_anterior),
             "motivo": (payload.motivo or "").strip(),
             "usuario": current_user.get("email", ""),
             "usuario_nombre": current_user.get("full_name", current_user.get("email", "")),
@@ -723,7 +738,7 @@ async def update_taller_equipo_estatus(
         logger.error(f"[taller-estatus] no se pudo registrar bitácora: {e}")
 
     logger.info(f"Taller {taller_equipo_id}: estatus '{anterior}' → '{nuevo}' por {current_user.get('email')}")
-    return {"success": True, "estatus_anterior": anterior, "estatus_nuevo": nuevo}
+    return {"success": True, "estatus_anterior": anterior, "estatus_nuevo": nuevo, "quote_number": set_fields.get("quote_number", cot_anterior)}
 
 
 @router.delete("/taller-equipos/{taller_equipo_id}")

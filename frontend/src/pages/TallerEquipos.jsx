@@ -119,27 +119,32 @@ export default function TallerEquipos() {
   const [newEstatus, setNewEstatus] = useState('');
   const [statusMotivo, setStatusMotivo] = useState('');
   const [statusSaving, setStatusSaving] = useState(false);
+  const [newQuoteNumber, setNewQuoteNumber] = useState('');
 
   const openStatusModal = (equipo) => {
     setStatusEquipo(equipo);
     setNewEstatus(equipo.estatus || '');
     setStatusMotivo('');
+    setNewQuoteNumber(equipo.quote_number || '');
     setStatusModalOpen(true);
   };
 
   const handleSaveStatus = async () => {
     if (!statusEquipo || !newEstatus) return;
-    if (newEstatus === statusEquipo.estatus) {
-      toast.info('El estatus seleccionado es el mismo actual');
+    const quoteChanged = newQuoteNumber.trim().toUpperCase() !== (statusEquipo.quote_number || '').toUpperCase();
+    if (newEstatus === statusEquipo.estatus && !quoteChanged) {
+      toast.info('No hay cambios: el estatus y la cotización son los mismos');
       return;
     }
+    if (!newQuoteNumber.trim()) { toast.error('Indique el número de cotización'); return; }
     setStatusSaving(true);
     try {
       await api.put(`/taller-equipos/${statusEquipo.taller_equipo_id}/estatus`, {
         estatus: newEstatus,
         motivo: statusMotivo.trim(),
+        quote_number: quoteChanged ? newQuoteNumber.trim() : null,
       });
-      toast.success(`Estatus corregido a "${newEstatus}"`);
+      toast.success(quoteChanged ? `Equipo actualizado: ${newEstatus} · ${newQuoteNumber.trim().toUpperCase()}` : `Estatus corregido a "${newEstatus}"`);
       setStatusModalOpen(false);
       fetchData();
     } catch (err) {
@@ -361,8 +366,8 @@ export default function TallerEquipos() {
                               {(() => {
                                 const fantasy = eq.client_fantasy_name || '';
                                 const legal = eq.client_legal_name || '';
-                                const display = fantasy || eq.client_name || legal || '—';
-                                if (!legal) {
+                                const display = legal || eq.client_name || fantasy || '—';
+                                if (!fantasy || fantasy === display) {
                                   return <span className="block truncate" title={display}>{display}</span>;
                                 }
                                 return (
@@ -377,8 +382,8 @@ export default function TallerEquipos() {
                                         </span>
                                       </TooltipTrigger>
                                       <TooltipContent side="top" className="bg-slate-900 text-white text-xs max-w-[280px] border-slate-700">
-                                        <p className="font-semibold mb-0.5 text-slate-300">Razón Social</p>
-                                        <p className="font-normal">{legal}</p>
+                                        <p className="font-semibold mb-0.5 text-slate-300">Nombre de Fantasía</p>
+                                        <p className="font-normal">{fantasy}</p>
                                       </TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
@@ -474,15 +479,15 @@ export default function TallerEquipos() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <Pencil size={18} className="text-brand-blue-600" />
-              Corregir Estatus del Equipo
+              Corregir Estatus / Cotización del Equipo
             </DialogTitle>
           </DialogHeader>
           {statusEquipo && (
             <div className="space-y-4">
               <div className="bg-slate-50 rounded-lg p-3 text-sm">
                 <p className="font-semibold text-slate-900">{statusEquipo.serial}</p>
-                <p className="text-xs text-slate-500">{statusEquipo.modelo} · {statusEquipo.client_name}</p>
-                <p className="text-xs text-slate-500 mt-1">Estatus actual: <span className="font-medium text-slate-700">{statusEquipo.estatus}</span></p>
+                <p className="text-xs text-slate-500">{statusEquipo.modelo} · {statusEquipo.client_legal_name || statusEquipo.client_name}</p>
+                <p className="text-xs text-slate-500 mt-1">Estatus actual: <span className="font-medium text-slate-700">{statusEquipo.estatus}</span> · Cotización: <span className="font-medium text-slate-700">{statusEquipo.quote_number || '—'}</span></p>
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-600">Nuevo estatus</label>
@@ -496,6 +501,12 @@ export default function TallerEquipos() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600">Número de cotización asociada</label>
+                <Input value={newQuoteNumber} onChange={(e) => setNewQuoteNumber(e.target.value)} placeholder="Ej.: COT-2026-10-001-PYME"
+                  className="mt-1 font-mono" data-testid="status-edit-quote-number" />
+                <p className="text-[11px] text-slate-400 mt-1">Debe ser una cotización del mismo cliente del equipo (activa o del Histórico).</p>
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-600">Motivo de la corrección (opcional)</label>
