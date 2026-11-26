@@ -447,6 +447,22 @@ async def add_bank_integration(bank_id: str, integration: BankIntegration, autho
     return doc
 
 ROADMAP_FLOW = ["IMPLE", "PreProd", "Primer Prod", "Masificación"]
+PHASE_NOTES = {"Primer Prod": "Se requiere apoyo del Equipo Comercial para identificar algún cliente para que participe en ese Primer Prod."}
+
+
+async def harmonize_roadmap_matrix():
+    """Alinea 'Medios de Pago Asociados' con el estatus actual del Roadmap (idempotente)."""
+    from routes.new_products import _norm
+    m = {"IMPLE": "Imple", "PreProd": "PreProd", "Primer Prod": "Primer Prod", "Masificación": "Producción"}
+    async for b in db.banks.find({"integrations.0": {"$exists": True}}, {"_id": 0, "bank_id": 1, "products": 1, "integrations": 1}):
+        by_name = {_norm(i.get("service_name")): m.get(i.get("status")) for i in b.get("integrations") or [] if m.get(i.get("status"))}
+        products, changed = b.get("products") or [], False
+        for p in products:
+            st = by_name.get(_norm(p.get("product_name")))
+            if st and p.get("operational_status") != st:
+                p.update(operational_status=st, pre_production=st != "Producción"); changed = True
+        if changed:
+            await db.banks.update_one({"bank_id": b["bank_id"]}, {"$set": {"products": products}})
 
 
 async def _apply_phase_team(intg: dict, old_status: str, update_data: dict, user: dict):
@@ -547,11 +563,14 @@ async def update_bank_integration(bank_id: str, integration_id: str, update_data
                 {"product_id": source_product_id},
                 {"$set": {"bank_integration_status": new_status}}
             )
-        # Roadmap → Matriz del Banco: PreProd=Imple, Primer Prod, Masificación=Producción (habilitado para cotizar)
-        np_doc = await db.new_products.find_one({"product_id": source_product_id}, {"_id": 0})
-        if np_doc:
-            from routes.new_products import sync_bank_product_status
-            await sync_bank_product_status(np_doc, {"IMPLE": "Imple", "PreProd": "Imple", "Primer Prod": "Primer Prod", "Masificación": "Producción"}.get(new_status, "Imple"))
+    # Roadmap → Matriz del Banco (Medios de Pago Asociados): IMPLE=Imple, PreProd, Primer Prod, Masificación=Producción
+    if new_status and new_status != old_status:
+        from routes.new_products import sync_bank_product_status
+        np_doc = await db.new_products.find_one({"product_id": source_product_id}, {"_id": 0}) if source_product_id else None
+        tgt = integrations[target_idx]
+        await sync_bank_product_status(np_doc or {"bank_id": bank_id, "product_id": None, "service_name": tgt.get("service_name"),
+                                                 "component_type": tgt.get("component_type")},
+                                       {"IMPLE": "Imple", "PreProd": "PreProd", "Primer Prod": "Primer Prod", "Masificación": "Producción"}.get(new_status, "Imple"))
     
     # Notificación de cambio de fase de Implementación (proceso continuo):
     # usa el MISMO motor, configuración de correos, plantillas, reglas y variables
@@ -591,6 +610,12 @@ async def update_bank_integration(bank_id: str, integration_id: str, update_data
                 or "Por asignar"
             )
             now_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
+            nota_fase = PHASE_NOTES.get(new_status, "")
+            equipo_html = ("<ul style='margin:10px 0;padding-left:20px;'>" + "".join(
+                f"<li style='margin:4px 0;'><strong>{e.get('name','')}</strong> — {e.get('cargo','')}</li>" for e in intg_final.get("equipo_fase") or []
+            ) + "</ul>") if intg_final.get("equipo_fase") else f"<p style='margin:10px 0;'><strong>{resp_entrante}</strong></p>"
+            if nota_fase:
+                equipo_html += f"<p style='margin:12px 0;padding:10px;background:#eff6ff;border-left:4px solid #2563eb;color:#1e3a8a;font-weight:bold;'>{nota_fase}</p>"
 
             tpl_vars = {
                 "nombre_producto": service_name, "Nombre_Producto": service_name, "service_name": service_name,
@@ -604,9 +629,9 @@ async def update_bank_integration(bank_id: str, integration_id: str, update_data
                 "dias_fase_saliente": dias_saliente, "Dias_Fase_Saliente": dias_saliente,
                 "dias_totales_proyecto": dias_totales, "Dias_Totales_Proyecto": dias_totales,
                 "responsable_fase_entrante": resp_entrante, "Responsable_Fase_Entrante": resp_entrante,
-                "equipo_trabajo": ("<ul style='margin:10px 0;padding-left:20px;'>" + "".join(
-                    f"<li style='margin:4px 0;'><strong>{e.get('name','')}</strong> — {e.get('cargo','')}</li>" for e in intg_final.get("equipo_fase") or []
-                ) + "</ul>") if intg_final.get("equipo_fase") else f"<p style='margin:10px 0;'><strong>{resp_entrante}</strong></p>",
+                "equipo_trabajo": equipo_html, "Equipo_Trabajo": equipo_html,
+                "nota_fase": nota_fase, "Nota_Fase": nota_fase,
+                "Usuario_Responsable": resp_entrante,
                 "usuario_responsable": resp_entrante,
                 "tipo_evento": "Cambio de fase", "Tipo_Evento": "Cambio de fase",
                 "fecha_sistema": now_str, "Fecha_Sistema": now_str,
@@ -620,7 +645,7 @@ async def update_bank_integration(bank_id: str, integration_id: str, update_data
                 await send_phase_change_email(service_name, bank_name, new_status,
                                               f" (Tiempo transcurrido en fase {old_status}: {dias_saliente} días)" if dias_saliente else "",
                                               intg_final.get("equipo_fase") or [], intg_final.get("responsable_nombre"),
-                                              closing=new_status == "Masificación")
+                                              closing=new_status == "Masificación", note=nota_fase)
             if result.get("dispatched"):
                 logging.info(f"[Implementación] Notificación dinámica {old_status}->{new_status} de {service_name}/{bank_name}: sent={result.get('sent_count')}, disabled={result.get('disabled')}")
             else:

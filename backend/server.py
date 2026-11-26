@@ -488,6 +488,11 @@ async def create_indexes():
 
     async def _bg_init():
         try:
+            from routes.banks import harmonize_roadmap_matrix
+            await harmonize_roadmap_matrix()
+        except Exception as e:
+            logging.error(f"[startup] harmonize_roadmap_matrix: {e}")
+        try:
             from permissions_catalog import NEW_MODULES_DEFAULT_NONE
             for coll in (db.profiles, db.users):
                 for mid in NEW_MODULES_DEFAULT_NONE:

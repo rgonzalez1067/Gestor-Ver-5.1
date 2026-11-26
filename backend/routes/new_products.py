@@ -46,17 +46,19 @@ async def sync_bank_product_status(product: dict, status: str):
     products = bank.get("products") or []
     pre = status != "Producción"
     for p in products:
-        if p.get("source_np_id") == product["product_id"] or _norm(p.get("product_name")) == _norm(product.get("service_name")):
-            p.update({"operational_status": status, "pre_production": pre, "source_np_id": product["product_id"]})
+        if (product.get("product_id") and p.get("source_np_id") == product["product_id"]) or _norm(p.get("product_name")) == _norm(product.get("service_name")):
+            p.update({"operational_status": status, "pre_production": pre})
+            if product.get("product_id"):
+                p["source_np_id"] = product["product_id"]
             break
     else:
         products.append({"product_name": product.get("service_name", ""), "description": "", **_component_flags(product.get("component_type")),
                          "pg_setup_cost": 0.0, "pre_production": pre, "comment": "Creado automáticamente desde Nuevos Productos",
-                         "operational_status": status, "source_np_id": product["product_id"]})
+                         "operational_status": status, "source_np_id": product.get("product_id")})
     await db.banks.update_one({"bank_id": product["bank_id"]}, {"$set": {"products": products}})
 
 
-async def send_phase_change_email(service_name: str, bank_name: str, new_status: str, days_text: str, equipo: list, responsable: Optional[str] = None, closing: bool = False):
+async def send_phase_change_email(service_name: str, bank_name: str, new_status: str, days_text: str, equipo: list, responsable: Optional[str] = None, closing: bool = False, note: str = ""):
     """Correo estándar de cambio de fase (Nuevos Productos + Roadmap) a Gerencia/Coordinación/Dirección."""
     try:
         notify_users = await db.users.find(
@@ -81,6 +83,8 @@ async def send_phase_change_email(service_name: str, bank_name: str, new_status:
             else:
                 equipo_html = "<p style='margin:10px 0;color:#94a3b8;'>Por definir</p>"
             team_block = f"<p style='color:#475569;font-size:14px;'>Será atendido por el siguiente equipo de trabajo:</p>{equipo_html}"
+            if note:
+                team_block += f"<p style='margin:12px 0;padding:10px;background:#eff6ff;border-left:4px solid #2563eb;color:#1e3a8a;font-weight:bold;'>{note}</p>"
         email_html = f"""
         <div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;padding:20px;">
           <div style="background:#003366;padding:20px;text-align:center;border-radius:8px 8px 0 0;">

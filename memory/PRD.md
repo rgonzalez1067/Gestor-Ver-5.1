@@ -4962,3 +4962,8 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Correos post-IMPLE: banks.py ahora usa fallback `send_phase_change_email` (new_products.py) cuando no hay config dinámica `new_product_phase_change` (antes no salía nada). Incluye al equipo asignado como destinatario.
 - Gobernanza estricta: solo el usuario/equipo asignado a la fase actual (o admin) mueve a la siguiente, tanto en Nuevos Productos como en Roadmap. Al promover, la integración hereda como equipo IMPLE a los Coordinadores/Gerentes de Implementación.
 - Masificación: no requiere equipo (responsable "Proceso culminado"), correo indica cierre; tras Masificación solo admin puede modificar.
+
+## 2026-11-26 — Estado PreProd en Medios de Pago Asociados
+- operational_status ahora: DESA, SQA, Imple, PreProd, Primer Prod, Producción (models.py + utils/bankProductStatus.js).
+- Roadmap→Matriz: IMPLE=Imple, PreProd=PreProd, Primer Prod, Masificación=Producción; también para integraciones sin Nuevo Producto origen (match por nombre). `harmonize_roadmap_matrix()` en startup alinea datos existentes.
+- Correo Primer Prod: variables `Equipo_Trabajo`/`Usuario_Responsable`/`nota_fase` añadidas (antes faltaba Equipo_Trabajo en roadmap → nombres vacíos en plantillas); nota de apoyo del Equipo Comercial.

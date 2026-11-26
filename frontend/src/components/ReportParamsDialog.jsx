@@ -37,7 +37,7 @@ export const ReportParamsDialog = ({ open, onOpenChange, reportName, loading, on
           <div>
             <Label className="text-sm font-semibold text-slate-800">2. ¿Desea incluir productos en fases no productivas?</Label>
             <RadioGroup value={params.includePreProduction} onValueChange={(v) => setParams({ ...params, includePreProduction: v })} className="mt-2 gap-2">
-              <Option value="yes" id="report-phases-yes" title="Sí, incluir todos" hint="Muestra la etiqueta de fase: DESA, SQA, Imple, Primer Prod" />
+              <Option value="yes" id="report-phases-yes" title="Sí, incluir todos" hint="Muestra la etiqueta de fase: DESA, SQA, Imple, PreProd, Primer Prod" />
               <Option value="no" id="report-phases-no" title="No" hint="Mostrar únicamente productos en Producción" />
             </RadioGroup>
           </div>
