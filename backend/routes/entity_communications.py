@@ -261,7 +261,7 @@ async def _build_integrator_vars(integrator: dict) -> dict:
     emp = {}
     if integrator.get("empresa_integradora_id"):
         emp = await db.empresas_integradoras.find_one({"empresa_id": integrator["empresa_integradora_id"]}, {"_id": 0}) or {}
-    cert_ids = [k for k, x in (integrator.get("certifications") or {}).items() if str(x).strip().upper() == "C"]
+    cert_ids = [k for k, x in (integrator.get("certifications") or {}).items() if str(x).strip().upper() in ("C", "R")]
     prods = {p["producto_id"]: p async for p in db.productos_integracion.find({"producto_id": {"$in": cert_ids}}, {"_id": 0})}
     ordered = sorted((prods[i] for i in cert_ids if i in prods), key=lambda p: (p.get("orden_despliegue") or 10**6, p.get("nombre", "")))
     mp_ids = [p["medio_pago_id"] for p in ordered if p.get("medio_pago_id")]

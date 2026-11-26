@@ -1,0 +1,44 @@
+{
+  "summary": "Tested the 'Ampliación de tipo vigente' request matrix (S/R) on the backend and UI, using only TEST_ integrators that were created and then deleted. BACKEND (pytest, 7 tests, 6 passed): POST /expand stores S and R by the rules (S ignored on C products, R ignored on non-C products). productos_certificar is 'TDD/TDC (Recertificación - R), Biopago (Nuevo - S)' in catalog order. The expand call leaves cert_baseline unchanged. Saving with an empty solicitados is accepted and gives productos_certificar=''. preview-email renders {{productos_a_certificar}} as 'TDD/TDC (Recertificación - R)<br>Biopago (Nuevo - S)'. Certificate emission (via /certificates/reissue) has products_included_ids exactly [R, S]. Afterwards those products are C and in cert_baseline, and the C products from the original baseline are not included. A PUT with S/R in the matrix persists. 1 FAILED: a baseline C product loses its 'already certified' status when it is set to R, saved, then set back to C and saved. UI: in the wizard, 'Correo Adicional Eventual' is gone (wizard-correo-eventual count 0) and the single target radio is preselected. wizard-request-matrix shows the current states (C, P, N/A). Toggles work: N/A→S→N/A, P→S→P (reverts to the original P), C→R→C. Colors are correct (S bg-blue-600, R bg-slate-400). Saving with 2 S gave certifications S plus productos_certificar 'Verificación P2C (Nuevo - S), Biopago (Nuevo - S)'. Saving with none was also accepted. The email dialog was closed with 'Omitir', so no email was sent. Ficha (AppFichaDialog > Matriz de Productos) for an expansion project: 'Modificar matriz' toggles follow the S/R rule, the changed counter is correct, the save persists, and the S/R count chips update (S·1, R·1). BUG: the inline grid matrix in 'Proyectos de Integración' (detail-{id} → cert-matrix-{id}) does not know S/R.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "PUT /api/integrators/{id} (_prune_cert_baseline) + _cert_delta_ids", "issue": "The Implementer marks a baseline C product as R in the ficha and saves; _prune_cert_baseline removes it from cert_baseline because it is not 'C'. If they then revert R→C and save, the product is a C outside the baseline. The next certificate (close or reissue) includes it as a NEW product, and the 'no new products' guard can be bypassed. Reproduced in test_06: cert_baseline lost prod_c2p. Fix: have _prune_cert_baseline keep products whose state is 'C' or 'R' (only drop P/N/A/S).", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "entity_communications._build_integrator_vars / integrators summary group_by=product", "issue": "productos_certificados and medios_pago_certificados only count 'C'. During an expansion, products in R (still certified) drop out of these variables and out of the product summary. The quote check (CertWarningDialog) treats R as certified, so this is inconsistent. Treat R as certified there too."},
+      {"endpoint": "POST /api/integrators/{id}/preview-email", "issue": "{{Productos_Certificar_Integrador}} is not rendered here: it is only built in the notify-new-project vars. It works in the notification flow but not in Comunicaciones/preview templates."},
+      {"endpoint": "PUT /api/integrators/{id}", "issue": "When S/R are changed from the ficha, the stored productos_certificar string is not recomputed (only /expand recomputes it), so it goes stale. Templates that use 'Productos_nuevos' (= productos_certificar) show stale data. {{productos_a_certificar}} is computed live and is correct."},
+      {"endpoint": "POST /api/integrators/{id}/expand", "issue": "Re-expanding with a smaller solicitados never clears S/R that were stored earlier (it only adds), so the wizard cannot remove requests. Acceptable if intended."},
+      {"endpoint": "_store_integrator_certificate (close)", "issue": "S/R→C and the baseline update only happen inside _store_integrator_certificate, which is called only when cert_bytes is truthy and is wrapped in a try/except that only logs a warning. If PDF generation fails silently, the project still closes as Certificado but S/R are left in the matrix. The /close endpoint itself was not exercised (it dispatches real emails); emission was verified through /certificates/reissue, which shares _cert_delta_ids/_store_integrator_certificate."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Integrators.jsx inline grid matrix (Proyectos de Integración → detail button)", "issue": "The local CERT_STATES (line 70) and CERT_CYCLE ['P','C','N/A'] have no S/R. Products in S or R render as 'N/A' (seen in the UI: TDD/TDC=R and Biopago=S both showed N/A), the pills have no S/R counts, and the title still says 'P / C / N/A'. toggleCert on an S/R cell does indexOf(-1)+1 → 'P', so a single click silently destroys a request or recertification. For expansion projects, use CERT_STATES from appPayload plus toggleRequest from ProductRequestPicker (as AppMatrixTab does), and add S/R pills.", "selector": "[data-testid='cert-{id}-{pid}']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "AppMatrixTab (expansion)", "issues": ["Once an S has been saved, its 'original' state is S. Clicking it then goes to N/A, not to the P it was before. Minor: a P product that was requested and saved cannot get back to P from the ficha."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_expansion_request_matrix_iter405.py", "/app/backend/tests/ui_fixture_iter405.py", "/app/test_reports/pytest/iter405.xml"],
+  "action_items": [
+    "Fix _prune_cert_baseline so it keeps products in state 'R' (and 'C') in cert_baseline. This stops an R→C revert from being re-certified as new.",
+    "Make the inline grid matrix in Integrators.jsx (toggleCert, CERT_STATES, pills) S/R-aware. For project_scope='expansion', use toggleRequest; otherwise keep CERT_CYCLE but never turn S/R into P.",
+    "Count R as certified in _build_integrator_vars (productos_certificados, medios_pago_certificados) and in summary group_by=product.",
+    "Optionally recompute productos_certificar on PUT when certifications change, and add Productos_Certificar_Integrador to _build_integrator_vars."
+  ],
+  "critical_code_review_comments": [
+    "integrators.py is 3200+ lines and Integrators.jsx is 2860+ lines; split them.",
+    "Integrators.jsx keeps duplicate CERT_STATES/CERT_CYCLE that differ from appPayload.js; this caused the S/R grid bug. Use a single source.",
+    "close: a certificate persistence failure is swallowed (logger.warning), which leaves S/R unconverted while the status is already Certificado."
+  ],
+  "updated_files": ["/app/backend/tests/test_expansion_request_matrix_iter405.py", "/app/backend/tests/ui_fixture_iter405.py"],
+  "success_rate": {"backend": "86% (6/7)", "frontend": "80% (wizard and ficha pass; inline grid matrix fails for S/R)"},
+  "test_credentials": "qa.integradores@megasoft.com.ve / QaIntegr2026*Ok (admin), working.",
+  "seed_data_creation": "Created and deleted: TEST_ExpSR_* (pytest) and TEST_UIExp_70b8f (int_e4d77611e93d, emp_965189c434c9), plus their certificates, all deleted by id. Verified 0 TEST_ integrators, 0 TEST_ empresas and 0 certificates remain. No emails were sent: reissue was used instead of close, and the notify dialog was closed with Omitir.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with -p no:xdist -o addopts=''. Emission is tested via /certificates/reissue with implementador_user_id=user_c7d5edd6b6ea (has a cert template) to avoid the /close email dispatch. UI login: POST /api/auth/login via fetch, then set localStorage session_token+user. Wizard: create-integrator-btn → wizard-name-search → wizard-suggestion → wizard-scope-expansion → wizard-request-matrix-cell-{pid} (state = '> span:last-child'). Ficha: integrators-view-companies → company-search → company-toggle-{emp} → company-app-view-{iid} → app-tab-matrix → matrix-edit-btn → matrix-cell-{pid} → matrix-save-btn. Grid: integrators-view-projects → search-input → detail-{iid} → cert-{iid}-{pid}.",
+  "rca of the issue": "Baseline bug: _prune_cert_baseline (integrators.py:104) keeps only products where state=='C'. R is the 'certified, being recertified' state, so saving R prunes the product from the baseline. _cert_delta_ids then treats a later C as new. Grid bug: Integrators.jsx:70-71 defines its own CERT_STATES/CERT_CYCLE without S/R, and the inline matrix (line ~2203) plus toggleCert (line 576) use them."
+}

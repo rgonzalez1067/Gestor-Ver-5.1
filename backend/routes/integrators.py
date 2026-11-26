@@ -107,7 +107,7 @@ async def _prune_cert_baseline(integrator_id: str):
     if not doc or not doc.get("cert_baseline"):
         return
     certs = doc.get("certifications") or {}
-    keep = [p for p in doc["cert_baseline"] if str(certs.get(p, "")).strip().upper() == "C"]
+    keep = [p for p in doc["cert_baseline"] if str(certs.get(p, "")).strip().upper() in ("C", "R")]
     if keep != doc["cert_baseline"]:
         await db.integrators.update_one({"integrator_id": integrator_id}, {"$set": {"cert_baseline": keep}})
 

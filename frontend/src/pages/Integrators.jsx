@@ -22,7 +22,7 @@ import { BankMassCommunicationDialog } from '../components/BankMassCommunication
 import { IntegratorCertificatesCell } from '../components/IntegratorCertificatesCell';
 import PurgeIntegratorsDialog from '../components/PurgeIntegratorsDialog';
 import { CompanyDirectory } from '../components/integrators/companies/CompanyDirectory';
-import { ProductRequestPicker } from '../components/integrators/apps/ProductRequestPicker';
+import { ProductRequestPicker, toggleRequest } from '../components/integrators/apps/ProductRequestPicker';
 import { CertFilter, certMatches } from '../components/integrators/CertFilter';
 import { AppFichaDialog } from '../components/integrators/apps/AppFichaDialog';
 import { isLockedApp } from '../components/integrators/apps/appPayload';
@@ -67,7 +67,7 @@ const CATEGORIAS = [
   'Cliente/Integrador nuevo VPOS',
   'Cliente/Integrador MobilePOS'
 ];
-const CERT_STATES = { P: { label: 'P', color: 'bg-amber-100 text-amber-700 border-amber-300' }, C: { label: 'C', color: 'bg-emerald-100 text-emerald-700 border-emerald-300' }, 'N/A': { label: 'N/A', color: 'bg-[#E3F2FD] text-[#0D47A1] border-[#90CAF9]' } };
+const CERT_STATES = { P: { label: 'P', color: 'bg-amber-100 text-amber-700 border-amber-300' }, C: { label: 'C', color: 'bg-emerald-100 text-emerald-700 border-emerald-300' }, 'N/A': { label: 'N/A', color: 'bg-[#E3F2FD] text-[#0D47A1] border-[#90CAF9]' }, S: { label: 'S', color: 'bg-blue-600 text-white border-blue-700' }, R: { label: 'R', color: 'bg-slate-400 text-white border-slate-500' } };
 const CERT_CYCLE = ['P', 'C', 'N/A'];
 const PHASE_COLORS = {
   'Negociación': 'bg-slate-100 text-slate-700 border-slate-300',
@@ -574,10 +574,11 @@ export const Integrators = () => {
     !!intg && ['new', 'component', 'expansion', 'test_environment'].includes(intg.project_scope) && intg.integrator_status !== 'Cerrado';
 
   const toggleCert = async (integratorId, serviceId, currentVal) => {
-    const idx = CERT_CYCLE.indexOf(currentVal || 'N/A');
-    const next = CERT_CYCLE[(idx + 1) % CERT_CYCLE.length];
     const intg = integrators.find(i => i.integrator_id === integratorId);
     if (!intg) return;
+    const next = intg.project_scope === 'expansion'
+      ? toggleRequest(currentVal || 'N/A', 'N/A')
+      : CERT_CYCLE[(CERT_CYCLE.indexOf(currentVal || 'N/A') + 1) % CERT_CYCLE.length];
     if (!isActiveProject(intg)) {
       toast.error('La Matriz de Productos es de solo lectura: el integrador no está en fase de Proyecto Activo.');
       return;
@@ -2147,7 +2148,7 @@ export const Integrators = () => {
                       {/* Expanded certification matrix */}
                       {expandedRow === intg.integrator_id && (() => {
                         const certs = intg.certifications || {};
-                        const counts = { C: 0, P: 0, 'N/A': 0 };
+                        const counts = { C: 0, P: 0, 'N/A': 0, S: 0, R: 0 };
                         certProducts.forEach(p => { counts[certs[p.service_id] || 'N/A']++; });
                         const af = certFilters[intg.integrator_id];
                         const hasFilter = af && af.size > 0;
@@ -2156,6 +2157,8 @@ export const Integrators = () => {
                           { key: 'C', label: 'Certificados', count: counts.C, idle: 'bg-emerald-100 text-emerald-700 border-emerald-300', on: 'bg-emerald-500 text-white border-emerald-600 shadow-[0_0_8px_rgba(16,185,129,0.5)]' },
                           { key: 'P', label: 'Pendientes', count: counts.P, idle: 'bg-amber-100 text-amber-700 border-amber-300', on: 'bg-amber-500 text-white border-amber-600 shadow-[0_0_8px_rgba(245,158,11,0.5)]' },
                           { key: 'N/A', label: 'No Aplica', count: counts['N/A'], idle: 'bg-[#E3F2FD] text-[#0D47A1] border-[#90CAF9]', on: 'bg-[#1565C0] text-white border-[#0D47A1] shadow-[0_0_8px_rgba(21,101,192,0.5)]' },
+                          ...(counts.S || intg.project_scope === 'expansion' ? [{ key: 'S', label: 'Solicitados', count: counts.S, idle: 'bg-blue-100 text-blue-700 border-blue-300', on: 'bg-blue-600 text-white border-blue-700' }] : []),
+                          ...(counts.R || intg.project_scope === 'expansion' ? [{ key: 'R', label: 'Recertificación', count: counts.R, idle: 'bg-slate-100 text-slate-600 border-slate-300', on: 'bg-slate-500 text-white border-slate-600' }] : []),
                         ];
                         return (
                         <tr>
@@ -2211,7 +2214,7 @@ export const Integrators = () => {
                                                 disabled={!isActiveProject(intg)}
                                                 className={`px-3 py-1 rounded border text-xs font-bold transition-colors ${cfg.color} ${isActiveProject(intg) ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
                                                 data-testid={`cert-${intg.integrator_id}-${prod.service_id}`}
-                                                title={isActiveProject(intg) ? 'Click para cambiar: P / C / N/A' : 'Matriz de solo lectura (proyecto no activo)'}>{cfg.label}</button>
+                                                title={isActiveProject(intg) ? (intg.project_scope === 'expansion' ? 'Click: disponible ↔ S (Solicitado) · C ↔ R (Recertificación)' : 'Click para cambiar: P / C / N/A') : 'Matriz de solo lectura (proyecto no activo)'}>{cfg.label}</button>
                                             </div>
                                           </div>
                                         );
