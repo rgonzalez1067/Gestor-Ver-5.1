@@ -87,7 +87,7 @@ export const ProjectFollowupReportDialog = ({ open, onOpenChange }) => {
         <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-slate-200">
           <table className="w-full text-xs" data-testid="followup-table">
             <thead className="sticky top-0 bg-slate-800 text-white">
-              <tr>{['Proyecto', 'Cliente', '% Avance', 'Asignación', 'Generador', 'Implementador', 'Estado', 'Responsable', 'Últ. Seguimiento', 'Días', 'Tipo de Retraso', 'Resp. del Retraso'].map((h) => <th key={h} className="px-2 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}</tr>
+              <tr>{['Proyecto', 'Cliente', '% Avance', 'Asignación', 'Generador', 'Implementador', 'Estado', 'Últ. Seguimiento', 'Días', 'Tipo de Retraso', 'Responsable del Avance'].map((h) => <th key={h} className="px-2 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}</tr>
             </thead>
             <tbody>
               {(data?.rows || []).map((r) => (
@@ -99,14 +99,13 @@ export const ProjectFollowupReportDialog = ({ open, onOpenChange }) => {
                   <td className="px-2 py-1.5 whitespace-nowrap">{r.generador}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{r.implementador}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{r.estado}</td>
-                  <td className="px-2 py-1.5">{r.responsable}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{fmt(r.ultimo_seguimiento)}</td>
                   <td className="px-2 py-1.5 text-right font-semibold">{r.dias_retraso}</td>
                   <td className="px-2 py-1.5"><span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap ${LEVEL_CLS[r.nivel]}`}>{r.nivel_label}</span></td>
-                  <td className="px-2 py-1.5 whitespace-nowrap" data-testid={`followup-resp-retraso-${r.project_id}`}>{r.responsable_retraso}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap" data-testid={`followup-responsable-${r.project_id}`}>{r.responsable}</td>
                 </tr>
               ))}
-              {data && !data.rows.length && <tr><td colSpan={12} className="py-8 text-center text-slate-400" data-testid="followup-empty">No hay proyectos para los filtros seleccionados.</td></tr>}
+              {data && !data.rows.length && <tr><td colSpan={11} className="py-8 text-center text-slate-400" data-testid="followup-empty">No hay proyectos para los filtros seleccionados.</td></tr>}
             </tbody>
           </table>
         </div>

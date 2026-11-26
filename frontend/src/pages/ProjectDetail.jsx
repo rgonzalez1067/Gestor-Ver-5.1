@@ -38,7 +38,7 @@ import { EmailPreviewDialog } from '../components/projects/EmailPreviewDialog';
 import { CommitmentModal } from '../components/CommitmentModal';
 import { ImplementerAlertsModal } from '../components/ImplementerAlertsModal';
 import { MasterEditBitacoraEntry } from '../components/projects/MasterEditBitacoraEntry';
-import { MotivoAvanceSelector, ResponsableRetrasoSelector } from '../components/projects/MotivoAvance';
+import { MotivoAvanceSelector } from '../components/projects/MotivoAvance';
 import { EvidencePicker, addEvidenceFiles } from '../components/projects/bitacora/EvidencePicker';
 import { EntryEvidence } from '../components/projects/bitacora/EvidenceGallery';
 import { ProjectGallery } from '../components/projects/bitacora/ProjectGallery';
@@ -1430,8 +1430,6 @@ const ProjectDetail = () => {
                   </div>
                 )}
                 <MotivoAvanceSelector key={project.motivo_avance || 'NONE'} project={project} onChanged={fetchProject}
-                  canEdit={currentUser.role === 'admin' || currentUser.user_id === project.assigned_to_user_id} />
-                <ResponsableRetrasoSelector key={`rr-${project.responsable_retraso || 'NONE'}`} project={project} onChanged={fetchProject}
                   canEdit={currentUser.role === 'admin' || currentUser.user_id === project.assigned_to_user_id} />
                 <div>
                   <p className="text-xs text-slate-500">Ticket</p>

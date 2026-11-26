@@ -54,15 +54,6 @@ export const MotivoAvanceSelector = ({ project, canEdit, onChanged }) => (
   </div>
 );
 
-// Selector "Responsable del Retraso" (dato independiente) en la ficha del proyecto.
-export const ResponsableRetrasoSelector = ({ project, canEdit, onChanged }) => (
-  <div data-testid="responsable-retraso-section">
-    <p className="text-xs text-slate-500 mb-1">Responsable del Retraso</p>
-    <MotivoButtons project={project} canEdit={canEdit} onChanged={onChanged} testPrefix="responsable-retraso"
-      field="responsable_retraso" endpoint="responsable-retraso" title="Responsable del Retraso" />
-  </div>
-);
-
 // Desglose de responsabilidad para una categoría de avance (usado en tooltips de KPIs).
 export const MotivoBreakdown = ({ projects, testId }) => {
   const total = projects.length;

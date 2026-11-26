@@ -229,28 +229,3 @@ async def set_motivo_avance(project_id: str, body: MotivoAvanceIn, authorization
                                  {"$set": {"motivo_avance": motivo, "motivo_avance_updated_at": now}, "$push": {"bitacora": entry}})
     return {"motivo_avance": motivo, "changed": True, "entry": entry}
 
-
-@router.put("/projects/{project_id}/responsable-retraso")
-async def set_responsable_retraso(project_id: str, body: MotivoAvanceIn, authorization: Optional[str] = Header(None)):
-    """Responsable del Retraso (Cliente / Banco / Imple), dato independiente del Responsable del Avance."""
-    user = await get_current_user(authorization)
-    val = (body.motivo or "").upper() or None
-    if val and val not in MOTIVOS:
-        raise HTTPException(status_code=400, detail="Valor inválido: use Cliente, Banco o Imple")
-    project = await db.projects.find_one({"project_id": project_id}, {"_id": 0, "responsable_retraso": 1, "assigned_to_user_id": 1})
-    if not project:
-        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
-    if user.get("role") != "admin" and user.get("user_id") != project.get("assigned_to_user_id"):
-        raise HTTPException(status_code=403, detail="Solo el implementador del proyecto o un administrador puede cambiar el Responsable del Retraso")
-    old = (project.get("responsable_retraso") or "").upper() or None
-    if old == val:
-        return {"responsable_retraso": val, "changed": False}
-    now = datetime.now(timezone.utc).isoformat()
-    name = _uname(user)
-    entry = {"entry_id": f"bit_{uuid.uuid4().hex[:8]}", "type": "responsable_retraso",
-             "text": f"[Responsable del Retraso] {name} cambió el responsable: {MOTIVOS.get(old, 'Sin responsable')} → {MOTIVOS.get(val, 'Sin responsable')}",
-             "old": old, "new": val, "execution_date": now[:10], "created_by": user.get("user_id", ""),
-             "created_by_name": name, "created_at": now}
-    await db.projects.update_one({"project_id": project_id},
-                                 {"$set": {"responsable_retraso": val, "responsable_retraso_updated_at": now}, "$push": {"bitacora": entry}})
-    return {"responsable_retraso": val, "changed": True, "entry": entry}
