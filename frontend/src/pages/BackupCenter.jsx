@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, Download, Upload, DatabaseBackup, Package, ShieldAlert, Loader2, CloudUpload, CheckCircle2, AlertTriangle, Search } from 'lucide-react';
 import api from '../utils/api';
 import { ContingencyAttachmentsExport } from '../components/ContingencyAttachmentsExport';
+import { FilesBackupCard } from '../components/backup/FilesBackupCard';
 import { Button } from '../components/ui/button';
 import { Checkbox } from '../components/ui/checkbox';
 import { Badge } from '../components/ui/badge';
@@ -916,6 +917,8 @@ export default function BackupCenter() {
             )}
           </div>
         </div>
+
+        <FilesBackupCard />
 
         {/* Respaldo de Anexos hacia Object Storage (Backfill) */}
         <div className="bg-white rounded-xl border border-sky-200 shadow-sm mb-6 overflow-hidden" data-testid="attachments-backfill-card">

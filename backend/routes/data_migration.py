@@ -2056,6 +2056,7 @@ _BACKUP_EXCLUDE = {
     "backup_import_jobs",
     "fb_uploads",
     "fb_upload_chunks",
+    "files_restore_jobs",
 }
 
 # Respaldo Total V2 — SEGMENTACIÓN Y DESACOPLE DE MAESTRAS
@@ -2094,7 +2095,7 @@ def _sync_gridfs_bucket(sdb):
 
 def _async_gridfs_bucket():
     from motor.motor_asyncio import AsyncIOMotorGridFSBucket
-    return AsyncIOMotorGridFSBucket(db, bucket_name=_BACKUP_BUCKET)
+    return AsyncIOMotorGridFSBucket(getattr(db, "raw", db), bucket_name=_BACKUP_BUCKET)
 
 
 async def _delete_backup_gridfs(gridfs_id):
@@ -2144,6 +2145,16 @@ async def _cleanup_stale_backups(max_age_hours: int = 2):
                 await db.backup_jobs.delete_one({"_id": j["_id"]})
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[full-backup] cleanup stale fallo: {e}")
+    # Archivos GridFS huérfanos (sin job ni carga que los referencie) de más de max_age_hours
+    try:
+        keep = {j.get("gridfs_id") async for j in db.backup_jobs.find({}, {"gridfs_id": 1})}
+        keep |= {u.get("assembled_gridfs_id") async for u in db.fb_uploads.find({}, {"assembled_gridfs_id": 1})}
+        keep = {str(k) for k in keep if k}
+        async for f in db.raw[f"{_BACKUP_BUCKET}.files"].find({"uploadDate": {"$lt": cutoff.replace(tzinfo=None)}}, {"_id": 1}):
+            if str(f["_id"]) not in keep:
+                await _delete_backup_gridfs(f["_id"])
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[full-backup] cleanup huérfanos fallo: {e}")
 
 
 def _build_full_backup_sync(job_id: str, user: dict, db_name: str, only_collections=None, group_label=None):

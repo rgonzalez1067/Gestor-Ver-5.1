@@ -4983,3 +4983,9 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - UI: CertExpedienteDialog + botón carpeta en AppCertificatesTab.
 - Pendientes menores: permiso backend para carga, dialog sin max-h, object URLs sin revocar, put_object síncrono.
 - 2026-11-26: Eliminada pestaña 'Documentos de la Certificación' (AppCertDocsTab + endpoint certification-documents); reemplazada por Expediente por certificado.
+
+## 2026-11-27 — Respaldo de Archivos (Object Storage)
+- Verificado: Respaldo Total cubre todas las colecciones (nuevas incluidas); PDFs de certificados en Mongo (content_b64).
+- Nuevo routes/files_backup.py: POST /admin/files-backup/build (lista recursiva meganexus/ + pdfs/{APP_ENV}/ + rutas referenciadas en BD; ZIP_STORED a GridFS; reutiliza build-status/export-ticket/export), POST /admin/files-backup/restore (upload_id de upload-init/chunk) + restore-status; re-mapea pdfs/<env origen>/ → pdfs/<APP_ENV>/. UI: components/backup/FilesBackupCard.jsx en BackupCenter.
+- Preview: 3588 archivos, 1.2 GB, ~13 min.
+- BUG corregido: _async_gridfs_bucket recibía AuditedDatabase → descarga de Respaldo Total daba 410 y no se borraban GridFS viejos. Ahora usa db.raw; limpieza de huérfanos >2h.
