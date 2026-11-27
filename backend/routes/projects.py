@@ -1394,6 +1394,7 @@ async def download_ficha_tecnica(project_id: str, authorization: Optional[str] =
         "sponsoring_processor_name": pick(project.get("sponsoring_processor_name"), quote_like.get("sponsoring_processor_name")),
         "pinpad_serials": project.get("pinpad_serials") or quote_like.get("pinpad_serials") or [],
         "equipments": project.get("equipments") or quote_like.get("equipments") or [],
+        "multiproject_summaries": project.get("quote_summaries") or [],
         "serials_provider_note": pick(project.get("serials_provider_note"), quote_like.get("serials_provider_note")),
         "fiscal_printer_model": pick(project.get("fiscal_printer_model"), quote_like.get("fiscal_printer_model")),
         "client_segment": pick(project.get("client_segment"), quote_like.get("client_segment"), "PYME"),

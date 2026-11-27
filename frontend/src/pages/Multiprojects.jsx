@@ -58,6 +58,35 @@ export const EquipmentByRif = ({ rifs, testId = 'mp-equipment' }) => (
   </div>
 );
 
+export const QuoteSummaries = ({ summaries, testId = 'mp-summaries' }) => (
+  <div className="space-y-3 text-sm" data-testid={testId}>
+    {(summaries || []).map(q => {
+      const pg = (q.pg_setup_items || []).filter(i => (i.banco || '').trim() && (i.banco || '').toUpperCase() !== 'N/A');
+      return (
+        <div key={q.quote_id} className="border border-slate-200 rounded-lg overflow-hidden" data-testid={`${testId}-${q.quote_id}`}>
+          <div className="bg-slate-50 px-3 py-2 flex flex-wrap items-center gap-x-3 text-xs">
+            <span className="font-mono font-semibold text-slate-800">{q.quote_number}</span>
+            <span className="text-slate-600">{q.client?.rif} — {q.client_name}</span>
+            <span className="text-slate-500">{q.store_name}</span>
+            <span className="ml-auto text-slate-500">Cajas: <b>{q.box_count}</b> · Bancos: <b>{(q.banks || []).length}</b></span>
+          </div>
+          <table className="w-full text-xs">
+            <thead className="text-[10px] uppercase text-slate-400"><tr><th className="text-left px-3 py-1">Banco</th><th className="text-left">Medio de pago / Concepto</th><th className="text-right px-3">Cajas</th></tr></thead>
+            <tbody>
+              {pg.length ? pg.map((i, k) => (
+                <tr key={k} className="border-t border-slate-100"><td className="px-3 py-1">{i.banco}</td><td>{i.concepto}</td><td className="text-right px-3">—</td></tr>
+              )) : (q.services || []).map((i, k) => (
+                <tr key={k} className="border-t border-slate-100"><td className="px-3 py-1">{i.bank_name}</td><td>{i.item_name}</td><td className="text-right px-3">{i.quantity ?? q.box_count}</td></tr>
+              ))}
+              {!pg.length && !(q.services || []).length && <tr><td colSpan={3} className="px-3 py-2 text-slate-400">Sin bancos/productos</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      );
+    })}
+  </div>
+);
+
 export default function Multiprojects() {
   const navigate = useNavigate();
   const [level, setLevel] = useState('grupo');
@@ -174,7 +203,9 @@ export default function Multiprojects() {
               <DialogTitle>Paso {step} de 3: {STEPS[step - 1]}</DialogTitle>
               <div className="flex gap-1 mt-2">{STEPS.map((s, i) => <div key={s} className={`h-1 flex-1 rounded ${i < step ? 'bg-indigo-600' : 'bg-slate-200'}`} />)}</div>
             </DialogHeader>
-            {preview && step === 1 && <HierarchyStep preview={preview} />}
+            {preview && step === 1 && <><HierarchyStep preview={preview} />
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-3">Resumen ejecutivo por cotización</p>
+              <QuoteSummaries summaries={preview.summaries} /></>}
             {preview && step === 2 && <EquipmentByRif rifs={preview.rifs} />}
             {preview && step === 3 && (
               <div className="space-y-3 text-sm" data-testid="mp-confirm">

@@ -400,115 +400,80 @@ def generate_implementation_pdf(quote: dict, client: dict, contacts: list, branc
     section_letter = chr(ord('C') + comp_offset + (1 if all_serials else 0))
     elements.append(_section_banner(f"{section_letter}. RESUMEN COMERCIAL", styles))
     elements.append(Spacer(1, 6))
-    elements.append(Paragraph("Resumen Ejecutivo", styles['BlockLabel']))
-    elements.append(Spacer(1, 4))
+    def _render_summary(_q, _cl, _cname, _cajas, _title):
+        elements.append(Paragraph(_title, styles['BlockLabel']))
+        elements.append(Spacer(1, 4))
 
-    direccion = client.get('address', 'No especificada')
-    summary_row1 = [
-        [Paragraph("<b>Cliente</b>", styles['SmallText']),
-         Paragraph(str(client_name), styles['SmallText']),
-         Paragraph("<b>Cant. Cajas</b>", styles['SmallText']),
-         Paragraph(str(cantidad_cajas), styles['SmallText'])]
-    ]
-    t1 = Table(summary_row1, colWidths=[80, 200, 90, 110])
-    t1.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, 0), COLOR_AMARILLO),
-        ('BACKGROUND', (2, 0), (2, 0), COLOR_AZUL_CLARO),
-        ('BOX', (0, 0), (-1, -1), 0.5, COLOR_BORDE),
-        ('INNERGRID', (0, 0), (-1, -1), 0.5, COLOR_BORDE),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
-    elements.append(t1)
-
-    dir_row = [[Paragraph("<b>Dir. Fiscal</b>", styles['SmallText']),
-                Paragraph(str(direccion), styles['SmallText'])]]
-    t_dir = Table(dir_row, colWidths=[80, 400])
-    t_dir.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, 0), COLOR_VERDE_CLARO),
-        ('BOX', (0, 0), (-1, -1), 0.5, COLOR_BORDE),
-        ('INNERGRID', (0, 0), (-1, -1), 0.5, COLOR_BORDE),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
-    elements.append(t_dir)
-    elements.append(Spacer(1, 6))
-
-    # Tabla Bancos / Productos
-    # Para cotizaciones Payment Gateway (quote_type='GATEWAY' o quote_category='implementation'
-    # con pg_setup_items presentes), usamos pg_setup_items con columnas
-    # N° / Concepto / Banco / Observación + fila TOTAL SETUP.
-    quote_type_upper = (quote.get('quote_type') or '').upper()
-    pg_setup_items = quote.get('pg_setup_items') or []
-    is_payment_gateway = quote_type_upper in ('GATEWAY', 'LINK_PAGO') or (pg_setup_items and quote_type_upper != 'VPOS' and quote_type_upper != 'MPOS')
-
-    if is_payment_gateway and pg_setup_items:
-        pg_header = [
-            Paragraph("<b>N°</b>", styles['SmallWhite']),
-            Paragraph("<b>Concepto</b>", styles['SmallWhite']),
-            Paragraph("<b>Banco</b>", styles['SmallWhite']),
-            Paragraph("<b>Observación</b>", styles['SmallWhite']),
+        direccion = _cl.get('address', 'No especificada')
+        summary_row1 = [
+            [Paragraph("<b>Cliente</b>", styles['SmallText']),
+             Paragraph(str(_cname), styles['SmallText']),
+             Paragraph("<b>Cant. Cajas</b>", styles['SmallText']),
+             Paragraph(str(_cajas), styles['SmallText'])]
         ]
-        pg_data = [pg_header]
-        for idx, item in enumerate(pg_setup_items, 1):
-            concepto = str(item.get('concepto') or item.get('item_name') or 'NO_APLICA')
-            banco = str(item.get('banco') or 'NO_APLICA')
-            observacion = str(item.get('observacion') or '')
-            pg_data.append([
-                Paragraph(str(idx), styles['SmallText']),
-                Paragraph(concepto, styles['SmallText']),
-                Paragraph(banco, styles['SmallText']),
-                Paragraph(observacion, styles['SmallText']),
-            ])
-
-        pg_table = Table(pg_data, colWidths=[35, 200, 145, 100])
-        pg_style = [
-            ('BACKGROUND', (0, 0), (-1, 0), COLOR_AZUL),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
+        t1 = Table(summary_row1, colWidths=[80, 200, 90, 110])
+        t1.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, 0), COLOR_AMARILLO),
+            ('BACKGROUND', (2, 0), (2, 0), COLOR_AZUL_CLARO),
             ('BOX', (0, 0), (-1, -1), 0.5, COLOR_BORDE),
             ('INNERGRID', (0, 0), (-1, -1), 0.5, COLOR_BORDE),
             ('TOPPADDING', (0, 0), (-1, -1), 5),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
             ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('ALIGN', (0, 1), (0, -1), 'CENTER'),
-        ]
-        # Filas alternas grises
-        for i in range(1, len(pg_data)):
-            if i % 2 == 0:
-                pg_style.append(('BACKGROUND', (0, i), (-1, i), COLOR_GRIS))
-        pg_table.setStyle(TableStyle(pg_style))
-        elements.append(pg_table)
-    else:
-        all_services = quote.get('services', [])
-        additional_items = [s for s in all_services if s.get('item_type') == 'additional']
-        if additional_items:
-            bank_header = [
+        ]))
+        elements.append(t1)
+
+        dir_row = [[Paragraph("<b>Dir. Fiscal</b>", styles['SmallText']),
+                    Paragraph(str(direccion), styles['SmallText'])]]
+        t_dir = Table(dir_row, colWidths=[80, 400])
+        t_dir.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, 0), COLOR_VERDE_CLARO),
+            ('BOX', (0, 0), (-1, -1), 0.5, COLOR_BORDE),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, COLOR_BORDE),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        elements.append(t_dir)
+        elements.append(Spacer(1, 6))
+
+        # Tabla Bancos / Productos
+        # Para cotizaciones Payment Gateway (quote_type='GATEWAY' o quote_category='implementation'
+        # con pg_setup_items presentes), usamos pg_setup_items con columnas
+        # N° / Concepto / Banco / Observación + fila TOTAL SETUP.
+        quote_type_upper = (_q.get('quote_type') or '').upper()
+        pg_setup_items = _q.get('pg_setup_items') or []
+        is_payment_gateway = quote_type_upper in ('GATEWAY', 'LINK_PAGO') or (pg_setup_items and quote_type_upper != 'VPOS' and quote_type_upper != 'MPOS')
+
+        if is_payment_gateway and pg_setup_items:
+            pg_header = [
+                Paragraph("<b>N°</b>", styles['SmallWhite']),
+                Paragraph("<b>Concepto</b>", styles['SmallWhite']),
                 Paragraph("<b>Banco</b>", styles['SmallWhite']),
-                Paragraph("<b>Medio de Pago</b>", styles['SmallWhite']),
-                Paragraph("<b>Cajas</b>", styles['SmallWhite']),
+                Paragraph("<b>Observación</b>", styles['SmallWhite']),
             ]
-            bank_data = [bank_header]
-            for item in additional_items:
-                bank_data.append([
-                    Paragraph(str(item.get('bank_name', 'NO_APLICA')), styles['SmallText']),
-                    Paragraph(str(item.get('item_name', item.get('name', 'NO_APLICA'))), styles['SmallText']),
-                    Paragraph(str(item.get('quantity', cantidad_cajas)), styles['SmallText']),
+            pg_data = [pg_header]
+            for idx, item in enumerate(pg_setup_items, 1):
+                concepto = str(item.get('concepto') or item.get('item_name') or 'NO_APLICA')
+                banco = str(item.get('banco') or 'NO_APLICA')
+                observacion = str(item.get('observacion') or '')
+                pg_data.append([
+                    Paragraph(str(idx), styles['SmallText']),
+                    Paragraph(concepto, styles['SmallText']),
+                    Paragraph(banco, styles['SmallText']),
+                    Paragraph(observacion, styles['SmallText']),
                 ])
-            bank_table = Table(bank_data, colWidths=[160, 230, 90])
-            bank_style = [
+
+            pg_table = Table(pg_data, colWidths=[35, 200, 145, 100])
+            pg_style = [
                 ('BACKGROUND', (0, 0), (-1, 0), COLOR_AZUL),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
                 ('FONTSIZE', (0, 0), (-1, -1), 9),
                 ('BOX', (0, 0), (-1, -1), 0.5, COLOR_BORDE),
                 ('INNERGRID', (0, 0), (-1, -1), 0.5, COLOR_BORDE),
@@ -516,14 +481,61 @@ def generate_implementation_pdf(quote: dict, client: dict, contacts: list, branc
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
                 ('LEFTPADDING', (0, 0), (-1, -1), 6),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (0, 1), (0, -1), 'CENTER'),
             ]
-            for i in range(1, len(bank_data)):
+            # Filas alternas grises
+            for i in range(1, len(pg_data)):
                 if i % 2 == 0:
-                    bank_style.append(('BACKGROUND', (0, i), (-1, i), COLOR_GRIS))
-            bank_table.setStyle(TableStyle(bank_style))
-            elements.append(bank_table)
+                    pg_style.append(('BACKGROUND', (0, i), (-1, i), COLOR_GRIS))
+            pg_table.setStyle(TableStyle(pg_style))
+            elements.append(pg_table)
+        else:
+            all_services = _q.get('services', [])
+            additional_items = [s for s in all_services if s.get('item_type') == 'additional']
+            if additional_items:
+                bank_header = [
+                    Paragraph("<b>Banco</b>", styles['SmallWhite']),
+                    Paragraph("<b>Medio de Pago</b>", styles['SmallWhite']),
+                    Paragraph("<b>Cajas</b>", styles['SmallWhite']),
+                ]
+                bank_data = [bank_header]
+                for item in additional_items:
+                    bank_data.append([
+                        Paragraph(str(item.get('bank_name', 'NO_APLICA')), styles['SmallText']),
+                        Paragraph(str(item.get('item_name', item.get('name', 'NO_APLICA'))), styles['SmallText']),
+                        Paragraph(str(item.get('quantity', _cajas)), styles['SmallText']),
+                    ])
+                bank_table = Table(bank_data, colWidths=[160, 230, 90])
+                bank_style = [
+                    ('BACKGROUND', (0, 0), (-1, 0), COLOR_AZUL),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 9),
+                    ('BOX', (0, 0), (-1, -1), 0.5, COLOR_BORDE),
+                    ('INNERGRID', (0, 0), (-1, -1), 0.5, COLOR_BORDE),
+                    ('TOPPADDING', (0, 0), (-1, -1), 5),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ]
+                for i in range(1, len(bank_data)):
+                    if i % 2 == 0:
+                        bank_style.append(('BACKGROUND', (0, i), (-1, i), COLOR_GRIS))
+                bank_table.setStyle(TableStyle(bank_style))
+                elements.append(bank_table)
 
-    elements.append(Spacer(1, 14))
+        elements.append(Spacer(1, 14))
+
+    # Multiproyectos: un Resumen Ejecutivo POR cotización (bancos/productos pueden diferir)
+    _mp = quote.get("multiproject_summaries") or []
+    if _mp:
+        for _s in _mp:
+            _scl = _s.get("client") or {}
+            _render_summary(_s, _scl, _scl.get("legal_name") or _s.get("client_name") or "NO_APLICA", _s.get("box_count") or 1,
+                            f"Resumen Ejecutivo — Cotización {_s.get('quote_number', '')} · {_scl.get('rif', '')} {_s.get('store_name', '')}")
+            elements.append(Spacer(1, 4))
+    else:
+        _render_summary(quote, client, client_name, cantidad_cajas, "Resumen Ejecutivo")
 
     # ==================== 6. DISTRIBUCIÓN LOGÍSTICA ====================
     next_letter = chr(ord(section_letter) + 1)

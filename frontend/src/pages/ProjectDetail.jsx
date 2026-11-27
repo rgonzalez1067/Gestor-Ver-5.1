@@ -27,7 +27,7 @@ import { MultistoreBankSection } from '../components/projects/MultistoreBankSect
 import { StoreBankSection } from '../components/projects/StoreBankSection';
 import { MultiRifTree } from '../components/projects/MultiRifTree';
 import { InternalEmailInput } from '../components/InternalEmailInput';
-import { EquipmentByRif } from './Multiprojects';
+import { EquipmentByRif, QuoteSummaries } from './Multiprojects';
 import { PHASES, STORE_PHASES, PHASE_COLORS, ALL_TOKENS, calcStoreProgress } from '../components/projects/projectConstants';
 import { TemplateBodyEditor } from '../components/projects/TemplateBodyEditor';
 import { ProjectProgressReportDialog } from '../components/ProjectProgressReportDialog';
@@ -1620,6 +1620,10 @@ const ProjectDetail = () => {
                 <div className="bg-white rounded-lg border border-indigo-200 p-4 space-y-2" data-testid="multiproject-equipment-section">
                   <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">Consolidado Multiproyectos · {project.multiproject_level}</p>
                   <p className="text-xs text-slate-600" data-testid="multiproject-quotes">Cotizaciones vinculadas: <b>{(project.quote_numbers || []).join(', ')}</b></p>
+                  {(project.quote_summaries || []).length > 0 && <>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pt-1">Resumen ejecutivo por cotización</p>
+                    <QuoteSummaries summaries={project.quote_summaries} testId="project-quote-summaries" />
+                  </>}
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pt-1">Desglose de equipos asignados en Almacén por RIF</p>
                   <EquipmentByRif rifs={project.equipments_by_rif || []} testId="project-equipment-by-rif" />
                 </div>

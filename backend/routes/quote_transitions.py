@@ -316,7 +316,7 @@ async def _create_project_from_quote(
                     "client_name": rif.get("client_name"),
                     "name": st.get("name", ""),
                     "box_count": int(st.get("boxes") or 0),
-                    "implementation_matrix": copy.deepcopy(rif_matrix),
+                    "implementation_matrix": copy.deepcopy(st.get("implementation_matrix") or rif_matrix),
                     "status": "Pendiente",
                     "notes": [],
                 })
