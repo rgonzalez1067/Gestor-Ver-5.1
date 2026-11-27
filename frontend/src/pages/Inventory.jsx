@@ -11,12 +11,13 @@ import DebouncedInput from '../components/DebouncedInput';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../components/ui/alert-dialog';
-import { Warehouse, Plus, Trash2, PackagePlus, PackageMinus, ArrowLeftRight, History, Box, Cpu, X, Upload, Building2, Pencil, Search, Eye, ExternalLink, ChevronRight, FileDown, ShieldCheck, AlertTriangle, CheckCircle2, FileText } from 'lucide-react';
+import { Shuffle, Warehouse, Plus, Trash2, PackagePlus, PackageMinus, ArrowLeftRight, History, Box, Cpu, X, Upload, Building2, Pencil, Search, Eye, ExternalLink, ChevronRight, FileDown, ShieldCheck, AlertTriangle, CheckCircle2, FileText } from 'lucide-react';
 import api from '../utils/api';
 import { formatRif } from '../utils/rifFormatter';
 import { toast } from 'sonner';
 import { usePermission } from '../hooks/usePermission';
 import { AdminSerialManagementModal } from '../components/AdminSerialManagementModal';
+import { ItemReclassDialog } from '../components/inventory/ItemReclassDialog';
 
 const SERIALIZED_TYPES = ['pos', 'pinpad', 'mpos'];
 const isSerializedType = (t) => SERIALIZED_TYPES.includes((t || '').toLowerCase());
@@ -68,6 +69,7 @@ export default function Inventory() {
   const [entryDialog, setEntryDialog] = useState(false);
   const [exitDialog, setExitDialog] = useState(false);
   const [transferDialog, setTransferDialog] = useState(false);
+  const [reclassItem, setReclassItem] = useState(null);
   const [deleteWh, setDeleteWh] = useState({ open: false, id: null, name: '' });
 
   // Entry form
@@ -826,6 +828,13 @@ export default function Inventory() {
                                     <Button size="sm" variant="ghost" className="h-7 text-xs text-blue-600 hover:text-blue-800"
                                       onClick={() => openTransferForItem(item)} data-testid={`btn-transfer-${item.item_id}`}>
                                       <ArrowLeftRight size={12} className="mr-1" />Transferir
+                                    </Button>
+                                  )}
+                                  {currentUser?.role === 'admin' && (
+                                    <Button size="sm" variant="ghost" className="h-7 text-xs text-violet-600 hover:text-violet-800"
+                                      title="Transferir unidades a otro producto de este almacén (solo Admin)"
+                                      onClick={() => setReclassItem(item)} data-testid={`btn-reclass-${item.item_id}`}>
+                                      <Shuffle size={12} className="mr-1" />A otro producto
                                     </Button>
                                   )}
                                 </div>
@@ -2124,6 +2133,11 @@ export default function Inventory() {
           </AlertDialogContent>
         </AlertDialog>
 
+        {currentUser?.role === 'admin' && (
+          <ItemReclassDialog item={reclassItem} warehouseId={selectedWh}
+            warehouseName={warehouses.find(w => w.warehouse_id === selectedWh)?.name || ''}
+            onClose={() => setReclassItem(null)} onDone={fetchStock} />
+        )}
         {currentUser?.role === 'admin' && (
           <AdminSerialManagementModal
             open={openAdminSerialModal}

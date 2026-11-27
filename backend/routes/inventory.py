@@ -2618,3 +2618,82 @@ async def admin_assign_serial(body: dict, authorization: Optional[str] = Header(
     })
 
     return {"ok": True, "assignment_id": assignment_id, "message": f"Serial {serial} asignado a {client_name}"}
+
+
+# ==================== RECLASIFICACIÓN INTERNA (producto → producto, mismo almacén) ====================
+
+@router.get("/admin/inventory/reclass-targets")
+async def admin_reclass_targets(item_id: str, authorization: Optional[str] = Header(None)):
+    """Productos destino válidos: mismo manejo de serial que el origen."""
+    await _require_admin_user(authorization)
+    src = await db.hardware.find_one({"hardware_id": item_id}, {"_id": 0, "type": 1})
+    if not src:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    ser = is_serialized(src.get("type", ""))
+    docs = await db.hardware.find({"hardware_id": {"$ne": item_id}}, {"_id": 0, "hardware_id": 1, "name": 1, "type": 1, "is_active": 1}).to_list(3000)
+    items = [{"item_id": d["hardware_id"], "name": d["name"], "type": d.get("type", "")}
+             for d in docs if is_serialized(d.get("type", "")) == ser and d.get("is_active", True) is not False]
+    return {"requires_serial": ser, "items": sorted(items, key=lambda x: x["name"].lower())}
+
+
+@router.post("/admin/inventory/item-reclass")
+async def admin_item_reclass(body: dict, authorization: Optional[str] = Header(None)):
+    """Solo Admin: transfiere unidades (y seriales) de un producto a otro dentro del MISMO almacén."""
+    user = await _require_admin_user(authorization)
+    wid, src_id, dst_id = body.get("warehouse_id"), body.get("source_item_id"), body.get("dest_item_id")
+    quantity = int(body.get("quantity") or 0)
+    serials = [str(s).strip() for s in body.get("serials") or [] if str(s).strip()]
+    notes = (body.get("notes") or "").strip()
+    if not all([wid, src_id, dst_id]) or quantity <= 0:
+        raise HTTPException(status_code=400, detail="Faltan campos obligatorios")
+    if src_id == dst_id:
+        raise HTTPException(status_code=400, detail="El producto origen y destino deben ser distintos")
+    if len(notes) < 5:
+        raise HTTPException(status_code=400, detail="Indique el motivo de la transferencia interna")
+    wh = await db.warehouses.find_one({"warehouse_id": wid}, {"_id": 0, "name": 1})
+    if not wh:
+        raise HTTPException(status_code=404, detail="Almacén no encontrado")
+    src = await db.hardware.find_one({"hardware_id": src_id}, {"_id": 0})
+    dst = await db.hardware.find_one({"hardware_id": dst_id}, {"_id": 0})
+    if not src or not dst:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    ser = is_serialized(src.get("type", ""))
+    if ser != is_serialized(dst.get("type", "")):
+        raise HTTPException(status_code=400, detail="Ambos productos deben manejar serial, o ninguno")
+    stock = await _get_item_stock(wid, src_id)
+    if stock["quantity"] < quantity:
+        raise HTTPException(status_code=400, detail=f"Stock insuficiente. Disponible: {stock['quantity']}")
+    if ser:
+        if len(set(serials)) != quantity:
+            raise HTTPException(status_code=400, detail=f"Debe seleccionar exactamente {quantity} serial(es)")
+        missing = [s for s in serials if s not in stock.get("serials", [])]
+        if missing:
+            raise HTTPException(status_code=400, detail=f"Serial(es) no disponibles en el almacén: {', '.join(missing[:5])}")
+        blocked = await db.serial_assignments.distinct("serial", {"serial": {"$in": serials}, "status": {"$in": ["preasignado", "asignado", "asignado_temporal"]}})
+        if blocked:
+            raise HTTPException(status_code=400, detail=f"Serial(es) preasignados/asignados, no se pueden transferir: {', '.join(blocked[:5])}")
+    else:
+        serials = []
+
+    reclass_id = f"rcl_{uuid.uuid4().hex[:8]}"
+    user_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip() or user.get("email", "")
+    cost = stock.get("weighted_cost", 0)
+    docs = []
+    for mtype, it, ref in (("transferencia_salida", src, f"Transferencia interna a «{dst['name']}»"),
+                           ("transferencia_entrada", dst, f"Transferencia interna desde «{src['name']}»")):
+        mov = InventoryMovement(
+            warehouse_id=wid, item_id=it["hardware_id"], item_name=it["name"], item_type=it.get("type", "General"),
+            movement_type=mtype, quantity=quantity, unit_cost=cost, serials=serials,
+            reference=ref, transfer_id=reclass_id, notes=f"[Reclasificación interna] {notes}", created_by=user_name,
+        )
+        d = mov.model_dump()
+        d["created_at"] = d["created_at"].isoformat()
+        d["certification_status"] = "certificado"
+        d["internal_reclass"] = True
+        docs.append(d)
+    await db.inventory_movements.insert_many(docs)
+    await check_stock_alert(wid, src_id, src["name"])
+    for d in docs:
+        d.pop("_id", None)
+    logger.info(f"[reclass] {reclass_id} {wh['name']}: {quantity} × {src['name']} → {dst['name']} por {user_name}")
+    return {"reclass_id": reclass_id, "quantity": quantity, "serials": serials, "movements": docs}
