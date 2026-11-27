@@ -965,10 +965,18 @@ async def close_integrator_project(
     # Persistencia ACUMULATIVA del Certificado (nueva versión, sin sobreescribir el histórico).
     if cert_bytes:
         try:
-            await _store_integrator_certificate(
+            _cid = await _store_integrator_certificate(
                 target_id, f"Certificado_{existing.get('name', 'Integracion')}.pdf",
                 cert_bytes, "system", "Sistema - Cierre Automático", current_user, product_ids=_delta_ids,
             )
+            # Expediente Digital: todos los documentos enviados al Integrador (origen AUTOMÁTICO)
+            from routes.integrator_cert_docs import store_expediente_doc
+            for _att in attachments:
+                try:
+                    await store_expediente_doc(_cid, target_id, _att["filename"], _att["content"], "AUTOMATICO",
+                                               current_user, proyecto_id=integrator_id)
+                except Exception as e:
+                    logger.warning(f"[expediente] no se pudo guardar {_att.get('filename')}: {e}")
         except Exception as e:
             logger.warning(f"[cert] no se pudo persistir el certificado del cierre: {e}")
 
@@ -1088,6 +1096,10 @@ async def list_integrator_certificates(integrator_id: str, authorization: Option
     ).sort("created_at", -1):
         c.setdefault("status", "vigente")
         items.append(c)
+    from routes.integrator_cert_docs import expediente_counts
+    counts = await expediente_counts([c["certificate_id"] for c in items])
+    for c in items:
+        c["expediente_count"] = counts.get(c["certificate_id"], 0)
     return {"certificates": items, "total": len(items)}
 
 
@@ -1160,6 +1172,12 @@ async def reissue_integrator_certificate(
     cert_id = await _store_integrator_certificate(
         integrator_id, f"Certificado_{existing.get('name', 'Integracion')}_reemision.pdf", cert_bytes,
         "reissue", f"Re-emisión - {uname}", current_user, product_ids=delta_ids)
+    from routes.integrator_cert_docs import store_expediente_doc
+    try:
+        await store_expediente_doc(cert_id, integrator_id, f"Certificado_{existing.get('name', 'Integracion')}_reemision.pdf",
+                                   cert_bytes, "AUTOMATICO", current_user)
+    except Exception as e:
+        logger.warning(f"[expediente] reemisión: {e}")
     await db.integrators.update_one({"integrator_id": integrator_id}, {
         "$set": {"cert_component": componente, "cert_version": version_componente, "cert_products": productos_str,
                  "cert_reissued_at": now_iso, "cert_reissued_by": current_user.get("email"), "cert_outdated": False},

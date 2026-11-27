@@ -29,7 +29,7 @@ COLLECTION_MODULES = {
     "commercial_categories": "Categorías Comerciales",
     "referentes": "Referentes",
     "productos_integracion": "Productos para Integración",
-    "integrators": "Integradores", "empresas_integradoras": "Integradores", "integrator_cert_templates": "Integradores", "integrator_certificates": "Integradores",
+    "integrators": "Integradores", "empresas_integradoras": "Integradores", "integrator_cert_templates": "Integradores", "integrator_certificates": "Integradores", "certificado_expediente_documentos": "Integradores",
     "users": "Usuarios y Seguridad", "profiles": "Usuarios y Seguridad", "security_policies": "Usuarios y Seguridad",
     "config": "Configuración General", "email_templates": "Configuración General",
     "action_notification_configs": "Configuración General", "other_action_configs": "Configuración General",

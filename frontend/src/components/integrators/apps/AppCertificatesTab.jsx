@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
-import { Download, RefreshCw, Ban, CheckCircle2, AlertTriangle, Upload, Eye } from 'lucide-react';
+import { Download, RefreshCw, Ban, CheckCircle2, AlertTriangle, Upload, Eye, FolderOpen } from 'lucide-react';
+import { CertExpedienteDialog } from './CertExpedienteDialog';
 import { CertificateViewer } from './CertificateViewer';
 import api from '../../../utils/api';
 import { toast } from 'sonner';
@@ -42,6 +43,7 @@ export const AppCertificatesTab = ({ app, canManage, onChanged }) => {
   const [items, setItems] = useState([]);
   const [reissuing, setReissuing] = useState(false);
   const [viewing, setViewing] = useState(null);
+  const [expediente, setExpediente] = useState(null);
   const fileRef = useRef(null);
   const uploadPdf = async (e) => {
     const f = e.target.files?.[0]; e.target.value = '';
@@ -104,6 +106,10 @@ export const AppCertificatesTab = ({ app, canManage, onChanged }) => {
                 <td className="px-3 py-2 text-right whitespace-nowrap">
                   <button className="p-1 text-slate-400 hover:text-brand-blue-600" title="Ver certificado" onClick={() => setViewing(c)} data-testid={`cert-view-${c.certificate_id}`}><Eye size={13} /></button>
                   <button className="p-1 text-slate-400 hover:text-brand-blue-600" title="Descargar" onClick={() => download(c)} data-testid={`cert-download-${c.certificate_id}`}><Download size={13} /></button>
+                  <button className="p-1 text-amber-500 hover:text-amber-600 inline-flex items-center gap-0.5" title="Expediente Digital de Certificación"
+                    onClick={() => setExpediente({ c, label: `Cert. #${String(items.length - idx).padStart(3, '0')}` })} data-testid={`cert-expediente-${c.certificate_id}`}>
+                    <FolderOpen size={13} />{c.expediente_count > 0 && <span className="text-[10px] font-semibold">({c.expediente_count})</span>}
+                  </button>
                   {canManage && c.status !== 'vigente' && <button className="p-1 text-slate-400 hover:text-emerald-600" title="Marcar vigente" onClick={() => setStatus(c, 'vigente')} data-testid={`cert-set-vigente-${c.certificate_id}`}><CheckCircle2 size={13} /></button>}
                   {canManage && c.status !== 'anulado' && <button className="p-1 text-slate-400 hover:text-red-600" title="Anular" onClick={() => setStatus(c, 'anulado')} data-testid={`cert-set-anulado-${c.certificate_id}`}><Ban size={13} /></button>}
                 </td>
@@ -112,6 +118,8 @@ export const AppCertificatesTab = ({ app, canManage, onChanged }) => {
           </tbody>
         </table>
       )}
+      <CertExpedienteDialog cert={expediente?.c} label={expediente?.label} canUpload={canManage}
+        onClose={() => setExpediente(null)} onChanged={load} />
       <CertificateViewer cert={viewing} onClose={() => setViewing(null)} onDownload={download} />
     </div>
   );
