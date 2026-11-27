@@ -2057,6 +2057,7 @@ _BACKUP_EXCLUDE = {
     "fb_uploads",
     "fb_upload_chunks",
     "files_restore_jobs",
+    "scheduled_backup_runs",
 }
 
 # Respaldo Total V2 — SEGMENTACIÓN Y DESACOPLE DE MAESTRAS
@@ -2135,7 +2136,7 @@ async def _cleanup_stale_backups(max_age_hours: int = 2):
     """Borra jobs y sus archivos GridFS más viejos que max_age_hours."""
     cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
     try:
-        async for j in db.backup_jobs.find({}):
+        async for j in db.backup_jobs.find({"scheduled": {"$ne": True}}):  # los programados tienen retención propia
             try:
                 created = datetime.fromisoformat(j.get("created_at"))
             except Exception:

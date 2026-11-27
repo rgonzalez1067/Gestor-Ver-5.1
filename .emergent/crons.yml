@@ -7,3 +7,11 @@ crons:
     endpoint: "{{BASE_URL}}/api/cron/bcv-rate"
     method: POST
     enabled: true
+  - name: scheduled-backup
+    description: "Respaldo programado completo (BD + Maestras + Archivos) Lun/Mié/Vie 8:00pm Caracas"
+    cron: "0 20 * * 1,3,5"
+    timezone: "America/Caracas"
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    endpoint: "{{BASE_URL}}/api/cron/scheduled-backup"
+    method: POST
+    enabled: true

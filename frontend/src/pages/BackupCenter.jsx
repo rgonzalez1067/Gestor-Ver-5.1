@@ -5,6 +5,7 @@ import { ArrowLeft, Download, Upload, DatabaseBackup, Package, ShieldAlert, Load
 import api from '../utils/api';
 import { ContingencyAttachmentsExport } from '../components/ContingencyAttachmentsExport';
 import { FilesBackupCard } from '../components/backup/FilesBackupCard';
+import { ScheduledBackupsCard } from '../components/backup/ScheduledBackupsCard';
 import { Button } from '../components/ui/button';
 import { Checkbox } from '../components/ui/checkbox';
 import { Badge } from '../components/ui/badge';
@@ -919,6 +920,7 @@ export default function BackupCenter() {
         </div>
 
         <FilesBackupCard />
+        <ScheduledBackupsCard />
 
         {/* Respaldo de Anexos hacia Object Storage (Backfill) */}
         <div className="bg-white rounded-xl border border-sky-200 shadow-sm mb-6 overflow-hidden" data-testid="attachments-backfill-card">

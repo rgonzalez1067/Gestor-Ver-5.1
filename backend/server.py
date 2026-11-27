@@ -444,6 +444,8 @@ api_router.include_router(productos_integracion_router)
 api_router.include_router(integrator_cert_docs_router)
 from routes.files_backup import router as files_backup_router
 api_router.include_router(files_backup_router)
+from routes.scheduled_backup import router as scheduled_backup_router
+api_router.include_router(scheduled_backup_router)
 api_router.include_router(taller_audit_router)
 api_router.include_router(projects_followup_router)
 api_router.include_router(initial_contact_attachments_router)

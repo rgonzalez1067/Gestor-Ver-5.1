@@ -4989,3 +4989,8 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Nuevo routes/files_backup.py: POST /admin/files-backup/build (lista recursiva meganexus/ + pdfs/{APP_ENV}/ + rutas referenciadas en BD; ZIP_STORED a GridFS; reutiliza build-status/export-ticket/export), POST /admin/files-backup/restore (upload_id de upload-init/chunk) + restore-status; re-mapea pdfs/<env origen>/ → pdfs/<APP_ENV>/. UI: components/backup/FilesBackupCard.jsx en BackupCenter.
 - Preview: 3588 archivos, 1.2 GB, ~13 min.
 - BUG corregido: _async_gridfs_bucket recibía AuditedDatabase → descarga de Respaldo Total daba 410 y no se borraban GridFS viejos. Ahora usa db.raw; limpieza de huérfanos >2h.
+
+## 2026-11-27 — Respaldo Programado
+- Cron `scheduled-backup` "0 20 * * 1,3,5" America/Caracas → POST /api/cron/scheduled-backup (Bearer WEBHOOK_CRON_SECRET, idempotente cron_runs).
+- routes/scheduled_backup.py: genera 3 paquetes (Total, Maestras=_MASTER_EXCLUDE con group_label "maestras", Archivos), jobs `scheduled=True` excluidos del cleanup de 2h, retención KEEP_RUNS=2 (scheduled_backup_runs), correo a admins activos. GET /admin/scheduled-backups, POST /admin/scheduled-backups/run-now.
+- UI: components/backup/ScheduledBackupsCard.jsx. Prueba preview: ~17 min, 201MB + 0.5MB + 1.16GB, correo enviado.
