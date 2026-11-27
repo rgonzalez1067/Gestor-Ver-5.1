@@ -4995,3 +4995,4 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - routes/scheduled_backup.py: genera 3 paquetes (Total, Maestras=_MASTER_EXCLUDE con group_label "maestras", Archivos), jobs `scheduled=True` excluidos del cleanup de 2h, retención KEEP_RUNS=2 (scheduled_backup_runs), correo a admins activos. GET /admin/scheduled-backups, POST /admin/scheduled-backups/run-now.
 - UI: components/backup/ScheduledBackupsCard.jsx. Prueba preview: ~17 min, 201MB + 0.5MB + 1.16GB, correo enviado.
 - 2026-11-27: Cierre Administrativo general (admin_close, todas las cotizaciones incl. PRE-, archiva en Histórico, override configurable) + Reasignar Referente (admin) en Contactos Iniciales. iteration_407.
+- 2026-11-27: Transferencia interna entre productos (admin) en Inventario: GET /admin/inventory/reclass-targets, POST /admin/inventory/item-reclass (movimientos transferencia_salida/entrada con internal_reclass=True, certificados). UI ItemReclassDialog. iteration_408.

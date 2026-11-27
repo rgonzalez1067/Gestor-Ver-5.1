@@ -1,0 +1,36 @@
+{
+  "summary": "Tested the admin-only internal reclass (move units from one product to another in the same warehouse) end to end, on its own TEST_ warehouse and 4 TEST_ hardware items (2 Accesorio, 2 POS/Verifone). Backend: 18 of 20 pytest cases pass. Targets endpoint: correct serial-type filtering, the source item is excluded, unknown item gives 404, non-admin gets 403. Reclass endpoint: all requested 400 validations work, plus duplicate serials in the list, unknown warehouse (404) and non-admin (403). Moving 3 units without serials changes stock 10/2 to 7/5, and the destination weighted cost becomes (2*30+3*20)/5=24 as expected. Moving 2 serials moves exactly those serials to the destination item, the source keeps the rest, and a serial already moved cannot be moved again. Kardex shows transferencia_salida/entrada with the 'Transferencia interna a/desde «...»' reference and correct balances. UI: the 'A otro producto' button, the dialog, the destination search and filtering (POS hidden for accessories and vice versa), the quantity field, the serial checkboxes and Todos/Ninguno, the disabled state (no reason given, or quantity above stock), the window.confirm, the success toast, closing the dialog and refreshing stock all work for both modes. All test data was cleaned up.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/admin/inventory/item-reclass", "issue": "Non-numeric quantity (e.g. 'abc') returns 500: int(body.get('quantity')) raises ValueError, which is not caught. Should return 400. No Pydantic model is used (body: dict)."},
+      {"endpoint": "GET /api/inventory/warehouses/{wid}/kardex/{item_id}", "issue": "The kardex rows do not expose the internal_reclass flag or transfer_id, although the movement document stores internal_reclass=True. Internal reclasses can only be identified by the reference/notes text. Add 'internal_reclass': m.get('internal_reclass', False) to the kardex row if the UI or reports need it."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ItemReclassDialog", "issues": ["The destination list silently cuts off at 50 results (slice(0,50)) with no 'refine search' hint", "The 'Ninguno' button has no data-testid"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_item_reclass_iter408.py", "/app/backend/tests/ui_fixture_iter408.py", "/app/test_reports/pytest/iter408_reclass.xml"],
+  "action_items": [
+    "Validate quantity as an int in admin_item_reclass (wrap int() in try/except and return 400, or use a Pydantic model)",
+    "Optional: return internal_reclass (and transfer_id) in kardex rows",
+    "Optional: on transferencia_entrada, keep each moved serial's acquisition_date so FIFO order on the destination item is not reset to the reclass date"
+  ],
+  "critical_code_review_comments": [
+    "admin_item_reclass uses body: dict with no Pydantic validation; int() on bad input gives 500",
+    "Movements reuse the transferencia_salida/entrada types with transfer_id=rcl_*; any future code that pairs transfers by transfer_id/movement_type across warehouses should exclude internal_reclass=True",
+    "The serialized reclass does not copy acquisition_date, so the moved serials go to the end of the destination's FIFO order (serial_dates take the created_at of the reclass)",
+    "routes/inventory.py is about 2700 lines; consider splitting the admin endpoints into their own module"
+  ],
+  "updated_files": ["/app/backend/tests/test_item_reclass_iter408.py", "/app/backend/tests/ui_fixture_iter408.py"],
+  "success_rate": {"backend": "90% (18/20; the 2 failures are minor)", "frontend": "100%"},
+  "seed_data_creation": "Created a TEST_RCL_* warehouse, 4 TEST_RCL* hardware items, their entries and reclass movements, one serial_assignments doc (sa_TEST_*) and one temporary TEST_ user with a session for the 403 check. All deleted by id afterwards (verified 0 left).",
+  "test_credentials": "qa.integradores@megasoft.com.ve / QaIntegr2026*Ok works. kherrera@megasoft.com.ve / Kherrera2026*Qa is INVALID: login returned 'Credenciales inválidas, le quedan 3 intentos'. My test caused 1-2 of those failed attempts; the earlier ones were already there. Please update test_credentials.md. Non-admin 403 was tested with a temporary user and session inserted directly into Mongo.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && export REACT_APP_BACKEND_URL=... MONGO_URL=mongodb://localhost:27017 DB_NAME=test_database && pytest tests/test_item_reclass_iter408.py. It is self-contained and creates and cleans its own data. For UI: python tests/ui_fixture_iter408.py setup, then the browser test (select warehouse TEST_RCL_UI_* through [data-testid=select-warehouse]), then python tests/ui_fixture_iter408.py teardown."
+}
