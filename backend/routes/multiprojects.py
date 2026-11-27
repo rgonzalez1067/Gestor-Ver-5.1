@@ -135,7 +135,7 @@ async def _build(quote_ids: list):
     tree, dist, summaries = {}, {}, []
     for q in quotes:
         c = clients.get(q["client_id"], {})
-        boxes = int(q.get("box_count") or sum(int(b.get("quantity") or 0) for b in q.get("branch_details") or []) or 1)
+        boxes = int(q.get("box_count") or q.get("cantidad_cajas") or sum(int(b.get("quantity") or 0) for b in q.get("branch_details") or []) or 1)
         store = f"{_store_name(q)} ({q.get('quote_number')})"
         r = dist.setdefault(q["client_id"], {"client_id": q["client_id"], "rif": c.get("rif"), "client_name": c.get("legal_name") or q.get("client_name"),
                                              "boxes": 0, "stores": []})
@@ -192,7 +192,7 @@ async def multiproject_create(body: MPRequest, authorization: Optional[str] = He
     # 2) Proyecto único Multi-RIF a partir de la cotización principal
     synth = copy.deepcopy(primary)
     synth.update(is_multirif=True, multirif_distribution=dist, scope_tree=None, quote_status="Enviada a Imple", branch_details=[],
-                 box_count=sum(r["boxes"] for r in dist),
+                 box_count=sum(r["boxes"] for r in dist), cantidad_cajas=sum(r["boxes"] for r in dist),
                  total_usd=round(sum(float(q.get("total_usd") or 0) for q in quotes), 2),
                  total_bs=round(sum(float(q.get("total_bs") or 0) for q in quotes), 2),
                  # Servicios/bancos de TODAS las cotizaciones (la matriz global y la lista de bancos son la unión)

@@ -532,7 +532,7 @@ def generate_implementation_pdf(quote: dict, client: dict, contacts: list, branc
         for _s in _mp:
             _scl = _s.get("client") or {}
             _render_summary(_s, _scl, _scl.get("legal_name") or _s.get("client_name") or "NO_APLICA", _s.get("box_count") or 1,
-                            f"Resumen Ejecutivo — Cotización {_s.get('quote_number', '')} · {_scl.get('rif', '')} {_s.get('store_name', '')}")
+                            f"Resumen Ejecutivo — {_scl.get('rif', '')} · {_s.get('store_name', '')}")
             elements.append(Spacer(1, 4))
     else:
         _render_summary(quote, client, client_name, cantidad_cajas, "Resumen Ejecutivo")

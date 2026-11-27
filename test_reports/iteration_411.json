@@ -1,0 +1,63 @@
+{
+  "summary": "Retested the Multiproyectos fix that combines bank/product data from every quote. Ran test_multiprojects_matrix_iter410.py (6/6 pass) and a Playwright run through the UI, using only TEST_ clients and quotes that I created and then deleted. Quote A had Banco X/Prod A and quote B had Banco Y/Prod B. Results: preview returns 2 summaries, each with its own banks and services. After create, project_type is multirif. project.banks lists both banks, services holds both items, and the global implementation_matrix is {Banco X:{Prod A}, Banco Y:{Prod B}}. Each store keeps only its own quote's matrix. quote_summaries has 2 entries and GET /api/projects/{id} returns them. The Ficha Técnica PDF (/api/projects/{id}/ficha-tecnica, checked with pypdf) has two 'Resumen Ejecutivo — Cotización ...' blocks, each with its own bank and product. Regression check: a normal single project still renders exactly one 'Resumen Ejecutivo'. In the UI, the step 1 dialog shows mp-summaries with 2 correct cards. Creating the project goes to /projects/{id}, which shows project-quote-summaries with 2 cards. Found one remaining data bug: box counts (Cajas).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/multiprojects/preview|create (_build)",
+        "issue": "boxes = q.box_count or sum(branch_details.quantity) or 1. Real quotes never have box_count: the database has 0 quotes with box_count and 351 with cantidad_cajas. So every quote without branch_details reports 1 box in summaries[].box_count, stores[].box_count, rifs[].box_count and the PDF 'Cant. Cajas'. Fix: int(q.get('box_count') or q.get('cantidad_cajas') or sum(branch qty) or 1)."
+      },
+      {
+        "endpoint": "POST /api/multiprojects/create",
+        "issue": "synth sets box_count, but _create_project_from_quote reads quote['cantidad_cajas'] (quote_transitions.py L234). As a result project.box_count is only the primary quote's count: the UI showed 'Nro de Cajas 1' for a 2-quote project. Fix: also set synth['cantidad_cajas'] = sum of boxes."
+      },
+      {
+        "endpoint": "quote_transitions.py ~L319",
+        "issue": "Code review, not tested: st.get('implementation_matrix') or rif_matrix. If a quote has no additional services, its store matrix is {}, which is falsy, so the store falls back to the global union matrix and gets other quotes' banks. Check whether the key is present instead of relying on truthiness."
+      },
+      {
+        "endpoint": "services/implementation_pdf.py _render_summary",
+        "issue": "The PDF prints 'Dir. Fiscal None' when the client address is null, because _cl.get('address','No especificada') only defaults when the key is missing. Use `_cl.get('address') or 'No especificada'`."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "PDF Resumen Ejecutivo title",
+        "issues": [
+          "The quote number appears twice, because store_name already includes '(quote_number)'."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_multiprojects_matrix_iter410.py",
+    "/app/backend/tests/ui_fixture_mp_iter410.py",
+    "/app/test_reports/pytest/pytest_iter410.xml"
+  ],
+  "action_items": [
+    "In multiprojects._build, count boxes from cantidad_cajas",
+    "Set synth['cantidad_cajas'] to the total boxes",
+    "Don't fall back to the global matrix when a store's own matrix is an empty dict",
+    "In the PDF summary, show 'No especificada' instead of 'None' when the address is null"
+  ],
+  "critical_code_review_comments": [
+    "Create is still not atomic: quotes are archived before the project is created (already reported in iter409)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_multiprojects_matrix_iter410.py",
+    "/app/backend/tests/ui_fixture_mp_iter410.py"
+  ],
+  "success_rate": {
+    "backend": "100% (6/6)",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "Only TEST_ clients and quotes (M410/U410) plus the 2 resulting projects, deleted by id. Checked 0 leftovers.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: python -m pytest test_multiprojects_matrix_iter410.py -p no:xdist, after loading backend/.env and setting REACT_APP_BACKEND_URL. UI fixture: ui_fixture_mp_iter410.py create|cleanup. Set session_token in localStorage, load /dashboard first, then go to /multiprojects.",
+  "rca of the issue": "The requested fix works. The remaining box-count issue comes from a field name mismatch: the multiproject code reads box_count, but quotes store cantidad_cajas."
+}
