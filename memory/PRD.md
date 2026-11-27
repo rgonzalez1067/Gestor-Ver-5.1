@@ -4982,3 +4982,4 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Cierre de integración y re-emisión guardan automáticamente (AUTOMATICO) cert PDF + anexos. list certificates devuelve expediente_count.
 - UI: CertExpedienteDialog + botón carpeta en AppCertificatesTab.
 - Pendientes menores: permiso backend para carga, dialog sin max-h, object URLs sin revocar, put_object síncrono.
+- 2026-11-26: Eliminada pestaña 'Documentos de la Certificación' (AppCertDocsTab + endpoint certification-documents); reemplazada por Expediente por certificado.
