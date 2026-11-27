@@ -1,0 +1,42 @@
+{
+  "summary": "Iter407: Admin Close (Cierre Administrativo) on all quotes + admin-only Referente reassignment for Initial Contacts. Backend 7/7 pytest pass (reassign: 403 non-admin, 400 same ref, 400 unknown ref, 404 contact, 200 with referente_id/referred_by updated + bitacora action referente_reassigned incl. comment; admin-close: catalog contains admin_close 'Cierre Administrativo', non-admin 403 on check+post, check eligible=true, reason<10 -> 400, close OK -> removed from GET /api/quotes, present in /api/quote-history (quote_status_final='Cierre Administrativo', admin_closure.reason), check eligible=false afterwards and 2nd close -> 400, .exe support -> 400 without closing, 404 unknown quote; override implementacion_pyme|vpos|admin_close with allowed_user_ids authorizes non-admin (200) and enabled=false denies (403)). UI verified: Contactos Iniciales reassign button -> dialog shows current referente, current referente excluded from picker, confirm disabled until pick, toast 'Referente reasignado', grid shows new referente. Cotizaciones: admin-close item present in action menu, dialog confirm disabled for empty/5 chars, enabled at 10+, toast, quote leaves grid (~2s, after re-fetch) and stays gone after reload; Histórico shows CIERRE ADMINISTRATIVO badge with reason/closer tooltip. Override de Acciones tab lists 'Cierre Administrativo'. All test data created by me (TEST_ quotes, contacts, overrides, a TEST_ non-admin user) was deleted by id; no real quote/contact touched.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/quotes/{id}/admin-close", "issue": "Not atomic: quote_status is set to 'Cierre Administrativo' + status_history pushed BEFORE archive_quote_to_history; if archiving throws, API returns 500 but the quote stays in Cotizaciones with status 'Cierre Administrativo' and archived=false (eligible again, duplicate status_history on retry)."},
+      {"endpoint": "_admin_close_authorized", "issue": "Admin always authorized even when the admin_close override is enabled=false (UI hides the item for admin via meta.hidden, but backend still accepts). Decide whether 'desactivar' should also apply to admins; currently UI/backend are inconsistent."},
+      {"endpoint": "PUT /api/initial-contacts/{id}/referente", "issue": "Does not validate referente estatus (inactive referente accepted by API; only the UI filters estatus!==false)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "QuotesTable actions menu (PRE- preliminary quotes)", "issue": "Preliminary quotes (quote_number starting 'PRE-', e.g. PRE-2026-11-0008-PYME) render a separate reduced menu (assign client/modify/send email) without admin-close-btn, although requirement says 'TODAS las cotizaciones' and backend allows closing them.", "selector": "[data-testid^='admin-close-btn-']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Contacto Inicial grid", "issues": ["Referido por badge (e.g. 'ANTONIO CASTRO') wraps onto two lines with split pill background - looks broken; use whitespace-nowrap or allow pill to wrap as block."]},
+      {"screen": "Cotizaciones filters", "issues": ["Desde/Hasta use native browser date picker (mm/dd/yyyy) instead of shadcn Calendar (pre-existing)."]},
+      {"screen": "Histórico", "issues": ["Responsable column shows '—' for quotes created via API by QA admin (created_by_name not resolved) - pre-existing."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter407_admin_close_referente.py", "/app/backend/tests/_iter407_test_user.py", "/app/backend/tests/_ui_fixture_iter407.py", "/app/test_reports/pytest/iter407.xml"],
+  "action_items": [
+    "Make admin-close robust: archive first (or roll back quote_status on archive failure)",
+    "Decide/align whether a disabled admin_close override also blocks admins (backend vs UI)",
+    "Optionally expose Cierre Administrativo in the PRE- (preliminary) quote menu to meet 'todas las cotizaciones'",
+    "Validate referente estatus in reassign endpoint",
+    "Fix wrapping of referente badge in Contacto Inicial grid"
+  ],
+  "critical_code_review_comments": [
+    "quote_actions.py admin_close: non-atomic update then archive (see minor issue)",
+    "RepairAdminCloseDialog.jsx is now generic for all quotes - consider renaming to AdminCloseDialog",
+    "QuotesTable.jsx admin-close visibility relies on getActionMeta for non-admin authorization (correct: disabled when user not in allowed_user_emails)"
+  ],
+  "updated_files": ["/app/backend/tests/test_iter407_admin_close_referente.py", "/app/backend/tests/_iter407_test_user.py", "/app/backend/tests/_ui_fixture_iter407.py"],
+  "success_rate": {"backend": "100%", "frontend": "95%"},
+  "test_credentials": "Admin qa.integradores@megasoft.com.ve / QaIntegr2026*Ok. kherrera@megasoft.com.ve was already LOCKED (423) when tests started (not caused by me). I made 1 failed login on jrojas (Test1234! no longer valid) and reset its failed_login_attempts back to 0. For non-admin tests a temporary TEST_ user (test_iter407_user@example.com) is created/deleted by tests/_iter407_test_user.py.",
+  "seed_data_creation": "None persisted. Temporary TEST_iter407 quotes (client cli_05f6268761c7), quote_history entries, initial contacts, an admin_close override and TEST_ user were all deleted by id. Note: quote numbers COT-2026-11-136/137-PYME were consumed by test quotes (sequence advanced).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && python tests/_iter407_test_user.py create && REACT_APP_BACKEND_URL=... pytest tests/test_iter407_admin_close_referente.py -p no:randomly -p no:xdist ; python tests/_iter407_test_user.py delete. UI: set localStorage session_token, go to '/' first then target route (direct goto right after token set redirected to dashboard). Fixture: python tests/_ui_fixture_iter407.py create|delete (state /tmp/iter407_ui.json). Admin-close quote leaves grid ~2s after confirm (fetchData reloads 9 endpoints). Override UI: Configuración > /settings/action-notifications > 'Override de Acciones' > biz > subcategory chip."
+}

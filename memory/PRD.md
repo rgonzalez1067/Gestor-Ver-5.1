@@ -4994,3 +4994,4 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - Cron `scheduled-backup` "0 20 * * 1,3,5" America/Caracas → POST /api/cron/scheduled-backup (Bearer WEBHOOK_CRON_SECRET, idempotente cron_runs).
 - routes/scheduled_backup.py: genera 3 paquetes (Total, Maestras=_MASTER_EXCLUDE con group_label "maestras", Archivos), jobs `scheduled=True` excluidos del cleanup de 2h, retención KEEP_RUNS=2 (scheduled_backup_runs), correo a admins activos. GET /admin/scheduled-backups, POST /admin/scheduled-backups/run-now.
 - UI: components/backup/ScheduledBackupsCard.jsx. Prueba preview: ~17 min, 201MB + 0.5MB + 1.16GB, correo enviado.
+- 2026-11-27: Cierre Administrativo general (admin_close, todas las cotizaciones incl. PRE-, archiva en Histórico, override configurable) + Reasignar Referente (admin) en Contactos Iniciales. iteration_407.

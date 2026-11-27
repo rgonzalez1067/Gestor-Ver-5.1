@@ -132,6 +132,22 @@ export const QuotesTable = ({
     return { label: ov.custom_label || defaultLabel, hidden: false, disabled: false, tooltip: null };
   };
 
+  // Cierre Administrativo: Admin siempre; otros solo con override que los autorice.
+  const renderAdminClose = (quote) => {
+    if (!onAdminClose) return null;
+    const { biz, sub } = resolveBizSub(quote);
+    const ov = actionOverrides[`${biz}|${sub || '_'}|admin_close`] || actionOverrides[`${biz}|_|admin_close`];
+    const isAdm = (currentUserRole || '').toLowerCase() === 'admin';
+    const meta = getActionMeta(quote, 'admin_close', 'Cierre Administrativo');
+    const allowed = isAdm || (ov && !meta.hidden && !meta.disabled && ((ov.allowed_user_emails || []).length || (ov.required_cargos || []).length));
+    if (!allowed || meta.hidden) return null;
+    return (
+      <DropdownMenuItem onSelect={() => onAdminClose(quote.quote_id)} className="cursor-pointer text-amber-700" data-testid={`admin-close-btn-${quote.quote_id}`}>
+        <ShieldAlert size={16} className="mr-2 text-amber-600" /> {meta.label}
+      </DropdownMenuItem>
+    );
+  };
+
   // Helper: lista de acciones custom EJECUTABLES por el usuario actual
   // (filtra por allowed_user_ids/required_cargos). Se usa para el dropdown
   // de acciones donde el usuario realmente puede disparar la acción.
@@ -532,6 +548,7 @@ export const QuotesTable = ({
                         <DropdownMenuItem onSelect={() => onSendPreliminary(quote)} className="cursor-pointer" data-testid={`pre-send-email-btn-${quote.quote_id}`}>
                           <Mail size={16} className="mr-2 text-blue-600" /> Enviar a un correo
                         </DropdownMenuItem>
+                        {renderAdminClose(quote)}
                         </>) : (<>
                         {canEditNonConfig && <DropdownMenuItem onSelect={() => onEditQuote(quote)} className="cursor-pointer" data-testid={`modify-quote-btn-${quote.quote_id}`}>
                           <RefreshCw size={16} className="mr-2 text-slate-500" /> Modificar Cotización
@@ -671,19 +688,7 @@ export const QuotesTable = ({
                         </DropdownMenuItem>; })()}
                         {renderAnchoredCustomActions(quote, 'collect', customByAnchor)}
 
-                        {onAdminClose && (() => {
-                          const { biz, sub } = resolveBizSub(quote);
-                          const ov = actionOverrides[`${biz}|${sub || '_'}|admin_close`] || actionOverrides[`${biz}|_|admin_close`];
-                          const isAdm = (currentUserRole || '').toLowerCase() === 'admin';
-                          const meta = getActionMeta(quote, 'admin_close', 'Cierre Administrativo');
-                          const allowed = isAdm || (ov && !meta.hidden && !meta.disabled && ((ov.allowed_user_emails || []).length || (ov.required_cargos || []).length));
-                          if (!allowed || meta.hidden) return null;
-                          return (
-                            <DropdownMenuItem onSelect={() => onAdminClose(quote.quote_id)} className="cursor-pointer text-amber-700" data-testid={`admin-close-btn-${quote.quote_id}`}>
-                              <ShieldAlert size={16} className="mr-2 text-amber-600" /> {meta.label}
-                            </DropdownMenuItem>
-                          );
-                        })()}
+                        {renderAdminClose(quote)}
                         {/* ── ENTREGA / IMPLEMENTACIÓN ── */}
                         {canEditNonConfig && <DropdownMenuSeparator />}
                         {canEditNonConfig && (isEquipment || isRepair || isFastTrack) && (
