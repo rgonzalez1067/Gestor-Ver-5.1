@@ -4975,3 +4975,10 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 ## 2026-11-26 — Avance parcial en Multitienda/MultiRIF
 - Avance de tienda y roll-up global ahora cuentan avance parcial por celda (procesado/esperado; completado=1). Antes solo contaban fases 100% (7/8 en todas → 0%).
 - Helpers: `store_cell_fraction` (projects.py), `storeCellFraction`/`calcStoreProgress` (projectConstants.js); también _multirif_store_progress. GET /projects/{id} recalcula rollup_progress.
+
+## 2026-11-26 — Expediente Digital por Certificado (iteration_406: 100%)
+- Colección `certificado_expediente_documentos` (auditada). Object Storage: {APP}/storage/integradores/{empresa}/aplicativos/{app}/certificados/{cert}/expediente/{ts}_{uuid}_{nombre}.
+- Endpoints (integrator_cert_docs.py): GET/POST /integrators/certificates/{cid}/expediente, GET /integrators/expediente/{doc}/download?inline. CONSULTA/DESCARGA/VISUALIZACION registradas en audit_trails.
+- Cierre de integración y re-emisión guardan automáticamente (AUTOMATICO) cert PDF + anexos. list certificates devuelve expediente_count.
+- UI: CertExpedienteDialog + botón carpeta en AppCertificatesTab.
+- Pendientes menores: permiso backend para carga, dialog sin max-h, object URLs sin revocar, put_object síncrono.

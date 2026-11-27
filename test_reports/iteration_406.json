@@ -1,0 +1,19 @@
+{
+  "summary": "Expediente Digital por Certificado (1:1): backend 9/9 pytest pass (expediente_count, multi-upload MANUAL_POSTERIOR, .exe/empty rejection, atomic batch rejection, isolation between cert_597482dd1596 and cert_4a9d1ae36493 of int_821d989ae54c, byte-exact download inline/attachment + ?token, 404/401, audit CREATE/CONSULTA/DESCARGA/VISUALIZACION, re-emission AUTOMATICO doc on a TEST_ copy of the integrator). UI fully verified: folder button with count, dialog, empty state, multi upload via expediente-file-input, Manual origin label, PNG preview renders, PDF iframe preview, download, .exe rejected with toast, count refreshes to (2) after close. /close was NOT executed (sends real emails) - only code-reviewed (attachments list = cert PDF + uploaded anexos stored as AUTOMATICO with proyecto_id).",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "POST /api/integrators/certificates/{id}/expediente", "issue": "No role/permission check: any authenticated user can upload into any certificate expediente (UI hides button via canManage but backend doesn't enforce). Download/list also only require login."},
+    {"endpoint": "store_expediente_doc", "issue": "put_object/get_object are sync calls inside async handlers (block event loop on large 25MB files); consider asyncio.to_thread."}
+  ]},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": [
+    {"screen": "CertExpedienteDialog", "issues": ["DialogContent has no max-h/overflow-y-auto: with many docs + 420px preview the dialog can exceed viewport height", "Object URLs from view/download never revoked (minor memory leak)", "No client-side 25MB check before upload (server rejects correctly)"]}
+  ]},
+  "test_report_links": ["/app/backend/tests/test_cert_expediente.py", "/app/test_reports/pytest/pytest_iter406.xml"],
+  "action_items": ["Optional: enforce manage permission on expediente upload endpoint", "Optional: add max-h-[90vh] overflow-y-auto to CertExpedienteDialog content", "Optional: wrap object storage calls with asyncio.to_thread"],
+  "critical_code_review_comments": ["close_integrator_project: if _store_integrator_certificate raises, the expediente docs are skipped silently (only warning) - acceptable but no retry", "Reissue stores the cert PDF as AUTOMATICO without proyecto_id (fine)"],
+  "updated_files": ["/app/backend/tests/test_cert_expediente.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporary TEST_ docs on cert_597482dd1596/cert_4a9d1ae36493 and a TEST_ integrator copy (int_test*) for reissue; all deleted by id. certificado_expediente_documentos count back to 0. Object storage blobs of test files remain (no delete API).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run: pytest tests/test_cert_expediente.py -p no:randomly. Reissue test clones int_821d989ae54c to a TEST_ id with cert_baseline=[] so delta exists, then deletes integrator/certs/docs. UI path: integrators-view-companies -> company-search 'Bigwise' -> company-toggle-emp_1f40cb3ae133 -> company-app-view-int_821d989ae54c -> app-tab-certs -> cert-expediente-{cid}."
+}
