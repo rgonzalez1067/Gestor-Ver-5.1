@@ -1,0 +1,23 @@
+{
+  "summary": "Tested the client selector in EquipmentQuoteWizard step 1 (Cotizaciones > Equipos y Accesorios > PYME) and GET /api/clients/search. Everything requested works. Options show 'RIF - legal_name (fantasy_name)', and the parentheses are left out when both names are the same. Search finds clients by legal name, fantasy name, and RIF with or without dashes. The trigger and the detail card show the legal name followed by the fantasy name in parentheses. Special regex characters return 200, not 500. No quote was created.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_equipment_client_search.py", "/app/test_reports/pytest/pytest_eq_client_search.xml"],
+  "action_items": [
+    "Optional (low): the detail card at EquipmentQuoteWizard.jsx line 671 compares the names case-sensitively and without trimming. The options at line 659 use trim and lowercase. If the names differ only in case or spacing, the card shows the duplicate '(fantasy)' and the option does not. Use the same comparison in both places."
+  ],
+  "critical_code_review_comments": [
+    "Data quality: some legal_name values contain non-breaking spaces (\\xa0) at the start and end, e.g. ' AHORRA MAS SUPERMARKET, C.A. '. Consider trimming on import.",
+    "Backend /clients/search: re.escape is used for the name and sucursal fields and for each character of the RIF pattern. The regex is safe."
+  ],
+  "updated_files": ["/app/backend/tests/test_equipment_client_search.py"],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "100%"},
+  "seed_data_creation": "None. Used existing clients J504419613 (COMERCIALIZADORA WORLD TOYS VAL, C.A. / REDU) and J501546010 (INVERSIONES SALUS 7 C.A. / Brasero El Marqúez).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Log in as qa.integradores. On /quotes, use the selectors create-equipment-quote-button (.first), then new-equipment-pyme, then equipment-select-client, then equipment-client-search-input. The search debounces, so wait about 1.5 s. Use .first on the testids because wait_for_selector on create-equipment-quote-button timed out even though it resolved."
+}
