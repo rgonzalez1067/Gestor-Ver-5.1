@@ -162,7 +162,10 @@ async def multiproject_create(body: MPRequest, authorization: Optional[str] = He
 
     # 2) Proyecto único Multi-RIF a partir de la cotización principal
     synth = copy.deepcopy(primary)
-    synth.update(is_multirif=True, multirif_distribution=dist, scope_tree=None, quote_status="Enviada a Imple")
+    synth.update(is_multirif=True, multirif_distribution=dist, scope_tree=None, quote_status="Enviada a Imple", branch_details=[],
+                 box_count=sum(r["boxes"] for r in dist),
+                 total_usd=round(sum(float(q.get("total_usd") or 0) for q in quotes), 2),
+                 total_bs=round(sum(float(q.get("total_bs") or 0) for q in quotes), 2))
     await _create_project_from_quote(synth, primary["quote_id"], None, equipments or None, None, body.server_name, None,
                                      pc.get("grupo_economico") or "Sin Grupo Económico", pc.get("fantasy_name"), body.implementation_instructions)
     project = await db.projects.find_one({"quote_id": primary["quote_id"]}, {"_id": 0, "project_id": 1, "project_number": 1})

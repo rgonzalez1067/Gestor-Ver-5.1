@@ -1,0 +1,41 @@
+{
+  "summary": "Multiproyectos feature tested end-to-end (backend pytest 13 tests + Playwright UI flow) using only self-created TEST_ clients/quotes/serial_assignments, all cleaned up afterwards. 12/13 backend tests pass: entities (grupo/marca/rif, invalid level 400, no-auth 401), search eligibility (excludes Borrador, archived, already-sent, linked-in-proyecto_cotizaciones; equipment_count counts preasignado+asignado only, ignores liberado), preview (<2 and duplicate ids -> 400, ineligible -> 400, level Multi-Marca, 2 under RIF A / 3 under RIF B, origen=warehouse name), create (is_multiproject, project_type multirif, 2 rifs/2 stores, quote_numbers, equipments_by_rif 2+3, equipments 5, instructions), quotes 'Enviada a Imple'+archived, quote_history multiproject_comment, proyecto_cotizaciones 1 row per quote, serial_assignments get project_id, second create -> 400, search empty afterwards, Ficha Técnica PDF (/api/projects/{id}/ficha-tecnica) has 'RIF / Sucursal' column with serials. FAILED: if the primary (oldest) quote has branch_details, the project is created as 'multistore' with ONLY the primary quote's store (other RIFs/stores lost). UI: full flow works (level chips, entity autocomplete, search, checkboxes, send disabled <2, summary '2 | 5 equipos', 3-step modal with back/next, instructions, create -> navigates /projects/{id}, multiproject-equipment-section/quotes/equipment-by-rif render correctly; consolidated quotes disappear from eligible list). UI issue: /multiprojects page renders without the Sidebar.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/multiprojects/create", "issue": "When the primary quote (quotes[0], earliest created_at) has branch_details, _create_project_from_quote turns the project into project_type='multistore' (quote_transitions.py L258-267) and the multirif block is skipped (L292 requires project_type != 'multistore'). Result: no rifs[], stores = only primary quote's branches; other quotes' RIF/sucursales are lost from the implementation tree (equipments_by_rif still OK). Reproduced in TestBranchDetailsPrimary. Fix: in multiprojects.py synth.update(...) also set branch_details=[] (and store_name kept in distribution) so the multirif path runs.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/multiprojects/create", "issue": "Project totals/matrix come only from the primary quote: total_usd, total_bs, box_count (UI shows 'Nro de Cajas 1' for a 2-quote project), services/banks/implementation_matrix, quote_number/Cotización Origen. Consolidated project should aggregate across all linked quotes."},
+      {"endpoint": "POST /api/multiprojects/create", "issue": "Not atomic: quotes are archived/marked 'Enviada a Imple' BEFORE the project is created; if _create_project_from_quote fails (500) quotes are left archived with no project. Also two concurrent creates both pass eligibility; second fails on unique index of proyecto_cotizaciones (500) after creating a second project. Consider creating project first and claiming quotes with a conditional update (sent_to_implementation_at null) before proceeding."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Multiprojects page", "issue": "Page does not render <Sidebar /> (other pages like Projects/ProjectDetail do), so the user loses app navigation on /multiprojects.", "selector": "[data-testid='multiprojects-page']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ProjectDetail multiproject section", "issues": ["Equipment lines (mono font, 11px) wrap heavily in the narrow third column; consider full-width section below the 3 cards."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_multiprojects_iter409.py", "/app/backend/tests/mp_fixture_iter409.py", "/app/backend/tests/ui_fixture_mp_iter409.py", "/app/test_reports/pytest/pytest_iter409.xml"],
+  "action_items": [
+    "Fix multirif override: in routes/multiprojects.py create, clear branch_details on the synthetic quote (synth['branch_details']=[]) so project_type stays 'multirif' with all RIFs/stores; re-run TestBranchDetailsPrimary",
+    "Add <Sidebar /> layout to frontend/src/pages/Multiprojects.jsx",
+    "Aggregate total_usd/total_bs/box_count (and ideally services/matrix) across all consolidated quotes",
+    "Make create safer: create project first / atomically claim quotes to avoid half-archived state and race 500"
+  ],
+  "critical_code_review_comments": [
+    "multiprojects.py _build: eligibility recheck is non-atomic (TOCTOU) relative to the archive loop.",
+    "_create_project_from_quote is called with quote_id=primary; projects.quote_id only points to primary — fine since _linked_quote_ids also uses proyecto_cotizaciones.",
+    "entities level=rif loads up to 10000 clients unpaginated each time the chip is toggled; acceptable but could use server-side search.",
+    "Project creation triggers in-app 'Nuevo proyecto' push notification (seen as toast) — expected."
+  ],
+  "updated_files": ["/app/backend/tests/test_multiprojects_iter409.py", "/app/backend/tests/mp_fixture_iter409.py", "/app/backend/tests/ui_fixture_mp_iter409.py"],
+  "success_rate": {"backend": "92% (12/13)", "frontend": "95% (flow fully works; sidebar missing)"},
+  "seed_data_creation": "Only TEST_ clients (cli_test_*), quotes (quo_test_*), serial_assignments (sa_test_*), and resulting projects/quote_history/proyecto_cotizaciones created and deleted by id. Verified 0 leftovers. In-app notifications for created test projects may remain.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend/tests && REACT_APP_BACKEND_URL=... python -m pytest test_multiprojects_iter409.py -v. UI fixture: python ui_fixture_mp_iter409.py create|cleanup (ids in /tmp/mp_ui_iter409.json). Login via API and set localStorage session_token. Admin qa.integradores@megasoft.com.ve.",
+  "rca of the issue": "quote_transitions._create_project_from_quote auto-converts any quote with branch_details into multistore before evaluating is_multirif; multiprojects.create deep-copies the primary quote (including its branch_details) into the synthetic quote, so the multirif branch is skipped."
+}

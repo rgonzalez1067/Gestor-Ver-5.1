@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Link2, Search, Rocket, Loader2, Building2, Store, Tag, Users, Cpu, ChevronRight } from 'lucide-react';
 import api from '../utils/api';
+import { Sidebar } from '../components/Sidebar';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
@@ -102,8 +103,9 @@ export default function Multiprojects() {
 
   const STEPS = ['Estructura jerárquica', 'Equipos por RIF', 'Confirmar'];
   return (
-    <div className="min-h-screen bg-slate-50">
-      <main className="p-6 lg:p-8 overflow-x-hidden" data-testid="multiprojects-page">
+    <div className="flex min-h-screen bg-slate-50">
+      <Sidebar />
+      <main className="flex-1 p-6 lg:p-8 overflow-x-hidden" data-testid="multiprojects-page">
         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2"><Link2 className="text-indigo-600" />Multiproyectos</h1>
         <p className="text-sm text-slate-500 mt-1">Consolida 2 o más cotizaciones activas en un único proyecto de implementación.</p>
 

@@ -4996,3 +4996,4 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 - UI: components/backup/ScheduledBackupsCard.jsx. Prueba preview: ~17 min, 201MB + 0.5MB + 1.16GB, correo enviado.
 - 2026-11-27: Cierre Administrativo general (admin_close, todas las cotizaciones incl. PRE-, archiva en Histórico, override configurable) + Reasignar Referente (admin) en Contactos Iniciales. iteration_407.
 - 2026-11-27: Transferencia interna entre productos (admin) en Inventario: GET /admin/inventory/reclass-targets, POST /admin/inventory/item-reclass (movimientos transferencia_salida/entrada con internal_reclass=True, certificados). UI ItemReclassDialog. iteration_408.
+- 2026-11-27: Multiproyectos (/multiprojects, routes/multiprojects.py): consolida >=2 cotizaciones (Grupo/Marca/RIF) en 1 proyecto multirif, equipments_by_rif, proyecto_cotizaciones único, cotizaciones archivadas con multiproject_comment. iteration_409.
