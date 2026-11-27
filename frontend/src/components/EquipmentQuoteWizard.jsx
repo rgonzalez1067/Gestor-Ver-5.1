@@ -655,7 +655,8 @@ export const EquipmentQuoteWizard = ({ open, onClose, onQuoteCreated, clients, h
                     )}
                     {(clientSearchQuery.length >= 2 ? clientSearchResults : clients.slice(0, 50)).map((client) => (
                       <SelectItem key={client.client_id} value={client.client_id}>
-                        {client.rif} - {client.fantasy_name || client.legal_name}
+                        {client.rif} - {client.legal_name || client.fantasy_name}
+                        {client.fantasy_name && client.legal_name && client.fantasy_name.trim().toLowerCase() !== client.legal_name.trim().toLowerCase() ? ` (${client.fantasy_name})` : ''}
                       </SelectItem>
                     ))}
                     {clientSearchQuery.length >= 2 && clientSearchResults.length === 0 && !isSearchingClients && (
@@ -667,7 +668,7 @@ export const EquipmentQuoteWizard = ({ open, onClose, onQuoteCreated, clients, h
 
               {selectedClient && (
                 <div className="bg-slate-50 rounded-lg p-4 space-y-2">
-                  <p className="font-medium text-slate-900">{selectedClient.legal_name}</p>
+                  <p className="font-medium text-slate-900">{selectedClient.legal_name}{selectedClient.fantasy_name && selectedClient.fantasy_name !== selectedClient.legal_name ? ` (${selectedClient.fantasy_name})` : ''}</p>
                   <p className="text-sm text-slate-600">RIF: {selectedClient.rif}</p>
                   {selectedClient.address && (
                     <p className="text-sm text-slate-600">Dirección: {selectedClient.address}</p>

@@ -712,8 +712,8 @@ async def search_clients(q: str = "", include_placeholder: bool = False, authori
     query = {
         **hide,
         "$or": [
-            {"fantasy_name": {"$regex": q, "$options": "i"}},
-            {"legal_name": {"$regex": q, "$options": "i"}},
+            {"fantasy_name": {"$regex": re.escape(q), "$options": "i"}},
+            {"legal_name": {"$regex": re.escape(q), "$options": "i"}},
             {"rif": {"$regex": rif_pattern, "$options": "i"}},
             {"sucursal": {"$regex": re.escape(q), "$options": "i"}},
         ]
