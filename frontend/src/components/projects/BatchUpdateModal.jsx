@@ -5,19 +5,8 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Checkbox } from '../ui/checkbox';
 import { Layers, Building2, ListChecks } from 'lucide-react';
-import { STORE_PHASES } from './projectConstants';
+import { STORE_PHASES, calcStoreProgress } from './projectConstants';
 
-// Avance por tienda (% de fases completadas sobre el total de la matriz de la tienda).
-const calcStoreProgress = (store) => {
-  const sm = store.implementation_matrix || {};
-  let completed = 0, total = 0;
-  Object.values(sm).forEach(products => {
-    Object.values(products).forEach(phases => {
-      STORE_PHASES.forEach(p => { total++; if (phases[p]?.completed) completed++; });
-    });
-  });
-  return total > 0 ? Math.round((completed / total) * 100) : 0;
-};
 
 const weightedProgress = (stores) => {
   if (!stores || stores.length === 0) return 0;

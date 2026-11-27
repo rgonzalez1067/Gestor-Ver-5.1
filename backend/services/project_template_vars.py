@@ -294,8 +294,9 @@ def _multirif_store_progress(store: dict) -> int:
         for phases in (products or {}).values():
             for ph in _MULTIRIF_STORE_PHASES:
                 total += 1
-                if ((phases or {}).get(ph) or {}).get("completed"):
-                    completed += 1
+                d = (phases or {}).get(ph) or {}
+                exp = float(d.get("expected") or 0)
+                completed += 1.0 if d.get("completed") else (min(float(d.get("processed") or 0) / exp, 1.0) if exp > 0 else 0.0)
     return round(completed / total * 100) if total else 0
 
 

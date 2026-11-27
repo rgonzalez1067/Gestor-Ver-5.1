@@ -384,6 +384,8 @@ async def get_project(project_id: str, authorization: Optional[str] = Header(Non
     # "Total de Terminales Virtuales" del Resumen Ejecutivo.
     from services.project_pvv import compute_project_pvv
     project["pvv_count"] = compute_project_pvv(project)
+    if project.get("stores"):
+        project["rollup_progress"] = _calculate_rollup_progress(project)
     # MultiRIF: enriquecer cada RIF con Razón Social (legal_name) y Nombre de
     # Fantasía (fantasy_name) del cliente VALIDADO (vía client_id). Si el RIF no
     # fue validado (sin client_id) se dejan vacíos para que la UI muestre
@@ -1047,6 +1049,15 @@ def _calculate_single_progress(project: dict) -> dict:
     return {"global_progress": global_progress, "bank_progress": bank_progress}
 
 
+def store_cell_fraction(d) -> float:
+    """Avance de una celda de tienda: completada = 1; si no, procesado/esperado (parcial)."""
+    d = d or {}
+    if d.get("completed"):
+        return 1.0
+    exp = float(d.get("expected") or 0)
+    return min(float(d.get("processed") or 0) / exp, 1.0) if exp > 0 else 0.0
+
+
 def _calculate_rollup_progress(project: dict) -> dict:
     """Calcula el avance promedio de la matriz principal basado en las matrices de las tiendas.
     Retorna dict con progreso por banco/producto y progreso global."""
@@ -1067,8 +1078,8 @@ def _calculate_rollup_progress(project: dict) -> dict:
             for store in stores:
                 store_matrix = store.get("implementation_matrix", {})
                 store_phases = store_matrix.get(bank_name, {}).get(product_name, {})
-                completed = sum(1 for p in STORE_PHASES if store_phases.get(p, {}).get("completed", False))
-                pct = (completed / len(STORE_PHASES)) * 100 if STORE_PHASES else 0
+                done = sum(store_cell_fraction(store_phases.get(p)) for p in STORE_PHASES)
+                pct = (done / len(STORE_PHASES)) * 100 if STORE_PHASES else 0
                 w = max(int(store.get("box_count") or 0), 1)
                 weighted += pct * w
                 weight_total += w

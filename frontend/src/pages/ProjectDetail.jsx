@@ -27,7 +27,7 @@ import { MultistoreBankSection } from '../components/projects/MultistoreBankSect
 import { StoreBankSection } from '../components/projects/StoreBankSection';
 import { MultiRifTree } from '../components/projects/MultiRifTree';
 import { InternalEmailInput } from '../components/InternalEmailInput';
-import { PHASES, STORE_PHASES, PHASE_COLORS, ALL_TOKENS } from '../components/projects/projectConstants';
+import { PHASES, STORE_PHASES, PHASE_COLORS, ALL_TOKENS, calcStoreProgress } from '../components/projects/projectConstants';
 import { TemplateBodyEditor } from '../components/projects/TemplateBodyEditor';
 import { ProjectProgressReportDialog } from '../components/ProjectProgressReportDialog';
 import { BatchUpdateModal } from '../components/projects/BatchUpdateModal';
@@ -1237,16 +1237,6 @@ const ProjectDetail = () => {
   const bankNames = Object.keys(matrix);
   const rollup = project.rollup_progress || {};
 
-  const calcStoreProgress = (store) => {
-    const sm = store.implementation_matrix || {};
-    let completed = 0, total = 0;
-    Object.values(sm).forEach(products => {
-      Object.values(products).forEach(phases => {
-        STORE_PHASES.forEach(p => { total++; if (phases[p]?.completed) completed++; });
-      });
-    });
-    return total > 0 ? Math.round((completed / total) * 100) : 0;
-  };
 
   const clientHistory = (project.notification_history || {}).client || [];
   const clientExecutedLevels = clientHistory.map(h => h.level);

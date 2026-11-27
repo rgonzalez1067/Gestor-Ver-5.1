@@ -1,3 +1,4 @@
+import { storeCellFraction } from './projectConstants';
 import { useState, useEffect, useRef } from 'react';
 import { Building2 } from 'lucide-react';
 import { MiniPie } from './MiniPie';
@@ -94,7 +95,8 @@ export const StoreBankSection = ({ bankName, products, matrixData, storeId, onUp
                   const d = pd[p] || {};
                   return (d.processed || 0) >= (d.expected || 0) && (d.expected || 0) > 0;
                 }).length;
-                return <span className="text-xs font-bold text-slate-500">{completedPhases}/{phases.length}</span>;
+                const pctRow = Math.round(phases.reduce((acc, p) => acc + storeCellFraction(pd[p]), 0) / (phases.length || 1) * 100);
+                return <span className="text-xs font-bold text-slate-500" title={`${completedPhases}/${phases.length} fases completas`}>{pctRow}%</span>;
               })()}
             </td>
           </tr>);

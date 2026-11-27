@@ -4971,3 +4971,7 @@ Lint OK (JS). Backend sin cambios (reusa `/inbox/me/summary`).
 ## 2026-11-26 — Plantilla editable Cambio de Fase NP
 - email_templates `new_product_phase_change` ("Cambio de Fase de Nuevos Productos"), sembrada en startup ($setOnInsert, seed_np_phase_template.py). Usa {equipo_trabajo} (incluye nota Primer Prod / cierre Masificación vía PHASE_NOTES en banks.py).
 - No se creó config en Otras Acciones: el usuario debe asignarla con destinatarios (al activarla deja de usarse el correo estándar).
+
+## 2026-11-26 — Avance parcial en Multitienda/MultiRIF
+- Avance de tienda y roll-up global ahora cuentan avance parcial por celda (procesado/esperado; completado=1). Antes solo contaban fases 100% (7/8 en todas → 0%).
+- Helpers: `store_cell_fraction` (projects.py), `storeCellFraction`/`calcStoreProgress` (projectConstants.js); también _multirif_store_progress. GET /projects/{id} recalcula rollup_progress.

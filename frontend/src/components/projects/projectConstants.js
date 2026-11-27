@@ -2,6 +2,23 @@
 export const PHASES = ['Recibido', 'Configurado', 'Testeado', 'En Producción'];
 export const STORE_PHASES = ['Recibido', 'Configurado', 'Testeado', 'En Producción'];
 
+// Avance de una celda de tienda: completada = 1; si no, procesado/esperado (avance parcial).
+export const storeCellFraction = (d = {}) => {
+  if (d.completed) return 1;
+  const exp = Number(d.expected) || 0;
+  return exp > 0 ? Math.min((Number(d.processed) || 0) / exp, 1) : 0;
+};
+
+export const calcStoreProgress = (store) => {
+  let done = 0, total = 0;
+  Object.values(store.implementation_matrix || {}).forEach(products => {
+    Object.values(products || {}).forEach(phases => {
+      STORE_PHASES.forEach(p => { total++; done += storeCellFraction((phases || {})[p]); });
+    });
+  });
+  return total > 0 ? Math.round((done / total) * 100) : 0;
+};
+
 export const PHASE_COLORS = {
   'Notificado': 'bg-lime-100 text-lime-800',
   'Recibido': 'bg-sky-100 text-sky-800',
