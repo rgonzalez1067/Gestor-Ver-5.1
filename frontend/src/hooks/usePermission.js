@@ -76,6 +76,7 @@ export const ROUTE_MODULE_MAP = {
   '/settings': 'configuracion',
   '/projects': 'proyectos',
   '/direct-projects': 'proyectos_directos',
+  '/multiprojects': 'proyectos',
   '/inventory': 'inventarios',
   '/inventory/accounting-report': 'reportes_contables',
   '/inventory/asset-ledger': 'reportes_contables',

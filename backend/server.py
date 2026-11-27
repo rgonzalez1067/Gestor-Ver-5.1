@@ -446,6 +446,8 @@ from routes.files_backup import router as files_backup_router
 api_router.include_router(files_backup_router)
 from routes.scheduled_backup import router as scheduled_backup_router
 api_router.include_router(scheduled_backup_router)
+from routes.multiprojects import router as multiprojects_router
+api_router.include_router(multiprojects_router)
 api_router.include_router(taller_audit_router)
 api_router.include_router(projects_followup_router)
 api_router.include_router(initial_contact_attachments_router)
@@ -496,6 +498,8 @@ async def create_indexes():
             from seed_np_phase_template import ensure_np_phase_template
             await harmonize_roadmap_matrix()
             await ensure_np_phase_template()
+            from routes.multiprojects import ensure_multiproject_indexes
+            await ensure_multiproject_indexes()
         except Exception as e:
             logging.error(f"[startup] harmonize_roadmap_matrix: {e}")
         try:

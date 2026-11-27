@@ -323,8 +323,13 @@ def generate_implementation_pdf(quote: dict, client: dict, contacts: list, branc
              Paragraph("<b>Serial</b>", styles['SmallWhite']),
              Paragraph("<b>Origen</b>", styles['SmallWhite'])],
         ]
+        # Multiproyectos: equipos agrupados por RIF / sucursal de la cotización origen
+        all_serials = sorted(all_serials, key=lambda e: (str(e.get("rif") or ""), str(e.get("store_name") or "")))
+        if any(e.get("rif") for e in all_serials):
+            eq_data[0][2] = Paragraph("<b>RIF / Sucursal</b>", styles['SmallWhite'])
         for eq in all_serials:
-            source_label = "Inventario" if eq in pinpad_serials else "Taller/Entrega"
+            source_label = (f"{eq.get('rif')} · {eq.get('store_name', '')}" if eq.get("rif")
+                            else "Inventario" if eq in pinpad_serials else "Taller/Entrega")
             eq_data.append([
                 Paragraph(str(eq.get("modelo", "NO_APLICA")), styles['SmallText']),
                 Paragraph(str(eq.get("serial", "NO_APLICA")), styles['SmallText']),

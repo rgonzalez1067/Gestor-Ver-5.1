@@ -33,6 +33,7 @@ import ProjectDefaultCcConfig from './pages/ProjectDefaultCcConfig';
 import ProjectSlaConfig from './pages/ProjectSlaConfig';
 import ConnectedUsers from './pages/ConnectedUsers';
 import BackupCenter from './pages/BackupCenter';
+import Multiprojects from './pages/Multiprojects';
 import InboxCleanup from './pages/InboxCleanup';
 import UiAlertsConfig from './pages/UiAlertsConfig';
 import { IntegratorTemplatesConfig, NewProductTemplatesConfig } from './pages/EntityTemplatesConfig';
@@ -164,6 +165,11 @@ function AppRouter() {
       <Route path="/projects" element={
         <ProtectedRoute>
           <Projects />
+        </ProtectedRoute>
+      } />
+      <Route path="/multiprojects" element={
+        <ProtectedRoute>
+          <Multiprojects />
         </ProtectedRoute>
       } />
       <Route path="/direct-projects" element={

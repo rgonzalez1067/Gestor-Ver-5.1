@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
-import {
+import { Link2,
   LayoutDashboard,
   Users,
   Building2,
@@ -87,6 +87,7 @@ const menuItems = [
     children: [
       { path: '/projects', icon: FolderKanban, label: 'Proyectos' },
       { path: '/direct-projects', icon: Plus, label: 'Proyectos Directos' },
+      { path: '/multiprojects', icon: Link2, label: 'Multiproyectos' },
       { path: '/integrators', icon: UserCheck, label: 'Integradores' },
       { path: '/condiciones-banco-mediopago', icon: BookOpen, label: 'Condiciones Banco/Medio de Pago' },
       { path: '/reports/implementers', icon: UsersRound, label: 'Reporte de Implementadores' },
