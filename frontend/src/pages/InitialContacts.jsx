@@ -17,7 +17,8 @@ import BitacoraModal from '../components/BitacoraModal';
 import { TwinScrollTable } from '../components/TwinScrollTable';
 import { ReferentePicker, referentePayload } from '../components/referentes/ReferentePicker';
 import { ContactAnalysisDialog } from '../components/initialContacts/ContactAnalysisDialog';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Shuffle } from 'lucide-react';
+import { ReassignReferenteDialog } from '../components/referentes/ReassignReferenteDialog';
 import { ContactModalHeader, FormSection } from '../components/initialContacts/ContactFormParts';
 import { AttachmentPicker } from '../components/initialContacts/AttachmentPicker';
 import { AttachmentBadge, AttachmentViewer } from '../components/initialContacts/AttachmentViewer';
@@ -106,6 +107,7 @@ export const InitialContacts = () => {
   const [createRef, setCreateRef] = useState({ referente_id: '', nuevo: null });
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [editRef, setEditRef] = useState({ referente_id: '', nuevo: null });
+  const [reassignContact, setReassignContact] = useState(null);
   const fetchReferentes = () => api.get('/referentes').then((r) => setReferentes(r.data)).catch(() => {});
   const refInvalid = (v) => v.nuevo && !v.nuevo.nombre_referente.trim();
 
@@ -326,6 +328,8 @@ export const InitialContacts = () => {
             </Button>
           </div>
         </div>
+        {isAdmin && <ReassignReferenteDialog contact={reassignContact} referentes={referentes.items}
+          onClose={() => setReassignContact(null)} onDone={() => { fetchData(); fetchReferentes(); }} />}
         {isAdmin && <ContactAnalysisDialog open={analysisOpen} onClose={() => setAnalysisOpen(false)} />}
 
         {/* Filters */}
@@ -493,6 +497,13 @@ export const InitialContacts = () => {
                             onClick={() => { setReopenContact(c); setReopenReason(''); setReopenDueDate(defaultReopenDate()); setReopenOpen(true); }}
                             data-testid={`reopen-btn-${c.contact_id}`}>
                             <RotateCcw size={14} />
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-violet-600"
+                            title="Reasignar Referente (solo Admin)" onClick={() => setReassignContact(c)}
+                            data-testid={`reassign-referente-btn-${c.contact_id}`}>
+                            <Shuffle size={14} />
                           </Button>
                         )}
                         {isAdmin && (

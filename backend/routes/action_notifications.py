@@ -71,6 +71,8 @@ ACTIONS = [
      "pdfs_default": ["Nota de Entrega (PDF)"]},
     {"id": "repair_complete", "label": "Reparada",
      "pdfs_default": ["Cálculos Definitivos Reparación (PDF)"]},
+    {"id": "admin_close", "label": "Cierre Administrativo",
+     "pdfs_default": []},
 ]
 
 
@@ -79,53 +81,53 @@ ACTIONS = [
 # La UI debe mostrar SOLO estas acciones por combinación, no todo el catálogo.
 ALLOWED_ACTIONS_BY_BIZ_SUB = {
     ("implementacion_pyme", "vpos"): [
-        "send_to_client", "approve", "invoice", "collect", "send_to_implementation",
+        "send_to_client", "approve", "invoice", "collect", "send_to_implementation", "admin_close",
     ],
     ("implementacion_pyme", "mpos_tablet"): [
-        "send_to_client", "approve", "invoice", "collect", "send_to_implementation", "configure",
+        "send_to_client", "approve", "invoice", "collect", "send_to_implementation", "configure", "admin_close",
     ],
     ("implementacion_pyme", "payment_gateway"): [
-        "send_to_client", "approve", "invoice", "collect", "send_to_implementation",
+        "send_to_client", "approve", "invoice", "collect", "send_to_implementation", "admin_close",
     ],
     ("implementacion_pyme", "link_pago"): [
-        "send_to_client", "approve", "invoice", "collect", "send_to_implementation",
+        "send_to_client", "approve", "invoice", "collect", "send_to_implementation", "admin_close",
     ],
     ("implementacion_pyme", "mpos_imple_pos"): [
         "send_to_client", "approve", "preassign_serials", "configure",
-        "invoice", "collect", "deliver", "send_to_implementation",
+        "invoice", "collect", "deliver", "send_to_implementation", "admin_close",
     ],
     ("implementacion_corp", "vpos"): [
-        "send_to_client", "approve", "invoice", "collect", "send_to_implementation",
+        "send_to_client", "approve", "invoice", "collect", "send_to_implementation", "admin_close",
     ],
     ("implementacion_corp", "mpos_tablet"): [
-        "send_to_client", "approve", "invoice", "collect", "send_to_implementation", "configure",
+        "send_to_client", "approve", "invoice", "collect", "send_to_implementation", "configure", "admin_close",
     ],
     ("implementacion_corp", "payment_gateway"): [
-        "send_to_client", "approve", "invoice", "collect", "send_to_implementation",
+        "send_to_client", "approve", "invoice", "collect", "send_to_implementation", "admin_close",
     ],
     ("implementacion_corp", "link_pago"): [
-        "send_to_client", "approve", "invoice", "collect", "send_to_implementation",
+        "send_to_client", "approve", "invoice", "collect", "send_to_implementation", "admin_close",
     ],
     ("implementacion_corp", "mpos_imple_pos"): [
         "send_to_client", "approve", "preassign_serials", "configure",
-        "invoice", "collect", "deliver", "send_to_implementation",
+        "invoice", "collect", "deliver", "send_to_implementation", "admin_close",
     ],
     ("equipos", "clientes_pyme"): [
-        "send_to_client", "approve", "invoice", "collect", "deliver",
+        "send_to_client", "approve", "invoice", "collect", "deliver", "admin_close",
     ],
     ("equipos", "clientes_corp"): [
-        "send_to_client", "approve", "invoice", "collect", "deliver",
+        "send_to_client", "approve", "invoice", "collect", "deliver", "admin_close",
     ],
     # Legacy: configuraciones antiguas sin subcategoría — se mantienen para
     # compat hasta que se migren (corre en el startup del backend, Iter50).
     ("equipos", None): [
-        "send_to_client", "approve", "invoice", "collect", "deliver",
+        "send_to_client", "approve", "invoice", "collect", "deliver", "admin_close",
     ],
     ("reparaciones", None): [
-        "send_to_client", "approve", "repair_complete", "invoice", "collect", "deliver",
+        "send_to_client", "approve", "repair_complete", "invoice", "collect", "deliver", "admin_close",
     ],
     ("proyectos_directos", None): [
-        "send_to_implementation", "notify_infrastructure_pinpads",
+        "send_to_implementation", "notify_infrastructure_pinpads", "admin_close",
     ],
 }
 

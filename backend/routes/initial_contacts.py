@@ -286,6 +286,39 @@ async def edit_initial_contact(contact_id: str, data: InitialContactEdit, author
     return updated
 
 
+class ReferenteReassign(BaseModel):
+    referente_id: str
+    comment: Optional[str] = None
+
+
+@router.put("/initial-contacts/{contact_id}/referente")
+async def reassign_contact_referente(contact_id: str, data: ReferenteReassign, authorization: Optional[str] = Header(None)):
+    """Solo Administrador: reasigna el Referente de un Contacto Inicial (consolidación de nombres similares)."""
+    current_user = await get_current_user(authorization)
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo el Administrador puede reasignar referentes")
+    contact = await db.initial_contacts.find_one({"contact_id": contact_id}, {"_id": 0})
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contacto no encontrado")
+    ref = await db.referentes.find_one({"referente_id": data.referente_id}, {"_id": 0})
+    if not ref:
+        raise HTTPException(status_code=400, detail="Referente no encontrado")
+    if ref["referente_id"] == contact.get("referente_id"):
+        raise HTTPException(status_code=400, detail="El contacto ya tiene asignado ese referente")
+    now = datetime.now(timezone.utc).isoformat()
+    editor = user_display(current_user)
+    desc = f"Referente reasignado por {editor}: «{contact.get('referred_by') or '—'}» → «{ref['nombre_referente']}»"
+    if (data.comment or "").strip():
+        desc += f". Comentario: {data.comment.strip()[:300]}"
+    await db.initial_contacts.update_one(
+        {"contact_id": contact_id},
+        {"$set": {"referente_id": ref["referente_id"], "referred_by": ref["nombre_referente"], "updated_at": now},
+         "$push": {"bitacora": {"entry_id": f"be_{uuid.uuid4().hex[:8]}", "action": "referente_reassigned", "description": desc,
+                                "user_id": current_user["user_id"], "user_name": editor, "timestamp": now}}},
+    )
+    return await db.initial_contacts.find_one({"contact_id": contact_id}, {"_id": 0})
+
+
 @router.post("/initial-contacts/{contact_id}/assign")
 async def assign_initial_contact(contact_id: str, data: InitialContactAssign, authorization: Optional[str] = Header(None)):
     """Asignar o reasignar un contacto a otro usuario. Valida jerarquía."""

@@ -6,9 +6,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 
-const ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp';
+const ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.eml';
 
-// Cierre administrativo (solo Admin) para Reparaciones Pagadas sin data en Taller.
+// Cierre Administrativo (todas las cotizaciones): archiva en el Histórico con motivo obligatorio.
 export const RepairAdminCloseDialog = ({ quoteId, onClose, onDone }) => {
   const [check, setCheck] = useState(null);
   const [reason, setReason] = useState('');
@@ -18,13 +18,13 @@ export const RepairAdminCloseDialog = ({ quoteId, onClose, onDone }) => {
   useEffect(() => {
     if (!quoteId) return;
     setCheck(null); setReason(''); setFile(null);
-    api.get(`/quotes/${quoteId}/repair-admin-close/check`).then(r => setCheck(r.data))
+    api.get(`/quotes/${quoteId}/admin-close/check`).then(r => setCheck(r.data))
       .catch(e => setCheck({ eligible: false, reason: e.response?.data?.detail || 'No se pudo validar la cotización' }));
   }, [quoteId]);
 
   const pickFile = (f) => {
     if (!f) return;
-    if (f.size > 10 * 1024 * 1024) { toast.error('La Nota de Entrega supera 10 MB'); return; }
+    if (f.size > 10 * 1024 * 1024) { toast.error('El soporte supera 10 MB'); return; }
     setFile(f);
   };
   const submit = async () => {
@@ -33,8 +33,8 @@ export const RepairAdminCloseDialog = ({ quoteId, onClose, onDone }) => {
       const fd = new FormData();
       fd.append('reason', reason.trim());
       if (file) fd.append('file', file);
-      await api.post(`/quotes/${quoteId}/repair-admin-close`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      toast.success(`${check?.quote_number} cerrada administrativamente como Entregada`);
+      await api.post(`/quotes/${quoteId}/admin-close`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      toast.success(`${check?.quote_number} cerrada administrativamente y enviada al Histórico`);
       onDone?.(); onClose();
     } catch (e) { toast.error(e.response?.data?.detail || 'No se pudo cerrar la cotización'); }
     finally { setSaving(false); }
@@ -51,16 +51,17 @@ export const RepairAdminCloseDialog = ({ quoteId, onClose, onDone }) => {
         ) : (
           <div className="space-y-4">
             <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-              La cotización pasará a <b>Entregada</b> con marca de <b>Cierre administrativo</b> y se registrará en el Histórico.
-              No se genera Nota de Entrega, no se envían correos y no se mueven equipos ni inventario.
+              La cotización <b>{check.quote_number}</b>{check.client_name ? ` (${check.client_name})` : ''} en estatus <b>{check.quote_status}</b> saldrá
+              de Cotizaciones y pasará al <b>Histórico</b> con marca de <b>Cierre Administrativo</b>. No se mueven equipos ni inventario.
+              Si la acción tiene notificaciones configuradas, se enviarán.
             </p>
             <div>
               <label className="text-xs font-medium text-slate-600">Motivo del cierre (obligatorio)</label>
-              <Textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} placeholder="Ej.: Equipos entregados fuera del sistema; no existe registro en Taller."
+              <Textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} placeholder="Ej.: Cliente desistió del servicio; se cierra para depurar la cartera."
                 data-testid="admin-close-reason" />
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-600">Nota de Entrega manual (opcional · PDF o imagen, máx. 10 MB)</label>
+              <label className="text-xs font-medium text-slate-600">Documento de soporte (opcional · PDF, imagen o .eml, máx. 10 MB)</label>
               {file ? (
                 <div className="mt-1 flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm" data-testid="admin-close-file">
                   <Paperclip size={14} className="text-slate-500" /><span className="flex-1 truncate">{file.name}</span>
@@ -77,7 +78,7 @@ export const RepairAdminCloseDialog = ({ quoteId, onClose, onDone }) => {
           <Button variant="outline" onClick={onClose} data-testid="admin-close-cancel">Cancelar</Button>
           {check?.eligible && (
             <Button onClick={submit} disabled={saving || reason.trim().length < 10} className="bg-amber-600 hover:bg-amber-700 text-white" data-testid="admin-close-confirm">
-              {saving && <Loader2 size={14} className="mr-1 animate-spin" />}Cerrar como Entregada
+              {saving && <Loader2 size={14} className="mr-1 animate-spin" />}Confirmar Cierre Administrativo
             </Button>
           )}
         </DialogFooter>

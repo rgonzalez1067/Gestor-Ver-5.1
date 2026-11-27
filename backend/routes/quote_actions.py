@@ -3607,49 +3607,55 @@ async def get_email_log_actions(authorization: Optional[str] = Header(None)):
 
 
 
-# ==================== CIERRE ADMINISTRATIVO (Reparaciones sin data en Taller) ====================
-ADMIN_CLOSE_ALLOWED_STATUSES = ("Pagada", "Pagado")
+# ==================== CIERRE ADMINISTRATIVO (todas las cotizaciones) ====================
+async def _admin_close_authorized(user: dict, quote: dict) -> bool:
+    """Admin siempre. Otros usuarios solo si la acción está configurada (override) y autorizada para ellos."""
+    if (user.get("role") or "").lower() == "admin":
+        return True
+    from services.notification_engine import _quote_to_biz_sub
+    biz, sub = _quote_to_biz_sub(quote)
+    ov = (await db.quote_action_overrides.find_one({"config_key": f"{biz}|{sub or '_'}|admin_close"}, {"_id": 0})
+          or await db.quote_action_overrides.find_one({"config_key": f"{biz}|_|admin_close"}, {"_id": 0}))
+    if not ov or not ov.get("enabled", True):
+        return False
+    if user.get("user_id") in (ov.get("allowed_user_ids") or []) or \
+            (user.get("email") or "").lower() in [e.lower() for e in ov.get("allowed_user_emails") or []]:
+        return True
+    cargos = ov.get("required_cargos") or []
+    return bool(cargos) and user.get("cargo") in cargos
 
 
 async def _admin_close_eligibility(quote: dict) -> Optional[str]:
-    """Devuelve el motivo de inelegibilidad o None si la cotización puede cerrarse administrativamente."""
-    if quote.get("quote_category") != "repair":
-        return "El cierre administrativo solo aplica a cotizaciones de Reparación"
-    if quote.get("entrega_completa") or quote.get("quote_status") == "Entregada":
-        return "La cotización ya está entregada"
-    if quote.get("quote_status") not in ADMIN_CLOSE_ALLOWED_STATUSES:
-        return "Solo se pueden cerrar cotizaciones en estatus Pagada"
-    n = await db.taller_equipos.count_documents(
-        {"$or": [{"quote_id": quote["quote_id"]}, {"quote_number": quote.get("quote_number")}], "estatus": {"$ne": "Entregado"}})
-    if n:
-        return f"La cotización tiene {n} equipo(s) en Taller. Use 'Marcar como Entregada'"
+    if quote.get("archived"):
+        return "La cotización ya se encuentra en el Histórico"
     return None
 
 
-@router.get("/quotes/{quote_id}/repair-admin-close/check")
-async def repair_admin_close_check(quote_id: str, authorization: Optional[str] = Header(None)):
+@router.get("/quotes/{quote_id}/admin-close/check")
+async def admin_close_check(quote_id: str, authorization: Optional[str] = Header(None)):
     user = await get_current_user(authorization)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Acción exclusiva del Administrador")
     quote = await db.quotes.find_one({"quote_id": quote_id}, {"_id": 0})
     if not quote:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    if not await _admin_close_authorized(user, quote):
+        raise HTTPException(status_code=403, detail="No autorizado para el Cierre Administrativo")
     reason = await _admin_close_eligibility(quote)
-    return {"eligible": reason is None, "reason": reason, "quote_number": quote.get("quote_number"), "quote_status": quote.get("quote_status")}
+    return {"eligible": reason is None, "reason": reason, "quote_number": quote.get("quote_number"),
+            "quote_status": quote.get("quote_status"), "client_name": quote.get("client_name")}
 
 
-@router.post("/quotes/{quote_id}/repair-admin-close")
-async def repair_admin_close(quote_id: str, reason: str = Form(...), file: Optional[UploadFile] = File(None), authorization: Optional[str] = Header(None)):
-    """Cierre administrativo: marca 'Entregada' sin Nota de Entrega ni movimientos de Taller; archiva en Histórico."""
+@router.post("/quotes/{quote_id}/admin-close")
+async def admin_close(quote_id: str, reason: str = Form(...), file: Optional[UploadFile] = File(None), authorization: Optional[str] = Header(None)):
+    """Cierre Administrativo: archiva la cotización en el Histórico (sale de Cotizaciones) con el motivo indicado."""
     user = await get_current_user(authorization)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Acción exclusiva del Administrador")
+    quote = await db.quotes.find_one({"quote_id": quote_id}, {"_id": 0})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    if not await _admin_close_authorized(user, quote):
+        raise HTTPException(status_code=403, detail="No autorizado para el Cierre Administrativo")
     reason = (reason or "").strip()
     if len(reason) < 10:
         raise HTTPException(status_code=400, detail="Indique un motivo de al menos 10 caracteres")
-    quote = await db.quotes.find_one({"quote_id": quote_id}, {"_id": 0})
-    if not quote:
-        raise HTTPException(status_code=404, detail="Cotización no encontrada")
     not_ok = await _admin_close_eligibility(quote)
     if not_ok:
         raise HTTPException(status_code=400, detail=not_ok)
@@ -3659,19 +3665,19 @@ async def repair_admin_close(quote_id: str, reason: str = Form(...), file: Optio
     attachment = None
     if file is not None and file.filename:
         ext = os.path.splitext(file.filename)[1].lower()
-        if ext not in (".pdf", ".jpg", ".jpeg", ".png", ".webp"):
-            raise HTTPException(status_code=400, detail="La Nota de Entrega manual debe ser PDF o imagen (JPG, PNG, WEBP)")
+        if ext not in (".pdf", ".jpg", ".jpeg", ".png", ".webp", ".eml"):
+            raise HTTPException(status_code=400, detail="El soporte debe ser PDF, imagen (JPG, PNG, WEBP) o correo .eml")
         content = await file.read()
         if len(content) > 10 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="La Nota de Entrega supera 10 MB")
+            raise HTTPException(status_code=400, detail="El soporte supera 10 MB")
         attachment_id = f"att_{uuid.uuid4().hex[:12]}"
         safe = f"{attachment_id}{ext}"
         attachments_dir = UPLOADS_DIR / "attachments" / quote_id
         attachments_dir.mkdir(parents=True, exist_ok=True)
         save_pdf_dual(attachments_dir / safe, content, f"attachments/{quote_id}/{safe}")
         attachment = {
-            "attachment_id": attachment_id, "category": "Nota de Entrega",
-            "filename": f"{quote.get('quote_number', quote_id)}_NotaEntrega_Manual{ext}",
+            "attachment_id": attachment_id, "category": "Soporte Cierre Administrativo",
+            "filename": f"{quote.get('quote_number', quote_id)}_CierreAdministrativo{ext}",
             "url": f"/uploads/attachments/{quote_id}/{safe}",
             "uploaded_by": user.get("email", ""), "uploaded_by_name": by_name, "uploaded_at": now_iso,
             "file_size": len(content), "content_type": file.content_type or "application/octet-stream",
@@ -3679,25 +3685,24 @@ async def repair_admin_close(quote_id: str, reason: str = Form(...), file: Optio
 
     closure = {"reason": reason, "closed_by": user.get("user_id"), "closed_by_name": by_name,
                "closed_at": now_iso, "previous_status": quote.get("quote_status"),
-               "manual_delivery_note_id": attachment["attachment_id"] if attachment else None}
+               "support_attachment_id": attachment["attachment_id"] if attachment else None}
     update = {
-        "$set": {"quote_status": "Entregada", "delivered_at": now_iso, "entrega_completa": True,
-                 "admin_closure": closure, "updated_at": now_iso},
-        "$push": {"status_history": {"status": "Entregada", "action": "admin_closure", "timestamp": now_iso,
+        "$set": {"quote_status": "Cierre Administrativo", "admin_closure": closure, "updated_at": now_iso},
+        "$push": {"status_history": {"status": "Cierre Administrativo", "action": "admin_close", "timestamp": now_iso,
                                       "user": by_name, "note": f"Cierre administrativo: {reason}"}},
     }
     if attachment:
         update["$push"]["attachments"] = attachment
     await db.quotes.update_one({"quote_id": quote_id}, update)
     try:
-        await db.audit_logs.insert_one({"log_id": f"aud_{uuid.uuid4().hex[:12]}", "action": "repair_admin_close",
-                                        "entity": "quote", "entity_id": quote_id, "quote_number": quote.get("quote_number"),
-                                        "user_id": user.get("user_id"), "user_name": by_name, "details": closure, "created_at": now_iso})
-    except Exception as e:
-        logger.warning(f"[admin_close] audit log failed: {e}")
-    try:
         from routes.quote_history import archive_quote_to_history
-        await archive_quote_to_history(quote_id, "status_entregada", user)
+        await archive_quote_to_history(quote_id, "admin_close", user)
     except Exception as e:
         logger.error(f"[admin_close] Error archivando {quote_id} al histórico: {e}")
-    return {"ok": True, "quote_status": "Entregada", "admin_closure": closure}
+        raise HTTPException(status_code=500, detail="No se pudo archivar la cotización en el Histórico")
+    try:
+        fresh = await db.quotes.find_one({"quote_id": quote_id}, {"_id": 0}) or quote
+        await _engine_or_legacy("admin_close", fresh, user, custom_message=f"Motivo del cierre: {reason}")
+    except Exception as e:
+        logger.warning(f"[admin_close] notificación: {e}")
+    return {"ok": True, "quote_status": "Cierre Administrativo", "admin_closure": closure}

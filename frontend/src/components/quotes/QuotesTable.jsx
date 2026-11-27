@@ -671,6 +671,19 @@ export const QuotesTable = ({
                         </DropdownMenuItem>; })()}
                         {renderAnchoredCustomActions(quote, 'collect', customByAnchor)}
 
+                        {onAdminClose && (() => {
+                          const { biz, sub } = resolveBizSub(quote);
+                          const ov = actionOverrides[`${biz}|${sub || '_'}|admin_close`] || actionOverrides[`${biz}|_|admin_close`];
+                          const isAdm = (currentUserRole || '').toLowerCase() === 'admin';
+                          const meta = getActionMeta(quote, 'admin_close', 'Cierre Administrativo');
+                          const allowed = isAdm || (ov && !meta.hidden && !meta.disabled && ((ov.allowed_user_emails || []).length || (ov.required_cargos || []).length));
+                          if (!allowed || meta.hidden) return null;
+                          return (
+                            <DropdownMenuItem onSelect={() => onAdminClose(quote.quote_id)} className="cursor-pointer text-amber-700" data-testid={`admin-close-btn-${quote.quote_id}`}>
+                              <ShieldAlert size={16} className="mr-2 text-amber-600" /> {meta.label}
+                            </DropdownMenuItem>
+                          );
+                        })()}
                         {/* ── ENTREGA / IMPLEMENTACIÓN ── */}
                         {canEditNonConfig && <DropdownMenuSeparator />}
                         {canEditNonConfig && (isEquipment || isRepair || isFastTrack) && (
@@ -681,11 +694,6 @@ export const QuotesTable = ({
                             <Truck size={16} className="mr-2 text-teal-500" /> Marcar como Entregada
                             {quote.delivered_at && <span className="ml-auto text-xs text-teal-500">&#10003;</span>}
                             {!quote.delivered_at && quote.quote_status === 'Pagada' && <span className="ml-auto text-xs text-teal-500">&#x25CF;</span>}
-                          </DropdownMenuItem>
-                        )}
-                        {isRepair && onAdminClose && (currentUserRole || '').toLowerCase() === 'admin' && ['Pagada', 'Pagado'].includes(quote.quote_status) && !quote.entrega_completa && (
-                          <DropdownMenuItem onSelect={() => onAdminClose(quote.quote_id)} className="cursor-pointer text-amber-700" data-testid={`admin-close-btn-${quote.quote_id}`}>
-                            <ShieldAlert size={16} className="mr-2 text-amber-600" /> Cierre Administrativo
                           </DropdownMenuItem>
                         )}
                         {canEditNonConfig && (isEquipment || isRepair || isFastTrack) && renderAnchoredCustomActions(quote, 'deliver', customByAnchor)}

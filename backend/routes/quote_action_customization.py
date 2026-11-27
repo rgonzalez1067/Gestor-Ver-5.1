@@ -31,7 +31,7 @@ router = APIRouter()
 # renombrar/desactivar/permisos).
 LEGACY_ACTION_IDS = [
     "send_to_client", "approve", "configure", "repair_complete",
-    "invoice", "collect", "deliver", "send_to_implementation",
+    "invoice", "collect", "deliver", "send_to_implementation", "admin_close",
 ]
 
 ALLOWED_BIZ_TYPES = [
